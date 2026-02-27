@@ -54,7 +54,23 @@ class Plugin {
 	 */
 	public function init(): void {
 		add_action( 'init', [ $this, 'register_cpt' ] );
-		add_action( 'acf/init', [ $this, 'init_section_registry' ], 5 ); // priority 5: before GlobalFields::register at default 10
+
+		// ACF fires acf/init inside its own plugins_loaded callback. Because ACF
+		// is loaded alphabetically before this plugin, its plugins_loaded callback
+		// is registered (and fires) before ours — both at default priority 10.
+		// That means acf/init may have already fired by the time we reach this
+		// line. did_action() detects that case and falls back to a direct call so
+		// SectionRegistry is never silently skipped.
+		//
+		// SectionRegistry must initialise before GlobalFields (which reads section
+		// data to build the Primary Section choices), so this block runs before
+		// GlobalFields::init() below.
+		if ( did_action( 'acf/init' ) ) {
+			$this->init_section_registry();
+		} else {
+			add_action( 'acf/init', [ $this, 'init_section_registry' ], 5 ); // priority 5: before GlobalFields::register at default 10
+		}
+
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 
 		TemplateLoader::init( $this->plugin_dir );
@@ -104,9 +120,11 @@ class Plugin {
 	 * Tell SectionRegistry to load section data from the database and register
 	 * each section's ACF field group with ACF.
 	 *
-	 * Runs on the acf/init hook at priority 5 — before GlobalFields::register()
-	 * at priority 10 — so the in-memory section cache is populated when
-	 * GlobalFields builds the Primary Section choices via get_sections().
+	 * Called either:
+	 *   a) directly from Plugin::init() when did_action('acf/init') is already
+	 *      true (ACF fired acf/init before our plugins_loaded callback ran), or
+	 *   b) via the acf/init hook at priority 5 — before GlobalFields::register()
+	 *      at priority 10 — when acf/init has not yet fired.
 	 *
 	 * This runs on every page load. It reads from the member_directory_sections
 	 * option — never directly from the filesystem. The filesystem is only read

@@ -13,8 +13,9 @@
  *      (name, tagline, location). Only sections with can_be_primary === true
  *      in their JSON config appear as choices.
  *
- * This group is registered via acf_add_local_field_group() on the acf/init
- * hook. It does not come from a JSON file and does not require a sync.
+ * This group is registered via acf_add_local_field_group(), called either
+ * directly or via the acf/init hook depending on timing. It does not come
+ * from a JSON file and does not require a sync.
  * The Primary Section choices are built dynamically from SectionRegistry
  * so the select options stay in sync as sections are added or removed.
  */
@@ -26,11 +27,23 @@ defined( 'ABSPATH' ) || exit;
 class GlobalFields {
 
 	/**
-	 * Register the acf/init hook.
+	 * Register (or immediately run) the acf/init callback.
 	 * Called once from Plugin::init() during plugins_loaded.
+	 *
+	 * ACF fires acf/init inside its own plugins_loaded callback. Because ACF
+	 * loads before this plugin alphabetically, its plugins_loaded callback runs
+	 * first, meaning acf/init may have already fired by the time we get here.
+	 * did_action() detects that and calls register() directly so the field group
+	 * is never silently skipped. Plugin::init() guarantees init_section_registry()
+	 * has already run before this method is called, so SectionRegistry data is
+	 * available to register() in both the immediate and deferred paths.
 	 */
 	public static function init(): void {
-		add_action( 'acf/init', [ self::class, 'register' ] );
+		if ( did_action( 'acf/init' ) ) {
+			self::register();
+		} else {
+			add_action( 'acf/init', [ self::class, 'register' ] );
+		}
 	}
 
 	/**
