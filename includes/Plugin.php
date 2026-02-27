@@ -12,6 +12,7 @@
  * Files loaded here as they are created (incremental build):
  *   ✅ SectionRegistry.php  — available
  *   ✅ TemplateLoader.php   — available
+ *   ✅ AdminSync.php        — available
  *   🔜 FieldRenderer.php    — coming next
  *   🔜 PmpResolver.php      — coming next
  *   🔜 AcfFormHelper.php    — coming next
@@ -24,6 +25,7 @@ defined( 'ABSPATH' ) || exit;
 
 require_once __DIR__ . '/SectionRegistry.php';
 require_once __DIR__ . '/TemplateLoader.php';
+require_once __DIR__ . '/AdminSync.php';
 
 // Require additional classes as they are added to includes/:
 // require_once __DIR__ . '/FieldRenderer.php';
@@ -54,6 +56,7 @@ class Plugin {
 		add_action( 'wp_enqueue_scripts', [ $this, 'enqueue_assets' ] );
 
 		TemplateLoader::init( $this->plugin_dir );
+		AdminSync::init();
 	}
 
 	// -----------------------------------------------------------------------
