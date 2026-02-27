@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Member Directory — Architecture Document</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --clr-public: #2e7d32;
+    --clr-member: #1565c0;
+    --clr-private: #e65100;
+    --clr-author: #6a1b9a;
+    --clr-bg: #fafafa;
+    --clr-card: #ffffff;
+    --clr-border: #e0e0e0;
+    --clr-text: #212121;
+    --clr-muted: #616161;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.7;
+    color: var(--clr-text);
+    background: var(--clr-bg);
+    margin: 0;
+    padding: 0;
+  }
+
+  /* --- Top Nav --- */
+  .topnav {
+    position: sticky; top: 0; z-index: 100;
+    background: #263238; color: #fff;
+    padding: 12px 32px;
+    display: flex; flex-wrap: wrap; gap: 8px 20px;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,.15);
+  }
+  .topnav a {
+    color: #b0bec5; text-decoration: none; font-size: .85rem;
+    transition: color .15s;
+  }
+  .topnav a:hover { color: #fff; }
+  .topnav .brand { font-weight: 700; color: #fff; font-size: 1rem; margin-right: 24px; }
+
+  /* --- Layout --- */
+  .container { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 2rem; margin: 0 0 8px; }
+  h2 { font-size: 1.5rem; margin: 48px 0 12px; padding-top: 16px; border-top: 3px solid var(--clr-border); }
+  h3 { font-size: 1.15rem; margin: 24px 0 8px; }
+  p, li { font-size: .95rem; }
+  .subtitle { color: var(--clr-muted); margin: 0 0 32px; }
+
+  /* --- Legend --- */
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 16px;
+    margin: 24px 0; padding: 16px;
+    background: var(--clr-card); border: 1px solid var(--clr-border); border-radius: 8px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: .85rem; }
+  .legend-dot {
+    width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+  }
+
+  /* --- Diagram Card --- */
+  .diagram-card {
+    background: var(--clr-card);
+    border: 1px solid var(--clr-border);
+    border-radius: 10px;
+    padding: 28px;
+    margin: 20px 0 36px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.05);
+    overflow-x: auto;
+  }
+  .diagram-card .mermaid { text-align: center; }
+
+  /* --- Code Block --- */
+  pre.codeblock {
+    background: #263238; color: #eeffff;
+    padding: 20px 24px; border-radius: 8px;
+    overflow-x: auto; font-size: .82rem;
+    line-height: 1.6;
+  }
+  pre.codeblock .comment { color: #546e7a; }
+  pre.codeblock .key { color: #c792ea; }
+  pre.codeblock .string { color: #c3e88d; }
+  pre.codeblock .bool { color: #f78c6c; }
+  pre.codeblock .annot { color: #ffcb6b; font-style: italic; }
+
+  /* --- Annotation callout --- */
+  .callout {
+    border-left: 4px solid var(--clr-member);
+    background: #e3f2fd;
+    padding: 12px 16px;
+    border-radius: 0 6px 6px 0;
+    margin: 16px 0;
+    font-size: .9rem;
+  }
+  .callout.warn {
+    border-color: var(--clr-private);
+    background: #fff3e0;
+  }
+
+  /* --- File tree --- */
+  .file-tree {
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: .82rem;
+    line-height: 1.8;
+    background: #263238; color: #eeffff;
+    padding: 20px 24px; border-radius: 8px;
+    overflow-x: auto;
+  }
+  .file-tree .dir { color: #82aaff; font-weight: 600; }
+  .file-tree .file { color: #c3e88d; }
+  .file-tree .desc { color: #546e7a; }
+
+  /* --- Open Questions --- */
+  .open-q {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin-top: 32px;
+  }
+  .open-q h2 { border: none; margin-top: 0; padding-top: 0; }
+  .open-q li { margin-bottom: 6px; }
+
+  /* --- Responsive --- */
+  @media (max-width: 700px) {
+    .container { padding: 20px 12px 40px; }
+    .diagram-card { padding: 14px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ================================================================ -->
+<!--  TOP NAVIGATION                                                   -->
+<!-- ================================================================ -->
+<nav class="topnav">
+  <span class="brand">Member Directory Architecture</span>
+  <a href="#overview">Overview</a>
+  <a href="#diagram1">File Structure</a>
+  <a href="#diagram2">Page Load</a>
+  <a href="#diagram3">PMP Resolution</a>
+  <a href="#diagram4">Section Config</a>
+  <a href="#diagram5">Edit Flow</a>
+  <a href="#diagram6">Directory Page</a>
+  <a href="#diagram7">View As</a>
+  <a href="#questions">Open Questions</a>
+</nav>
+
+<div class="container">
+
+<!-- ================================================================ -->
+<!--  INTRO                                                            -->
+<!-- ================================================================ -->
+<h1 id="overview">Member Directory Plugin</h1>
+<p class="subtitle">Architecture &amp; Data-Flow Reference — for humans, not machines.</p>
+
+<p>
+  This document maps out <strong>every moving part</strong> of the Member Directory WordPress plugin.
+  Each member gets one post (a Custom Post Type called <code>member-directory</code>).
+  That post <em>is</em> their profile. The plugin gives you a profile page (edit &amp; view on the same surface),
+  a filterable directory page, a privacy system called <strong>PMP</strong> (Public / Member / Private),
+  and a section system driven entirely by JSON config files.
+</p>
+
+<h3>Color Legend (used in every diagram)</h3>
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--clr-public)"></div> Public viewer (logged-out)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--clr-member)"></div> Member viewer (logged-in)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--clr-private)"></div> Private (author &amp; admin only)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--clr-author)"></div> Author / Admin actions</div>
+</div>
+
+<!-- ================================================================ -->
+<!--  DIAGRAM 1 — FILE STRUCTURE                                       -->
+<!-- ================================================================ -->
+<h2 id="diagram1">Diagram 1: Plugin File Structure</h2>
+<p>
+  The plugin lives inside <code>wp-content/plugins/member-directory/</code>.
+  Here is every file and folder, what each one does, what data flows into it, and what it produces.
+</p>
+
+<div class="file-tree">
+<span class="dir">member-directory/</span>
+  <span class="file">member-directory.php</span>         <span class="desc">← Plugin entry point. WordPress reads this first. Loads Plugin.php.</span>
+  <span class="dir">includes/</span>
+    <span class="file">Plugin.php</span>                <span class="desc">← Bootstrap. Registers hooks, CPT, enqueues assets, wires everything together.</span>
+    <span class="file">TemplateLoader.php</span>        <span class="desc">← Hooks into single_template filter. Tells WP to use the plugin's template files.</span>
+    <span class="file">SectionRegistry.php</span>       <span class="desc">← Reads every JSON file from sections/. Validates &amp; sorts them. Provides section data to all other files.</span>
+    <span class="file">FieldRenderer.php</span>         <span class="desc">← Knows how to turn each field type (text, image, gallery, taxonomy…) into HTML for view mode.</span>
+    <span class="file">PmpResolver.php</span>           <span class="desc">← The privacy brain. Takes a field, its section, the global PMP, and the viewer and returns SHOW or HIDE.</span>
+    <span class="file">AcfFormHelper.php</span>         <span class="desc">← Wraps ACF's acf_form() and acf_form_head(). Handles edit-mode form setup and save processing.</span>
+    <span class="file">DirectoryQuery.php</span>        <span class="desc">← Builds a WP_Query with optional taxonomy filters from URL params. Powers the directory page.</span>
+  <span class="dir">sections/</span>
+    <span class="file">profile.json</span>              <span class="desc">← Section config: the "Profile" section. Drop in = section exists. Delete = section gone.</span>
+    <span class="file">business.json</span>             <span class="desc">← Section config: the "Business" section.</span>
+    <span class="file">craft-and-skills.json</span>     <span class="desc">← Section config: the "Craft &amp; Skills" section.</span>
+  <span class="dir">templates/</span>
+    <span class="file">single-member-directory.php</span>   <span class="desc">← Full profile page template. Assembles header, sidebar, main area, right panel.</span>
+    <span class="file">archive-member-directory.php</span>  <span class="desc">← Directory listing page template. Runs the loop, renders cards, shows filters.</span>
+    <span class="dir">parts/</span>
+      <span class="file">header.php</span>              <span class="desc">← Sticky header partial: title, tagline, location from the primary section. Pill navigation.</span>
+      <span class="file">sidebar.php</span>             <span class="desc">← Left sidebar: section list with field outlines. PMP icons per section.</span>
+      <span class="file">section-view.php</span>        <span class="desc">← Renders one section's fields in read-only view mode using FieldRenderer.</span>
+      <span class="file">section-edit.php</span>        <span class="desc">← Renders one section's fields in edit mode via acf_form(). Inline PMP controls.</span>
+      <span class="file">right-panel.php</span>         <span class="desc">← Author/admin only. "View As" toggle + Global Default PMP selector.</span>
+      <span class="file">directory-card.php</span>      <span class="desc">← One member card in the directory grid. Shows primary section summary.</span>
+  <span class="dir">assets/</span>
+    <span class="dir">css/</span>
+      <span class="file">memdir.css</span>              <span class="desc">← All plugin styles: layout, pills, sidebar, cards, PMP icons, responsive.</span>
+    <span class="dir">js/</span>
+      <span class="file">memdir.js</span>               <span class="desc">← Pill navigation, section enable/disable, View As switching, PMP icon clicks.</span>
+</div>
+
+<div class="diagram-card">
+<pre class="mermaid">
+flowchart LR
+    subgraph Entry
+        A["member-directory.php\n(plugin entry point)"]
+    end
+
+    subgraph Core ["includes/ — PHP Classes"]
+        B["Plugin.php\nRegisters hooks,\nCPT, enqueues assets"]
+        C["TemplateLoader.php\nOverrides WP template\nfor this CPT"]
+        D["SectionRegistry.php\nReads JSON configs\nfrom sections/ folder"]
+        E["FieldRenderer.php\nConverts field data\ninto view-mode HTML"]
+        F["PmpResolver.php\nDecides SHOW or HIDE\nper field per viewer"]
+        G["AcfFormHelper.php\nSets up acf_form()\nand handles saves"]
+        H["DirectoryQuery.php\nBuilds WP_Query\nwith taxonomy filters"]
+    end
+
+    subgraph Config ["sections/ — JSON Configs"]
+        I["profile.json"]
+        J["business.json"]
+        K["craft-and-skills.json"]
+    end
+
+    subgraph Templates
+        L["single-member-directory.php"]
+        M["archive-member-directory.php"]
+    end
+
+    subgraph Assets
+        N["memdir.css + memdir.js"]
+    end
+
+    A -- "loads" --> B
+    B -- "registers filter" --> C
+    B -- "initializes" --> D
+    D -- "reads all .json files" --> I
+    D -- "reads all .json files" --> J
+    D -- "reads all .json files" --> K
+    D -- "section fields + types" --> E
+    D -- "pmp defaults" --> F
+    D -- "field group keys" --> G
+    D -- "filterable taxonomies" --> H
+    D -- "section list + order" --> C
+    C -- "loads template" --> L
+    C -- "loads template" --> M
+    L -- "uses" --> E
+    L -- "uses" --> F
+    L -- "uses" --> G
+    M -- "uses" --> H
+    M -- "uses" --> F
+    B -- "enqueues" --> N
+</pre>
+</div>
+
+<!-- ================================================================ -->
+<!--  DIAGRAM 2 — PAGE LOAD FLOW                                      -->
+<!-- ================================================================ -->
+<h2 id="diagram2">Diagram 2: Page Load Flow (Profile Page)</h2>
+<p>
+  When someone visits a member profile URL (e.g. <code>/member-directory/jane-doe/</code>),
+  WordPress goes through its template hierarchy. The plugin intercepts this with a
+  <code>single_template</code> filter and loads its own template. From there, sections are
+  loaded from JSON, the viewer's identity is determined, and the page renders either in
+  <strong>edit mode</strong> (for the post author) or <strong>view mode</strong> (for everyone else).
+</p>
+
+<div class="diagram-card">
+<pre class="mermaid">
+flowchart TD
+    A["Browser requests\n/member-directory/jane-doe/"] --> B["WordPress receives request"]
+    B --> C["WP resolves the URL to a\nmember-directory CPT post"]
+    C --> D["WP runs template hierarchy\nlooking for single-member-directory.php"]
+    D --> E["TemplateLoader intercepts\nvia single_template filter"]
+    E --> F["Plugin's single-member-directory.php\nis loaded instead of theme template"]
+
+    F --> G["SectionRegistry reads all JSON\nfiles from sections/ folder"]
+    G --> H["Sections sorted by 'order' value\nand validated"]
+
+    F --> I["Determine current viewer:\nLogged out? Logged in? Post author? Admin?"]
+
+    I --> J{"Is the viewer\nthe post author\nor an admin?"}
+
+    J -- "Yes" --> K["Default to EDIT mode\n(author sees their own edit form)"]
+    J -- "No" --> L["VIEW mode\n(read-only profile)"]
+
+    K --> K2["AcfFormHelper runs acf_form_head()\nbefore any HTML output"]
+    K2 --> M["Render sticky header\n(from primary section fields)"]
+    L --> M
+
+    M --> N["Render pill navigation\n(one pill per enabled section)"]
+    N --> O["Render left sidebar\n(section list + PMP icons)"]
+
+    O --> P{"Edit mode\nor View mode?"}
+
+    P -- "Edit mode" --> Q["section-edit.php\nacf_form() renders fields\nwith inline PMP controls"]
+    P -- "View mode" --> R["section-view.php\nFieldRenderer outputs\neach visible field as HTML"]
+
+    Q --> S["PmpResolver checks each field:\nSHOW or HIDE for this viewer"]
+    R --> S
+
+    S --> T["right-panel.php\n(only if author or admin)\nView As + Global PMP controls"]
+    T --> U["Final HTML sent to browser"]
+    S -- "viewer is not author/admin" --> U
+
+    style K fill:#6a1b9a,color:#fff
+    style Q fill:#6a1b9a,color:#fff
+    style T fill:#6a1b9a,color:#fff
+    style L fill:#1565c0,color:#fff
+    style R fill:#1565c0,color:#fff
+</pre>
+</div>
+
+<div class="callout">
+  <strong>Key point:</strong> <code>acf_form_head()</code> must fire before any HTML is output. This is why AcfFormHelper runs early — it processes the form submission (if any) and sets up the form for rendering later in the page.
+</div>
+
+<!-- ================================================================ -->
+<!--  DIAGRAM 3 — PMP RESOLUTION                                      -->
+<!-- ================================================================ -->
+<h2 id="diagram3">Diagram 3: PMP Resolution Logic</h2>
+<p>
+  PMP stands for <strong>Public / Member / Private</strong>. It controls who can see what.
+  There are three levels of PMP: <strong>Global</strong> (whole profile), <strong>Section</strong>
+  (one section), and <strong>Field</strong> (one field). The rule is a <strong>waterfall</strong>:
+  start at the field. If the field has an explicit value, that value wins. If the field is set to
+  <code>inherit</code>, move up to the section. If the section has an explicit value, that wins.
+  If the section is also <code>inherit</code>, the global value wins — global always carries an
+  explicit value, so the waterfall always terminates.
+</p>
+
+<div class="diagram-card">
+<pre class="mermaid">
+flowchart TD
+    START["Start: Should this FIELD\nbe visible to this VIEWER?"] --> AUTH
+
+    AUTH{"Is the viewer the\npost author or an admin?"}
+    AUTH -- "Yes" --> SHOW_AUTH["✅ SHOW\nAuthor and admin always\nsee everything"]
+
+    AUTH -- "No" --> FIELD{"Does the FIELD have\nan explicit PMP value?\npublic / member / private"}
+
+    FIELD -- "Yes — explicit value" --> RESOLVE["Resolved PMP value\ncomes from the FIELD"]
+    FIELD -- "No — set to inherit" --> SECT{"Does the SECTION have\nan explicit PMP value?\npublic / member / private"}
+
+    SECT -- "Yes — explicit value" --> RESOLVE2["Resolved PMP value\ncomes from the SECTION"]
+    SECT -- "No — set to inherit" --> RESOLVE3["Resolved PMP value\ncomes from GLOBAL\n(global is always explicit)"]
+
+    RESOLVE --> CHECK
+    RESOLVE2 --> CHECK
+    RESOLVE3 --> CHECK
+
+    CHECK{"Resolved value is…"}
+
+    CHECK -- "public" --> SHOW_ALL["✅ SHOW\nVisible to everyone\nlogged in or logged out"]
+    CHECK -- "member" --> LOGGED{"Is viewer\nlogged in?"}
+    LOGGED -- "Yes" --> SHOW_MEM["✅ SHOW\nVisible to logged-in users"]
+    LOGGED -- "No" --> HIDE_MEM["❌ HIDE\nGhost — does not exist\nfor logged-out viewer"]
+    CHECK -- "private" --> HIDE_PRIV["❌ HIDE\nGhost — does not exist\nfor non-author viewer"]
+
+    style SHOW_AUTH fill:#6a1b9a,color:#fff
+    style SHOW_ALL fill:#2e7d32,color:#fff
+    style SHOW_MEM fill:#1565c0,color:#fff
+    style HIDE_MEM fill:#e65100,color:#fff
+    style HIDE_PRIV fill:#e65100,color:#fff
+</pre>
+</div>
+
+<h3>Waterfall Examples — Step by Step</h3>
+<div class="diagram-card">
+<pre class="mermaid">
+flowchart LR
+    subgraph ex1 ["Example 1: Global=Member / Section=Private / Field=inherit"]
+        A1["Field\ninherit — look up"] --> B1["Section\nPrivate — explicit\nWATERFALL STOPS HERE"]
+        B1 --> D1["Resolved: Private\nHIDE from non-author"]
+    end
+
+    subgraph ex2 ["Example 2: Global=Member / Section=inherit / Field=Public"]
+        A2["Field\nPublic — explicit\nWATERFALL STOPS HERE"] --> D2["Resolved: Public\nSHOW to everyone"]
+    end
+
+    subgraph ex3 ["Example 3: Global=Private / Section=inherit / Field=inherit"]
+        A3["Field\ninherit — look up"] --> B3["Section\ninherit — look up"]
+        B3 --> C3["Global\nPrivate — explicit\nWATERFALL STOPS HERE"]
+        C3 --> D3["Resolved: Private\nHIDE from non-author"]
+    end
+
+    style D1 fill:#e65100,color:#fff
+    style D2 fill:#2e7d32,color:#fff
+    style D3 fill:#e65100,color:#fff
+</pre>
+</div>
+
+<div class="callout">
+  <strong>PMP UI visibility rules:</strong> The Global PMP control is always visible in the right panel.
+  Section PMP controls are always visible in the sidebar. Field-level PMP controls are
+  <em>hidden by default</em> — they only appear once the section has been given an explicit override
+  (i.e. the section is no longer set to <code>inherit</code>). This prevents confusing field-level
+  controls from cluttering the form before the author has made a section-level decision.
+</div>
+
+<div class="callout warn">
+  <strong>Ghost behavior:</strong> When a field, section, or entire profile is hidden by PMP, it does not render <em>at all</em>.
+  No placeholders, no "This field is private" labels, no empty containers. The content simply does not exist for that viewer.
+  Sidebar entries, pills, field rows — all silently absent.
+</div>
+
+<!-- ================================================================ -->
+<!--  DIAGRAM 4 — SECTION CONFIG                                      -->
+<!-- ================================================================ -->
+<h2 id="diagram4">Diagram 4: Section Config File (Annotated)</h2>
+<p>
+  Every section in the directory is defined by a single JSON file in the <code>sections/</code> folder.
+  Adding a section means dropping in a new JSON file. Removing a section means deleting the file.
+  No code changes needed. Below is a fully annotated example showing every key and where it gets used.
+</p>
+
+<pre class="codeblock">{
+  <span class="key">"key"</span>: <span class="string">"craft_and_skills"</span>,           <span class="annot">// Unique ID. Used internally by SectionRegistry,
+                                          // PmpResolver, sidebar, pills, and URL params.</span>
+
+  <span class="key">"label"</span>: <span class="string">"Craft &amp; Skills"</span>,            <span class="annot">// Display name shown in pill, sidebar heading,
+                                          // and section headings. Read by templates.</span>
+
+  <span class="key">"order"</span>: <span class="bool">3</span>,                            <span class="annot">// Integer. Controls pill order left-to-right.
+                                          // SectionRegistry sorts by this value.</span>
+
+  <span class="key">"can_be_primary"</span>: <span class="bool">false</span>,              <span class="annot">// Only "profile" and "business" can be true.
+                                          // Primary section feeds the sticky header.
+                                          // Checked by header.php and Plugin.php.</span>
+
+  <span class="key">"pmp_default"</span>: <span class="string">"member"</span>,              <span class="annot">// Default PMP level for this section when a
+                                          // new member post is created. Used by Plugin.php
+                                          // to set initial ACF field values.</span>
+
+  <span class="key">"fields"</span>: [                            <span class="annot">// Array of fields in this section.</span>
+    {
+      <span class="key">"key"</span>: <span class="string">"craft_specialty"</span>,          <span class="annot">// ACF field key. Links to the ACF field group
+                                          // registered via the acf_group block below.</span>
+
+      <span class="key">"label"</span>: <span class="string">"Specialty"</span>,             <span class="annot">// Display label. Used by FieldRenderer (view mode)
+                                          // and sidebar.php (field outline).</span>
+
+      <span class="key">"type"</span>: <span class="string">"taxonomy"</span>,              <span class="annot">// Field type. FieldRenderer uses this to decide
+                                          // HOW to render (text, image, gallery, link, etc.).</span>
+
+      <span class="key">"pmp_default"</span>: <span class="string">"inherit"</span>,        <span class="annot">// Default PMP for this field. "inherit" means
+                                          // it follows the section's PMP. PmpResolver reads this
+                                          // when resolving visibility.</span>
+
+      <span class="key">"filterable"</span>: <span class="bool">true</span>               <span class="annot">// Only meaningful for "taxonomy" type fields.
+                                          // If true, DirectoryQuery.php includes this taxonomy
+                                          // in the directory filter UI.</span>
+    },
+    {
+      <span class="key">"key"</span>: <span class="string">"craft_description"</span>,
+      <span class="key">"label"</span>: <span class="string">"Description"</span>,
+      <span class="key">"type"</span>: <span class="string">"wysiwyg"</span>,
+      <span class="key">"pmp_default"</span>: <span class="string">"inherit"</span>,
+      <span class="key">"filterable"</span>: <span class="bool">false</span>
+    }
+  ],
+
+  <span class="key">"acf_group"</span>: { <span class="comment">/* ... raw ACF export, untouched ... */</span> }
+                                          <span class="annot">// The complete ACF field group definition.
+                                          // SectionRegistry passes this to ACF so the fields
+                                          // actually exist in WordPress. Plugin.php registers
+                                          // the group on init.</span>
+}</pre>
+
+<h3>Where Each Key Gets Consumed</h3>
+<div class="diagram-card">
+<pre class="mermaid">
+flowchart LR
+    JSON["Section JSON\nConfig File"] --> SR["SectionRegistry.php\nReads: key, label, order,\ncan_be_primary, fields, acf_group"]
+
+    SR -- "key, label, order" --> PILL["header.php\nPill navigation"]
+    SR -- "key, label" --> SIDE["sidebar.php\nSection list"]
+    SR -- "fields[].label, fields[].key" --> SIDE
+    SR -- "can_be_primary" --> HEAD["header.php\nSticky header decides\nwhich section feeds it"]
+    SR -- "fields[].type, fields[].label" --> FR["FieldRenderer.php\nRenders field values\nas correct HTML"]
+    SR -- "pmp_default, fields[].pmp_default" --> PMP["PmpResolver.php\nDefault values when\nno author override exists"]
+    SR -- "fields[].filterable (taxonomy only)" --> DQ["DirectoryQuery.php\nBuilds filter UI and\ntax_query"]
+    SR -- "acf_group" --> ACF["WordPress / ACF\nRegisters the field group\nso fields exist in the DB"]
+</pre>
+</div>
+
+<!-- ================================================================ -->
+<!--  DIAGRAM 5 — EDIT STATE DATA FLOW                                -->
+<!-- ================================================================ -->
+<h2 id="diagram5">Diagram 5: Edit State Data Flow</h2>
+<p>
+  When a logged-in post author visits their own profile, they see the edit form.
+  The form is rendered by ACF's <code>acf_form()</code> function. The plugin adds inline PMP
+  controls next to each field. When the author clicks <strong>Update</strong>, here is what happens
+  behind the scenes.
+</p>
+
+<div class="diagram-card">
+<pre class="mermaid">
+flowchart TD
+    A["Author visits their profile page\n(is_user_logged_in + is post author)"] --> B["AcfFormHelper calls\nacf_form_head()\nBEFORE any HTML output"]
+
+    B --> C{"Is this a\nform submission\n(POST request)?"}
+
+    C -- "No (first page load)" --> D["acf_form_head() does nothing\nPage continues to render"]
+    C -- "Yes (author clicked Update)" --> E["acf_form_head() processes\nthe submitted form data"]
+
+    E --> F["ACF handles content fields:\ntext, textarea, wysiwyg, image,\ngallery, taxonomy, url, email\nSaved as post meta"]
+
+    E --> G["ACF handles PMP fields:\nSection PMP values\nField PMP values\nGlobal PMP value\nAlso saved as post meta"]
+
+    E --> H["ACF handles section toggles:\nWhich sections are enabled/disabled\nSaved as post meta"]
+
+    F --> I["ACF fires acf/save_post hook\nAll field values now in database"]
+    G --> I
+    H --> I
+
+    I --> J["Page reloads with\nupdated data"]
+
+    D --> K["Render the edit form"]
+    K --> L["section-edit.php loads\nacf_form() output for\nthe active section"]
+    L --> M["Plugin injects inline\nPMP dropdown next to\neach ACF field"]
+    M --> N["Sidebar shows PMP icons\nper section (clickable)"]
+    N --> O["Right panel shows\nGlobal Default PMP selector\nand View As toggle"]
+
+    style A fill:#6a1b9a,color:#fff
+    style E fill:#6a1b9a,color:#fff
+    style F fill:#1565c0,color:#fff
+    style G fill:#e65100,color:#fff
+    style H fill:#6a1b9a,color:#fff
+</pre>
+</div>
+
+<div class="callout">
+  <strong>What does ACF handle vs. what does the plugin handle?</strong><br>
+  ACF (<code>acf_form_head()</code>) handles <em>all</em> the saving — both content fields and PMP fields are just ACF fields on the post.
+  The plugin's job is to <em>render</em> the extra PMP controls in the UI and to <em>read</em> those PMP values when deciding visibility.
+  The plugin does not need custom save logic — ACF takes care of it.
+</div>
+
+<h3>What Gets Saved Where</h3>
+<div class="diagram-card">
+<pre class="mermaid">
+flowchart LR
+    subgraph "Author's Form Submission"
+        CF["Content fields\n(name, bio, specialty…)"]
+        PF["PMP fields\n(global_pmp, section_pmp_profile,\nfield_pmp_craft_specialty…)"]
+        SF["Section enable/disable\n(section_enabled_profile = true,\nsection_enabled_vibe = false…)"]
+    end
+
+    subgraph "WordPress Database (wp_postmeta)"
+        PM["Post Meta Table\npost_id 42\nmeta_key to meta_value"]
+    end
+
+    CF -- "ACF saves as\npost meta" --> PM
+    PF -- "ACF saves as\npost meta" --> PM
+    SF -- "ACF saves as\npost meta" --> PM
+</pre>
+</div>
+
+<!-- ================================================================ -->
+<!--  DIAGRAM 6 — DIRECTORY PAGE                                      -->
+<!-- ================================================================ -->
+<h2 id="diagram6">Diagram 6: Directory Page Flow</h2>
+<p>
+  The directory page shows a filterable grid of all member profiles. Filters come from
+  taxonomy fields that are marked <code>"filterable": true</code> in the section config files.
+  Each card is rendered by the <code>directory-card.php</code> partial, and PMP is applied per card —
+  if a member has set their entire profile to Private, their card becomes a ghost (it simply does not appear).
+</p>
+
+<div class="diagram-card">
+<pre class="mermaid">
+flowchart TD
+    A["Browser requests\n/member-directory/ (archive URL)"] --> B["WordPress resolves to\narchive-member-directory.php\nvia TemplateLoader"]
+
+    B --> C["SectionRegistry loads\nall section configs"]
+
+    C --> D["DirectoryQuery.php scans\nall sections for fields where\ntype = taxonomy AND filterable = true"]
+
+    D --> E["Build the filter UI\n(dropdown/checkboxes for\neach filterable taxonomy)"]
+
+    D --> F{"Are there filter\nparams in the URL?\n(e.g. ?specialty=woodwork)"}
+
+    F -- "Yes" --> G["DirectoryQuery adds\ntax_query to WP_Query\nfiltering by selected terms"]
+    F -- "No" --> H["DirectoryQuery builds\nbasic WP_Query:\npost_type = member-directory"]
+
+    G --> I["WP_Query executes\nReturns matching posts"]
+    H --> I
+
+    I --> J["Loop through each post"]
+
+    J --> K["For each post:\nPmpResolver checks the\nglobal PMP for this viewer"]
+
+    K --> L{"Does this viewer\nhave permission to see\nANY content on this card?"}
+
+    L -- "No (e.g. profile is\nfully Private and\nviewer is logged out)" --> M["Ghost card:\nskipped entirely,\nnot rendered at all"]
+
+    L -- "Yes" --> N["directory-card.php renders:\nname, tagline, location\nfrom primary section"]
+
+    N --> O["PmpResolver checks each\ncard field individually\nOnly visible fields shown"]
+
+    O --> P["Card added to grid"]
+    M --> Q["(nothing rendered)"]
+
+    P --> R["All cards rendered\nPage sent to browser"]
+    Q --> R
+
+    style M fill:#e65100,color:#fff
+    style N fill:#2e7d32,color:#fff
+    style E fill:#1565c0,color:#fff
+</pre>
+</div>
+
+<div class="callout">
+  <strong>Ghost cards:</strong> If PMP resolution means a logged-out viewer would see a completely empty card
+  (every visible field is hidden), the card is not rendered at all. No empty box, no "Private profile" placeholder — just gone.
+</div>
+
+<!-- ================================================================ -->
+<!--  DIAGRAM 7 — VIEW AS SIMULATION                                  -->
+<!-- ================================================================ -->
+<h2 id="diagram7">Diagram 7: View As Simulation</h2>
+<p>
+  The <strong>right panel</strong> (visible only to the post author and admins) includes a
+  <strong>View As</strong> toggle with three options: <strong>Edit</strong>, <strong>Member</strong>,
+  and <strong>Public</strong>. This lets the author preview exactly what different types of visitors
+  will see — without changing any saved data.
+</p>
+
+<div class="diagram-card">
+<pre class="mermaid">
+flowchart TD
+    A["Author is viewing their profile\nin Edit mode (default)"] --> B["Author clicks 'Member'\nin View As panel"]
+
+    B --> C["memdir.js sends the\nselection to the server\n(e.g. ?view_as=member)"]
+
+    C --> D["Server receives request\nAuthor is still authenticated"]
+
+    D --> E["PmpResolver receives a\nSPOOFED viewer context:\n'Pretend the viewer is a Member'"]
+
+    E --> F["PmpResolver runs the\nexact same SHOW/HIDE logic\nbut with the spoofed context"]
+
+    F --> G["Fields that a Member\nwould NOT see: HIDDEN\n(ghost behavior applies)"]
+
+    F --> H["Fields that a Member\nWOULD see: SHOWN\nin read-only view mode"]
+
+    G --> I["Page renders as if\na logged-in member\nwere viewing it"]
+    H --> I
+
+    I --> J["Right panel STAYS visible\n(so author can switch back)"]
+    J --> K["Author clicks 'Public'"]
+    K --> L["Same process but with\nspoofed context = logged-out user"]
+    L --> M["Even MORE fields may\ndisappear (ghost behavior)"]
+
+    K2["Author clicks 'Edit'"] --> N["Spoofing removed\nBack to normal edit mode\nAll fields visible + editable"]
+
+    subgraph "What CHANGES"
+        CH1["The viewer context\npassed to PmpResolver"]
+        CH2["The rendering mode\n(view-only instead of edit)"]
+        CH3["Which fields/sections\nare visible"]
+    end
+
+    subgraph "What does NOT change"
+        NC1["The actual saved\nPMP values in the database"]
+        NC2["The author's\nauthentication status"]
+        NC3["The right panel\n(always visible to author)"]
+    end
+
+    style B fill:#1565c0,color:#fff
+    style K fill:#2e7d32,color:#fff
+    style K2 fill:#6a1b9a,color:#fff
+    style G fill:#e65100,color:#fff
+    style H fill:#1565c0,color:#fff
+    style M fill:#e65100,color:#fff
+</pre>
+</div>
+
+<div class="callout">
+  <strong>Think of View As like trying on glasses.</strong> The author puts on "Member glasses" or "Public glasses" to see
+  what those viewers experience. The underlying profile data is completely untouched. It is purely a display simulation.
+</div>
+
+<!-- ================================================================ -->
+<!--  UI LAYOUT REFERENCE                                              -->
+<!-- ================================================================ -->
+<h2>UI Layout Reference</h2>
+<p>This is the spatial layout of the profile page. All four zones — header, sidebar, main area, and right panel — are always present for the author. For other viewers, the right panel is absent and fields disappear per PMP rules.</p>
+
+<div style="font-family:monospace;font-size:.82rem;line-height:1.6;background:#263238;color:#eeffff;padding:20px 24px;border-radius:8px;overflow-x:auto;white-space:pre;">
+<span style="color:#ffcb6b;">┌─────────────────────────────────────────────────────────────────────────────┐</span>
+<span style="color:#ffcb6b;">│</span> <span style="color:#fff;font-weight:bold;">STICKY HEADER</span> — title, tagline, location (from primary section)            <span style="color:#ffcb6b;">│</span>
+<span style="color:#ffcb6b;">│</span> <span style="color:#82aaff;">[● All Sections]</span> <span style="color:#c3e88d;">[✓ Profile]</span> <span style="color:#c3e88d;">[✓ Business]</span> <span style="color:#c3e88d;">[✓ Craft]</span> <span style="color:#c3e88d;">[✓ Vibe]</span>         <span style="color:#ffcb6b;">│</span>
+<span style="color:#ffcb6b;">├──────────────────┬──────────────────────────────┬───────────────────────────┤</span>
+<span style="color:#ffcb6b;">│</span> <span style="color:#fff;font-weight:bold;">LEFT SIDEBAR</span>     <span style="color:#ffcb6b;">│</span> <span style="color:#fff;font-weight:bold;">MAIN AREA</span>                    <span style="color:#ffcb6b;">│</span> <span style="color:#ce93d8;font-weight:bold;">RIGHT PANEL</span>               <span style="color:#ffcb6b;">│</span>
+<span style="color:#ffcb6b;">│</span>                  <span style="color:#ffcb6b;">│</span>                              <span style="color:#ffcb6b;">│</span> <span style="color:#ce93d8;">(author + admin only)</span>     <span style="color:#ffcb6b;">│</span>
+<span style="color:#ffcb6b;">│</span> Section name     <span style="color:#ffcb6b;">│</span> Active section               <span style="color:#ffcb6b;">│</span>                           <span style="color:#ffcb6b;">│</span>
+<span style="color:#ffcb6b;">│</span> <span style="color:#2e7d32;">🌐</span><span style="color:#1565c0;">👥</span><span style="color:#e65100;">🔒</span>           <span style="color:#ffcb6b;">│</span> edit form OR view mode      <span style="color:#ffcb6b;">│</span> <span style="color:#ce93d8;">VIEW AS:</span>                  <span style="color:#ffcb6b;">│</span>
+<span style="color:#ffcb6b;">│</span>                  <span style="color:#ffcb6b;">│</span> (same surface)              <span style="color:#ffcb6b;">│</span> <span style="color:#ce93d8;">[Edit] [Member] [Public]</span>   <span style="color:#ffcb6b;">│</span>
+<span style="color:#ffcb6b;">│</span> <span style="color:#546e7a;">• Field name</span>     <span style="color:#ffcb6b;">│</span>                              <span style="color:#ffcb6b;">│</span>                           <span style="color:#ffcb6b;">│</span>
+<span style="color:#ffcb6b;">│</span> <span style="color:#546e7a;">• Field name</span>     <span style="color:#ffcb6b;">│</span> Fields render here           <span style="color:#ffcb6b;">│</span> <span style="color:#ce93d8;">GLOBAL DEFAULT:</span>            <span style="color:#ffcb6b;">│</span>
+<span style="color:#ffcb6b;">│</span> <span style="color:#546e7a;">• Field name</span>     <span style="color:#ffcb6b;">│</span> PMP controls inline          <span style="color:#ffcb6b;">│</span> <span style="color:#2e7d32;">[Public]</span>                  <span style="color:#ffcb6b;">│</span>
+<span style="color:#ffcb6b;">│</span>                  <span style="color:#ffcb6b;">│</span> next to each field           <span style="color:#ffcb6b;">│</span> <span style="color:#1565c0;">[Member]</span>                  <span style="color:#ffcb6b;">│</span>
+<span style="color:#ffcb6b;">│</span> Section name     <span style="color:#ffcb6b;">│</span> in edit mode                 <span style="color:#ffcb6b;">│</span> <span style="color:#e65100;">[Private]</span>                 <span style="color:#ffcb6b;">│</span>
+<span style="color:#ffcb6b;">│</span> <span style="color:#2e7d32;">🌐</span><span style="color:#1565c0;">👥</span><span style="color:#e65100;">🔒</span>           <span style="color:#ffcb6b;">│</span>                              <span style="color:#ffcb6b;">│</span>                           <span style="color:#ffcb6b;">│</span>
+<span style="color:#ffcb6b;">│</span> <span style="color:#546e7a;">• Field name</span>     <span style="color:#ffcb6b;">│</span>                              <span style="color:#ffcb6b;">│</span>                           <span style="color:#ffcb6b;">│</span>
+<span style="color:#ffcb6b;">└──────────────────┴──────────────────────────────┴───────────────────────────┘</span>
+</div>
+
+<!-- ================================================================ -->
+<!--  CONFIRMED DECISIONS                                              -->
+<!-- ================================================================ -->
+<div class="open-q" id="questions">
+<h2>Confirmed Decisions</h2>
+<p>All items below are resolved. No open questions remain from the original architecture brief.</p>
+<ol>
+  <li><strong>Default primary section:</strong> <code>profile</code> is always the default primary section.</li>
+  <li><strong>Directory card PMP &amp; mandatory name:</strong> Cards respect PMP field by field. The name field is mandatory — if a viewer cannot see the name (because PMP hides it), that viewer sees no card and no profile page for that member. No name = no card = no profile.</li>
+  <li><strong>"All Sections" view with PMP:</strong> Ghost behavior applies. Hidden sections are completely absent from the combined all-sections view.</li>
+  <li><strong>PMP rule — waterfall, not most-permissive:</strong> PMP is a waterfall starting at the field level. The lowest-level explicit override wins. A field set to <code>Private</code> is private even if the section or global is <code>Public</code>. See Diagram 3.</li>
+  <li><strong>View As persistence:</strong> The View As selection persists via URL parameter until the author explicitly changes it.</li>
+  <li><strong>Section enable/disable storage:</strong> The enabled/disabled state is stored as a boolean field <em>inside the section's own ACF field group</em>, not as a separate standalone field.</li>
+  <li><strong>Sync model:</strong> SectionRegistry does <em>not</em> read from the filesystem on every page load. An admin triggers a manual sync action which reads the JSON files and writes the results to the WordPress database. SectionRegistry reads from the database at runtime. Adding or editing a JSON file has no effect until sync is run.</li>
+  <li><strong>Directory pagination:</strong> Standard WordPress pagination applies.</li>
+  <li><strong>Disabled vs. Private in sidebar:</strong> Disabled sections have no pill and no sidebar entry — they are completely invisible to all viewers including the author. Private sections appear in the sidebar for the author only (with a lock icon); all other viewers see nothing.</li>
+  <li><strong>Multiple taxonomy filters:</strong> AND logic across taxonomies for now. User-selectable AND/OR logic is planned for a later iteration.</li>
+  <li><strong>Onboarding shortcode:</strong> A shortcode <code>[member_directory_signup]</code> placed on a standard WordPress page handles new member onboarding. It creates the CPT post, captures the member's title/slug, primary section choice, and name, then redirects to the profile edit page on submit.</li>
+  <li><strong>Name field is mandatory:</strong> The post does not publish without a name. The profile page and directory card do not render for any viewer who cannot see the name via PMP resolution.</li>
+  <li><strong>Admin sync page:</strong> A fifth plugin surface — an admin page — is added alongside the profile page, directory page, onboarding shortcode, and right panel. The admin sync page lets a site administrator trigger SectionRegistry to read JSON files from the filesystem and write the results to the database.</li>
+</ol>
+</div>
+
+</div><!-- .container -->
+
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#e3f2fd',
+      primaryTextColor: '#212121',
+      primaryBorderColor: '#90caf9',
+      lineColor: '#546e7a',
+      secondaryColor: '#f3e5f5',
+      tertiaryColor: '#e8f5e9',
+      fontSize: '14px'
+    },
+    flowchart: {
+      htmlLabels: true,
+      curve: 'basis',
+      padding: 12
+    },
+    block: {
+      padding: 8
+    }
+  });
+</script>
+
+</body>
+</html>

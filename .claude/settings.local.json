@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Claude_Preview__preview_start",
+      "Bash(where:*)",
+      "Bash(where npm)",
+      "Bash(node:*)",
+      "Bash(npm --version:*)",
+      "Bash(php:*)",
+      "Bash(start \"\" \"C:/Users/ianda/Git Repos/claude-member-directory-v7/member-directory-architecture.html\")"
+    ]
+  }
+}
