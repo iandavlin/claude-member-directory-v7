@@ -2,13 +2,24 @@
 /**
  * Template: Single Member Profile
  *
- * Renders the full read-only profile page for one member-directory post.
+ * Renders the full profile page for one member-directory post.
  * TemplateLoader routes all member-directory single-post requests here
  * instead of the active theme template.
  *
+ * The page renders in one of two modes:
+ *
+ *   EDIT MODE — The post author (or admin) sees an ACF-powered edit form
+ *               for each section. acf_form_head() MUST fire before any HTML
+ *               output, so AcfFormHelper::maybe_render_form_head() is the
+ *               first call in this file, before get_header().
+ *
+ *   VIEW MODE — All other viewers (and authors using ?view_as) see the
+ *               read-only profile rendered by FieldRenderer via
+ *               section-view.php.
+ *
  * Sections are driven by SectionRegistry. Each enabled section is rendered
- * by templates/parts/section-view.php, which handles per-field PMP checks
- * and delegates HTML output to FieldRenderer.
+ * by either templates/parts/section-edit.php or templates/parts/section-view.php,
+ * depending on the mode.
  *
  * Planned additions (not yet included):
  *   - Sticky header (templates/parts/header.php)
@@ -16,10 +27,22 @@
  *   - Right panel    (templates/parts/right-panel.php) — View As + Global PMP
  */
 
+use MemberDirectory\AcfFormHelper;
 use MemberDirectory\PmpResolver;
 use MemberDirectory\SectionRegistry;
 
 defined( 'ABSPATH' ) || exit;
+
+// ---------------------------------------------------------------------------
+// acf_form_head() — MUST fire before any HTML output.
+//
+// AcfFormHelper checks whether this is an edit-mode request (author/admin,
+// member-directory CPT, no ?view_as param). If so it calls acf_form_head()
+// which processes form submissions and enqueues ACF's form assets. If not
+// edit-mode, this is a no-op.
+// ---------------------------------------------------------------------------
+
+AcfFormHelper::maybe_render_form_head();
 
 get_header();
 
@@ -66,6 +89,15 @@ if (
 }
 
 // ---------------------------------------------------------------------------
+// Determine the rendering mode.
+//
+// Edit mode: post author or admin, member-directory CPT, no ?view_as param.
+// View mode: everyone else, or author/admin with ?view_as set.
+// ---------------------------------------------------------------------------
+
+$is_edit = AcfFormHelper::is_edit_mode( $post_id, $viewer );
+
+// ---------------------------------------------------------------------------
 // Collect enabled sections.
 //
 // SectionRegistry::get_sections() returns all registered sections sorted by
@@ -91,12 +123,14 @@ $sections = SectionRegistry::get_sections();
 			continue; // Author has explicitly disabled this section — skip it.
 		}
 
-		// Include the section view partial.
+		// Choose the partial based on the rendering mode.
 		// $section, $post_id, and $viewer are available to the partial via
 		// PHP's normal include scope — no extract() needed.
 		// We use a direct filesystem include (not get_template_part) so the
 		// plugin's own partial is always used regardless of theme overrides.
-		$partial = plugin_dir_path( __FILE__ ) . 'parts/section-view.php';
+		$partial = $is_edit
+			? plugin_dir_path( __FILE__ ) . 'parts/section-edit.php'
+			: plugin_dir_path( __FILE__ ) . 'parts/section-view.php';
 
 		if ( file_exists( $partial ) ) {
 			include $partial;
