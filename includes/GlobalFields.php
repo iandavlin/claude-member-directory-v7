@@ -46,6 +46,15 @@ class GlobalFields {
 			add_action( 'acf/init', [ self::class, 'register' ] );
 		}
 
+		self::debug_filters();
+	}
+
+	/**
+	 * Temporary debug: hook acf/get_field_groups to log every field group ACF
+	 * has in its registry when it builds the meta box list. Remove once the
+	 * meta box visibility issue is resolved.
+	 */
+	public static function debug_filters(): void {
 		add_filter( 'acf/get_field_groups', function( $groups ) {
 			error_log( 'MemberDirectory: ACF field groups count: ' . count( $groups ) );
 			foreach ( $groups as $g ) {
