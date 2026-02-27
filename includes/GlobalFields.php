@@ -143,4 +143,11 @@ class GlobalFields {
 			'ui'            => 0,
 		];
 	}
+	add_filter('acf/get_field_groups', function($groups) {
+    error_log('MemberDirectory: ACF field groups count: ' . count($groups));
+    foreach ($groups as $g) {
+        error_log('MemberDirectory: group key: ' . $g['key'] . ' title: ' . $g['title']);
+    }
+    return $groups;
+});
 }
