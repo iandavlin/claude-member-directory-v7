@@ -78,6 +78,15 @@ class AdminSync {
 				<?php wp_nonce_field( self::NONCE_ACTION, self::NONCE_FIELD ); ?>
 				<?php submit_button( 'Run Sync', 'primary', 'submit', false ); ?>
 			</form>
+
+			<hr>
+			<h2>ACF to Section Config Converter</h2>
+			<p>Use this skill to convert an ACF field group JSON export into a section config file ready to drop into the <code>sections/</code> folder.</p>
+			<p>
+				<a class="button button-secondary" href="<?php echo esc_url( plugin_dir_url( dirname( __FILE__ ) ) . 'tools/acf-to-config.md' ); ?>" download>
+					Download Converter Skill
+				</a>
+			</p>
 		</div>
 		<?php
 	}

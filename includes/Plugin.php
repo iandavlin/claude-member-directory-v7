@@ -13,8 +13,8 @@
  *   ✅ SectionRegistry.php  — available
  *   ✅ TemplateLoader.php   — available
  *   ✅ AdminSync.php        — available
- *   🔜 FieldRenderer.php    — coming next
- *   🔜 PmpResolver.php      — coming next
+ *   ✅ FieldRenderer.php    — available
+ *   ✅ PmpResolver.php      — available
  *   🔜 AcfFormHelper.php    — coming next
  *   🔜 DirectoryQuery.php   — coming next
  */
@@ -28,8 +28,8 @@ require_once __DIR__ . '/TemplateLoader.php';
 require_once __DIR__ . '/AdminSync.php';
 
 // Require additional classes as they are added to includes/:
-// require_once __DIR__ . '/FieldRenderer.php';
-// require_once __DIR__ . '/PmpResolver.php';
+require_once __DIR__ . '/FieldRenderer.php';
+require_once __DIR__ . '/PmpResolver.php';
 // require_once __DIR__ . '/AcfFormHelper.php';
 // require_once __DIR__ . '/DirectoryQuery.php';
 
