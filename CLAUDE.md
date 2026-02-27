@@ -52,7 +52,8 @@ WordPress plugin: section-based member profile and directory system powered by A
 ## File Structure
 
 ```
-member-directory.php          Entry point. ACF dependency check. Boots Plugin on plugins_loaded.
+member-directory.php              Entry point. ACF dependency check. Boots Plugin on plugins_loaded.
+member-directory-architecture.html Primary design reference. Read this when starting work on any new feature.
 includes/
   Plugin.php                  Bootstrap. Requires all classes. Registers CPT + hooks. Calls each class init().
   SectionRegistry.php         Section data. sync() = JSON→DB. load_from_db() = DB→ACF. get_sections()/get_section().
@@ -119,3 +120,7 @@ tools/
 Remove once meta box issue resolved:
 - `error_log(...)` calls in `init()` and `register()`
 - `debug_filters()` static method + its call in `init()`
+
+---
+
+> **If anything you discover contradicts or is missing from this file, update it.**
