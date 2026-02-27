@@ -53,8 +53,8 @@ class GlobalFields {
 	 */
 	public static function register(): void {
 		error_log( 'MemberDirectory: GlobalFields::register() called' );
-		error_log( 'MemberDirectory: acf_add_local_field_group called with key: group_md_global_controls' );
-		acf_add_local_field_group( [
+
+		$field_group = [
 			'key'      => 'group_md_global_controls',
 			'title'    => 'Member Directory — Global Controls',
 			'fields'   => [
@@ -72,7 +72,11 @@ class GlobalFields {
 			],
 			'position'   => 'side',
 			'menu_order' => 1,
-		] );
+		];
+
+		error_log( 'MemberDirectory: field group data: ' . print_r( $field_group, true ) );
+		error_log( 'MemberDirectory: acf_add_local_field_group called with key: group_md_global_controls' );
+		acf_add_local_field_group( $field_group );
 	}
 
 	// -----------------------------------------------------------------------
