@@ -15,6 +15,7 @@
  *   ✅ AdminSync.php        — available
  *   ✅ FieldRenderer.php    — available
  *   ✅ PmpResolver.php      — available
+ *   ✅ GlobalFields.php     — available
  *   🔜 AcfFormHelper.php    — coming next
  *   🔜 DirectoryQuery.php   — coming next
  */
@@ -30,6 +31,7 @@ require_once __DIR__ . '/AdminSync.php';
 // Require additional classes as they are added to includes/:
 require_once __DIR__ . '/FieldRenderer.php';
 require_once __DIR__ . '/PmpResolver.php';
+require_once __DIR__ . '/GlobalFields.php';
 // require_once __DIR__ . '/AcfFormHelper.php';
 // require_once __DIR__ . '/DirectoryQuery.php';
 
@@ -57,6 +59,7 @@ class Plugin {
 
 		TemplateLoader::init( $this->plugin_dir );
 		AdminSync::init();
+		GlobalFields::init();
 	}
 
 	// -----------------------------------------------------------------------
