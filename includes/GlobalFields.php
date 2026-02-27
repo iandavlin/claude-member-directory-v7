@@ -97,9 +97,9 @@ class GlobalFields {
 	 * primary-capable sections added via JSON are picked up automatically
 	 * after the next admin sync.
 	 *
-	 * SectionRegistry::get_sections() is called at acf/init time — after
-	 * SectionRegistry::load_from_db() has already run on the init hook
-	 * (priority 20) — so the in-memory section cache is populated.
+	 * SectionRegistry::get_sections() is called at acf/init time (priority 10)
+	 * — after SectionRegistry::load_from_db() has already run on acf/init
+	 * at priority 5 — so the in-memory section cache is populated.
 	 *
 	 * @return array  ACF field definition array.
 	 */

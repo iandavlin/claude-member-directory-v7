@@ -162,7 +162,7 @@ class SectionRegistry {
 	/**
 	 * RUNTIME — read sections from the database and register them with ACF.
 	 *
-	 * Called on the WordPress init hook (priority 20) by Plugin::init_section_registry().
+	 * Called on the acf/init hook (priority 5) by Plugin::init_section_registry().
 	 * Reads the member_directory_sections option and calls
 	 * acf_add_local_field_group() for each section's acf_group definition.
 	 *
