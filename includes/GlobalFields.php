@@ -39,6 +39,7 @@ class GlobalFields {
 	 * available to register() in both the immediate and deferred paths.
 	 */
 	public static function init(): void {
+		error_log( 'MemberDirectory: GlobalFields::init() called, did_action acf/init = ' . did_action( 'acf/init' ) );
 		if ( did_action( 'acf/init' ) ) {
 			self::register();
 		} else {
@@ -51,6 +52,8 @@ class GlobalFields {
 	 * Fires on the acf/init action, after ACF is fully loaded.
 	 */
 	public static function register(): void {
+		error_log( 'MemberDirectory: GlobalFields::register() called' );
+		error_log( 'MemberDirectory: acf_add_local_field_group called with key: group_md_global_controls' );
 		acf_add_local_field_group( [
 			'key'      => 'group_md_global_controls',
 			'title'    => 'Member Directory — Global Controls',
