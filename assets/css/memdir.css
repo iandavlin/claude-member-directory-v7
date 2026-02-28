@@ -1,0 +1,725 @@
+/**
+ * Member Directory — memdir.css
+ *
+ * Brand palette:
+ *   --md-gold:        #ECB351
+ *   --md-gold-light:  #F1DE83
+ *   --md-green-pale:  #D4E0B8
+ *   --md-green-light: #C2D5AA
+ *   --md-green-mid:   #A8BE8B
+ *   --md-green-sage:  #97A97C
+ *   --md-green-dark:  #87986A
+ *   --md-coral:       #FE6B4F
+ *
+ * Font: Jost (assumed loaded by theme)
+ */
+
+/* ─────────────────────────────────────────────────────────────
+   CSS CUSTOM PROPERTIES
+───────────────────────────────────────────────────────────── */
+
+.memdir-profile {
+  --md-gold:        #ECB351;
+  --md-gold-light:  #F1DE83;
+  --md-green-pale:  #D4E0B8;
+  --md-green-light: #C2D5AA;
+  --md-green-mid:   #A8BE8B;
+  --md-green-sage:  #97A97C;
+  --md-green-dark:  #87986A;
+  --md-coral:       #FE6B4F;
+  --md-text:        #1a1a1a;
+  --md-text-muted:  #6b6b6b;
+  --md-bg:          #f8f8f6;
+  --md-white:       #ffffff;
+  --md-border:      #e2e2dc;
+  --md-radius:      8px;
+  --md-radius-pill: 999px;
+  --md-panel-width: 240px;
+  --md-controls-width: 260px;
+  --md-font:        'Jost', sans-serif;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PROFILE WRAPPER
+───────────────────────────────────────────────────────────── */
+
+.memdir-profile {
+  font-family: var(--md-font);
+  color: var(--md-text);
+  background: var(--md-bg);
+  min-height: 60vh;
+  padding-right: calc(var(--md-panel-width) + 24px); /* make room for fixed right panel */
+  box-sizing: border-box;
+}
+
+.memdir-profile__inner {
+  width: 85%;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   STICKY ZONE (header + pills stick together)
+───────────────────────────────────────────────────────────── */
+
+.memdir-sticky {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--md-bg);
+  border-bottom: 1px solid var(--md-border);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   HEADER
+───────────────────────────────────────────────────────────── */
+
+.memdir-header {
+  padding: 20px 0 12px;
+  position: relative;
+}
+
+.memdir-header__eyebrow {
+  font-family: var(--md-font);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--md-text-muted);
+  margin: 0 0 6px;
+}
+
+.memdir-header__title {
+  font-family: var(--md-font);
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--md-text);
+  margin: 0 0 4px;
+  line-height: 1.2;
+}
+
+.memdir-header__subline {
+  font-size: 14px;
+  color: var(--md-text-muted);
+  margin: 0;
+  min-height: 20px; /* placeholder height */
+}
+
+.memdir-header__social {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.memdir-header__badges {
+  position: absolute;
+  top: 20px;
+  right: 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.memdir-header__badge {
+  font-family: var(--md-font);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: var(--md-radius-pill);
+  border: 1px solid var(--md-border);
+  background: var(--md-white);
+  color: var(--md-text-muted);
+  white-space: nowrap;
+}
+
+.memdir-header__badge--edit {
+  border-color: var(--md-green-sage);
+  color: var(--md-green-dark);
+  background: rgba(151, 169, 124, 0.1);
+}
+
+.memdir-header__badge--viewing {
+  border-color: var(--md-border);
+  color: var(--md-text-muted);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PILL NAVIGATION
+───────────────────────────────────────────────────────────── */
+
+.memdir-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 0 12px;
+  align-items: center;
+}
+
+.memdir-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--md-radius-pill);
+  border: 1px solid var(--md-border);
+  background: var(--md-white);
+  color: var(--md-text);
+  font-family: var(--md-font);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.memdir-pill:hover {
+  border-color: var(--md-green-mid);
+  background: rgba(212, 224, 184, 0.2);
+}
+
+.memdir-pill--all {
+  background: var(--md-white);
+  border-color: var(--md-border);
+}
+
+.memdir-pill--all.memdir-pill--active {
+  background: var(--md-green-pale);
+  border-color: var(--md-green-sage);
+  color: var(--md-text);
+}
+
+.memdir-pill--active {
+  background: var(--md-green-light);
+  border-color: var(--md-green-sage);
+  font-weight: 600;
+}
+
+.memdir-pill--disabled {
+  opacity: 0.5;
+  color: var(--md-text-muted);
+}
+
+.memdir-pill__checkbox {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--md-green-sage);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.memdir-pill__label {
+  pointer-events: none;
+}
+
+.memdir-pill__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--md-radius-pill);
+  background: var(--md-green-sage);
+  color: var(--md-white);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CONTENT AREA
+───────────────────────────────────────────────────────────── */
+
+.memdir-sections {
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SECTION — two-column layout
+───────────────────────────────────────────────────────────── */
+
+.memdir-section {
+  display: grid;
+  grid-template-columns: var(--md-controls-width) 1fr;
+  gap: 0;
+  border-radius: var(--md-radius);
+  overflow: hidden;
+  border: 1px solid var(--md-border);
+}
+
+/* Section tints by order — applied via data-section attribute */
+.memdir-section[data-section="profile"] {
+  --section-tint: rgba(212, 224, 184, 0.2);
+  --section-tint-dark: rgba(194, 213, 170, 0.4);
+}
+
+.memdir-section[data-section="business"] {
+  --section-tint: rgba(241, 222, 131, 0.15);
+  --section-tint-dark: rgba(236, 179, 81, 0.2);
+}
+
+/* Fallback tint for all other sections */
+.memdir-section {
+  --section-tint: rgba(168, 190, 139, 0.15);
+  --section-tint-dark: rgba(151, 169, 124, 0.25);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SECTION CONTROLS (left column)
+───────────────────────────────────────────────────────────── */
+
+.memdir-section-controls {
+  background: var(--section-tint-dark);
+  padding: 20px 16px;
+  border-right: 1px solid var(--md-border);
+}
+
+.memdir-section-controls__title {
+  font-family: var(--md-font);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--md-text-muted);
+  margin: 0 0 12px;
+}
+
+.memdir-section-controls__pmp {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 16px;
+  align-items: center;
+}
+
+.memdir-section-controls__pmp-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--md-radius);
+  border: 1px solid var(--md-border);
+  background: var(--md-white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.memdir-section-controls__pmp-btn:hover {
+  border-color: var(--md-green-sage);
+  background: rgba(151, 169, 124, 0.1);
+}
+
+.memdir-section-controls__pmp-btn--active {
+  background: var(--md-green-sage);
+  border-color: var(--md-green-dark);
+  color: var(--md-white);
+}
+
+.memdir-section-controls__override {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: var(--md-radius-pill);
+  border: 1px dashed var(--md-green-sage);
+  background: transparent;
+  color: var(--md-green-dark);
+  cursor: pointer;
+  font-family: var(--md-font);
+  transition: background 0.15s;
+}
+
+.memdir-section-controls__override:hover,
+.memdir-section-controls__override--active {
+  background: rgba(151, 169, 124, 0.15);
+}
+
+.memdir-section-controls__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.memdir-section-controls__field-item {
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--md-text);
+  transition: background 0.1s;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-family: var(--md-font);
+}
+
+.memdir-section-controls__field-item:hover {
+  background: rgba(255,255,255,0.6);
+}
+
+.memdir-section-controls__field-item--active {
+  background: var(--md-white);
+  font-weight: 600;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   FIELD CONTENT (right column)
+───────────────────────────────────────────────────────────── */
+
+.memdir-field-content {
+  background: var(--section-tint);
+  padding: 24px;
+}
+
+.memdir-section-title {
+  font-family: var(--md-font);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--md-text);
+  margin: 0 0 20px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   FIELDS (view mode)
+───────────────────────────────────────────────────────────── */
+
+.memdir-field {
+  margin-bottom: 16px;
+}
+
+.memdir-field:last-child {
+  margin-bottom: 0;
+}
+
+.memdir-field-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--md-text-muted);
+  margin-bottom: 4px;
+}
+
+.memdir-field-value {
+  font-size: 15px;
+  color: var(--md-text);
+  margin: 0;
+  line-height: 1.5;
+}
+
+a.memdir-field-value {
+  color: var(--md-green-dark);
+  text-decoration: none;
+}
+
+a.memdir-field-value:hover {
+  text-decoration: underline;
+}
+
+.memdir-field--image img,
+.memdir-gallery img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--md-radius);
+}
+
+.memdir-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.memdir-field-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.memdir-field-list li {
+  font-size: 13px;
+  padding: 3px 10px;
+  border-radius: var(--md-radius-pill);
+  background: rgba(151, 169, 124, 0.15);
+  color: var(--md-text);
+  border: 1px solid var(--md-border);
+}
+
+.memdir-wysiwyg {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--md-text);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   UNSAVED BANNER
+───────────────────────────────────────────────────────────── */
+
+.memdir-unsaved-banner {
+  background: var(--md-coral);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 16px;
+  border-radius: var(--md-radius);
+  margin-bottom: 16px;
+  display: none;
+}
+
+.memdir-unsaved-banner.is-visible {
+  display: block;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   SECTION SAVE BUTTON
+───────────────────────────────────────────────────────────── */
+
+.memdir-section-save {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 20px;
+  padding: 8px 20px;
+  border-radius: var(--md-radius-pill);
+  background: var(--md-green-sage);
+  color: var(--md-white);
+  border: none;
+  font-family: var(--md-font);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.memdir-section-save:hover {
+  background: var(--md-green-dark);
+}
+
+.memdir-section-save--saving {
+  opacity: 0.7;
+  cursor: wait;
+}
+
+.memdir-section-save--saved {
+  background: var(--md-green-dark);
+}
+
+.memdir-section-save--error {
+  background: var(--md-coral);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RIGHT PANEL (fixed, outside main container)
+───────────────────────────────────────────────────────────── */
+
+.memdir-right-panel {
+  position: fixed;
+  top: 80px; /* clear theme header */
+  right: 0;
+  width: var(--md-panel-width);
+  background: var(--md-white);
+  border-left: 1px solid var(--md-border);
+  border-bottom: 1px solid var(--md-border);
+  border-radius: 0 0 0 var(--md-radius);
+  padding: 16px;
+  z-index: 200;
+  font-family: var(--md-font);
+  box-shadow: -2px 4px 12px rgba(0,0,0,0.06);
+}
+
+.memdir-panel-block {
+  margin-bottom: 20px;
+}
+
+.memdir-panel-block:last-child {
+  margin-bottom: 0;
+}
+
+.memdir-panel-block__heading {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--md-text-muted);
+  margin: 0 0 10px;
+}
+
+/* View As */
+.memdir-view-as {
+  display: flex;
+  gap: 4px;
+}
+
+.memdir-view-as__btn {
+  flex: 1;
+  padding: 6px 4px;
+  border-radius: var(--md-radius);
+  border: 1px solid var(--md-border);
+  background: var(--md-white);
+  font-family: var(--md-font);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--md-text);
+  cursor: pointer;
+  text-align: center;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s;
+  display: block;
+}
+
+.memdir-view-as__btn:hover {
+  border-color: var(--md-green-sage);
+  background: rgba(151, 169, 124, 0.1);
+}
+
+.memdir-view-as__btn--active {
+  background: var(--md-green-pale);
+  border-color: var(--md-green-sage);
+  font-weight: 700;
+  color: var(--md-text);
+}
+
+/* Global Default */
+.memdir-global-default {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.memdir-global-default__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--md-radius);
+  border: 1px solid var(--md-border);
+  background: var(--md-white);
+  font-family: var(--md-font);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--md-text);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.memdir-global-default__option:hover {
+  border-color: var(--md-green-sage);
+  background: rgba(151, 169, 124, 0.08);
+}
+
+.memdir-global-default__option--active {
+  background: var(--md-green-pale);
+  border-color: var(--md-green-sage);
+  font-weight: 600;
+}
+
+.memdir-global-default__option--public .memdir-pmp-icon::before    { content: '🌐'; }
+.memdir-global-default__option--member .memdir-pmp-icon::before    { content: '👥'; }
+.memdir-global-default__option--private .memdir-pmp-icon::before   { content: '🔒'; }
+
+/* ─────────────────────────────────────────────────────────────
+   ACF FORM OVERRIDES (edit mode)
+───────────────────────────────────────────────────────────── */
+
+.memdir-section--edit .acf-form {
+  font-family: var(--md-font);
+}
+
+.memdir-section--edit .acf-form .acf-label label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--md-text-muted);
+}
+
+.memdir-section--edit .acf-form input[type="text"],
+.memdir-section--edit .acf-form input[type="url"],
+.memdir-section--edit .acf-form input[type="email"],
+.memdir-section--edit .acf-form input[type="number"],
+.memdir-section--edit .acf-form textarea {
+  font-family: var(--md-font);
+  border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
+  padding: 8px 12px;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.memdir-section--edit .acf-form input[type="text"]:focus,
+.memdir-section--edit .acf-form input[type="url"]:focus,
+.memdir-section--edit .acf-form input[type="email"]:focus,
+.memdir-section--edit .acf-form input[type="number"]:focus,
+.memdir-section--edit .acf-form textarea:focus {
+  border-color: var(--md-green-sage);
+  outline: none;
+}
+
+.memdir-section--edit .acf-form .acf-tab-group {
+  border-bottom: 1px solid var(--md-border);
+  margin-bottom: 20px;
+}
+
+.memdir-section--edit .acf-form .acf-tab-group li a {
+  font-family: var(--md-font);
+  font-size: 13px;
+  color: var(--md-text-muted);
+}
+
+.memdir-section--edit .acf-form .acf-tab-group li.active a {
+  color: var(--md-text);
+  border-bottom-color: var(--md-green-sage);
+}
+
+/* Hide ACF's default save button — we use our own */
+.memdir-section--edit .acf-form .acf-form-submit {
+  display: none;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RESPONSIVE
+───────────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .memdir-right-panel {
+    display: none; /* collapse panel on narrow viewports */
+  }
+
+  .memdir-profile {
+    padding-right: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .memdir-profile__inner {
+    width: 95%;
+  }
+
+  .memdir-section {
+    grid-template-columns: 1fr;
+  }
+
+  .memdir-section-controls {
+    border-right: none;
+    border-bottom: 1px solid var(--md-border);
+  }
+
+  .memdir-header__badges {
+    position: static;
+    margin-top: 8px;
+  }
+
+  .memdir-pills {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+}
