@@ -29,6 +29,10 @@
 	// -----------------------------------------------------------------------
 
 	function initTabNav() {
+		var params        = new URLSearchParams( window.location.search );
+		var activeSection = params.get( 'active_section' ) || '';
+		var activeTab     = params.get( 'active_tab' )     || '';
+
 		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
 			var tabButtons = section.querySelectorAll( '.memdir-section-controls__tab-item' );
 
@@ -36,8 +40,18 @@
 				return;
 			}
 
-			// Activate the first tab on page load.
-			activateTab( section, tabButtons[ 0 ] );
+			// Default to the first tab, but restore the saved tab when URL
+			// params point at this section and name a matching tab label.
+			var defaultBtn = tabButtons[ 0 ];
+			if ( activeSection && section.dataset.section === activeSection && activeTab ) {
+				tabButtons.forEach( function ( btn ) {
+					if ( btn.textContent.trim() === activeTab ) {
+						defaultBtn = btn;
+					}
+				} );
+			}
+
+			activateTab( section, defaultBtn );
 
 			// Wire up click handlers for subsequent tab switches.
 			tabButtons.forEach( function ( btn ) {
@@ -112,7 +126,7 @@
 	//   Save button click
 	//     → collect FormData from the section's .acf-form
 	//     → POST action=md_save_section, nonce, post_id, acf[…] fields
-	//     → success: clear has-unsaved, hide banner, brief 'Saved' state
+	//     → success: redirect to pathname?active_section=…&active_tab=…
 	//     → error:   show error state on button for 3 s
 	// -----------------------------------------------------------------------
 
@@ -192,16 +206,19 @@
 				saveBtn.disabled = false;
 
 				if ( data.success ) {
-					// Clear unsaved state.
-					section.classList.remove( 'has-unsaved' );
-					if ( banner ) {
-						banner.style.display = 'none';
+					// Capture active tab label before redirecting so the
+					// reloaded page can restore it via URL params.
+					var sectionKey     = section.dataset.section || '';
+					var activeTabBtn   = section.querySelector( '.memdir-section-controls__tab-item.is-active' );
+					var activeTabLabel = activeTabBtn ? activeTabBtn.textContent.trim() : '';
+
+					var reloadParams = new URLSearchParams();
+					reloadParams.set( 'active_section', sectionKey );
+					if ( activeTabLabel ) {
+						reloadParams.set( 'active_tab', activeTabLabel );
 					}
-					// Brief 'Saved' feedback (2 s).
-					saveBtn.classList.add( 'memdir-section-save--saved' );
-					setTimeout( function () {
-						saveBtn.classList.remove( 'memdir-section-save--saved' );
-					}, 2000 );
+
+					window.location.href = window.location.pathname + '?' + reloadParams.toString();
 				} else {
 					// Error feedback (3 s).
 					saveBtn.classList.add( 'memdir-section-save--error' );
@@ -222,6 +239,32 @@
 	}
 
 	// -----------------------------------------------------------------------
+	// 4. State restoration from URL params
+	//
+	// After a successful save, the page reloads with:
+	//   ?active_section={section_key}&active_tab={tab_label}
+	//
+	// initTabNav() already restores the correct tab for the saved section
+	// (it reads URLSearchParams before iterating sections). This function
+	// handles the pill side: activate the pill whose data-section matches
+	// active_section so the nav reflects the just-saved section.
+	// -----------------------------------------------------------------------
+
+	function restoreStateFromUrl() {
+		var params        = new URLSearchParams( window.location.search );
+		var activeSection = params.get( 'active_section' ) || '';
+
+		if ( ! activeSection ) {
+			return;
+		}
+
+		// Activate the pill that matches the restored section.
+		document.querySelectorAll( '.memdir-pill[data-section]' ).forEach( function ( pill ) {
+			pill.classList.toggle( 'is-active', pill.dataset.section === activeSection );
+		} );
+	}
+
+	// -----------------------------------------------------------------------
 	// Boot
 	// -----------------------------------------------------------------------
 
@@ -229,6 +272,7 @@
 		initTabNav();
 		initPillNav();
 		initSectionSave();
+		restoreStateFromUrl();
 	} );
 
 }() );
