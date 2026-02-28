@@ -153,9 +153,11 @@ class Plugin {
 			return;
 		}
 
-		// Dequeue Elementor's common JS on member-directory pages.
+		// Dequeue scripts with beforeunload handlers on member-directory pages.
 		if ( get_post_type() === 'member-directory' ) {
 			wp_dequeue_script( 'elementor-common' );
+			wp_dequeue_script( 'buddyboss-theme-common-modules' );
+			wp_dequeue_script( 'buddypress-activity-post-form' );
 		}
 
 		wp_enqueue_style(
