@@ -153,6 +153,11 @@ class Plugin {
 			return;
 		}
 
+		// Dequeue Elementor's common JS on member-directory pages.
+		if ( get_post_type() === 'member-directory' ) {
+			wp_dequeue_script( 'elementor-common' );
+		}
+
 		wp_enqueue_style(
 			'member-directory',
 			$this->plugin_url . 'assets/css/memdir.css',
