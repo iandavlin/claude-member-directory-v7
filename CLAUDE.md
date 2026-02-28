@@ -18,6 +18,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 - `templates/parts/section-view.php` — view partial (PMP checks + FieldRenderer)
 - `templates/parts/right-panel.php` — View As toggle + Global Visibility note (author/admin only)
 - `templates/parts/profile-header.php` — sticky profile header; profile/business variant; eyebrow, title, badges
+- `templates/parts/pill-nav.php` — pill navigation row; All Sections + per-section pills with enable/disable checkboxes
 - `sections/profile.json` — only section definition on disk
 
 ### Not Started / Scaffold Only
@@ -71,6 +72,7 @@ templates/
   archive-member-directory.php Scaffold only — no real implementation.
   parts/
     profile-header.php        Sticky header. Profile/business variant, eyebrow, title, subline placeholder, badges.
+    pill-nav.php              Pill navigation. All Sections pill + one pill per section with enable/disable checkbox.
     section-edit.php          Edit partial. Calls AcfFormHelper::render_edit_form() per section.
     section-view.php          View partial. Resolves section/global PMP, loops fields, calls FieldRenderer.
     right-panel.php           Author/admin panel. View As toggle + Global Visibility note.

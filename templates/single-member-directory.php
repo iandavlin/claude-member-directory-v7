@@ -127,7 +127,21 @@ $is_edit = AcfFormHelper::is_edit_mode( $post_id, $viewer );
 // section-level enabled toggle stored as an ACF field on the post.
 // ---------------------------------------------------------------------------
 
-$sections = SectionRegistry::get_sections();
+$sections       = SectionRegistry::get_sections();
+$active_section = 'all';
+
+// ---------------------------------------------------------------------------
+// Render the pill navigation.
+//
+// Included after $sections is computed (pill-nav needs it for the enabled
+// count and per-section state) and after the View As spoof so $viewer is
+// in its final state for this request.
+// ---------------------------------------------------------------------------
+
+$pill_nav = plugin_dir_path( __FILE__ ) . 'parts/pill-nav.php';
+if ( file_exists( $pill_nav ) ) {
+	include $pill_nav;
+}
 
 ?>
 <div class="memdir-profile">
