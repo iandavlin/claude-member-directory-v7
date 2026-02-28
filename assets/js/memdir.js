@@ -165,25 +165,51 @@
 	}
 
 	/**
-	 * Collect field values from the section's ACF form and POST via fetch.
+	 * Collect all field values from the section and POST via fetch.
+	 *
+	 * Iterates through all .acf-field[data-key] elements regardless of
+	 * visibility (visible tabs vs hidden tabs), and collects input values
+	 * from input, textarea, select elements within each field.
 	 *
 	 * @param {Element}      section The .memdir-section--edit wrapper.
 	 * @param {Element}      saveBtn The .memdir-section-save button.
 	 * @param {Element|null} banner  The .memdir-unsaved-banner element, or null.
 	 */
 	function saveSection( section, saveBtn, banner ) {
-		var form   = section.querySelector( '.memdir-field-content .acf-form' );
+		var fieldContent = section.querySelector( '.memdir-field-content' );
 		var postId = section.dataset.postId || '';
 
-		if ( ! form || ! postId ) {
+		if ( ! fieldContent || ! postId ) {
 			return;
 		}
 
-		// Build form payload: all ACF inputs + our action/nonce/post_id.
-		var formData = new FormData( form );
+		// Collect all .acf-field[data-key] elements, including those hidden by tab switcher.
+		var acfFieldDivs = fieldContent.querySelectorAll( '.acf-field[data-key]' );
+		var formData = new FormData();
+
 		formData.set( 'action',  'md_save_section' );
 		formData.set( 'nonce',   ( window.mdAjax && window.mdAjax.nonce )   ? window.mdAjax.nonce   : '' );
 		formData.set( 'post_id', postId );
+
+		// Iterate each field and collect its input values.
+		acfFieldDivs.forEach( function ( fieldDiv ) {
+			var fieldKey = fieldDiv.dataset.key || '';
+			if ( ! fieldKey ) {
+				return;
+			}
+
+			// Find all form controls within this field.
+			var inputs = fieldDiv.querySelectorAll( 'input, textarea, select' );
+			inputs.forEach( function ( input ) {
+				// Skip unchecked checkboxes and radios — they shouldn't be submitted.
+				if ( ( input.type === 'checkbox' || input.type === 'radio' ) && ! input.checked ) {
+					return;
+				}
+
+				// Append using ACF's name convention acf[field_key].
+				formData.append( 'acf[' + fieldKey + ']', input.value );
+			} );
+		} );
 
 		var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
 			? window.mdAjax.ajaxurl
