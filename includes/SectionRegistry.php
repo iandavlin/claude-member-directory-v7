@@ -92,7 +92,17 @@ class SectionRegistry {
 	 * @return array<array{tab: string, fields: array}>
 	 */
 	public static function get_field_groups( array $section ): array {
-		return $section['field_groups'] ?? [];
+		if ( ! empty( $section['field_groups'] ) ) {
+			return $section['field_groups'];
+		}
+
+		// Backward compat: flat 'fields' array from pre-migration DB data.
+		// Wrap in a single "General" tab group until admin re-syncs.
+		if ( ! empty( $section['fields'] ) && is_array( $section['fields'] ) ) {
+			return [ [ 'tab' => 'General', 'fields' => $section['fields'] ] ];
+		}
+
+		return [];
 	}
 
 	/**

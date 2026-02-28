@@ -59,7 +59,7 @@ includes/
   Plugin.php                  Bootstrap. Requires all classes. Registers CPT + hooks. Calls each class init().
   SectionRegistry.php         Section data. sync() = JSON→DB. load_from_db() = DB→ACF. get_sections()/get_section()/get_all_fields()/get_field_groups().
   GlobalFields.php            ACF group: global_pmp + primary_section. ⚠ Has temporary debug code.
-  AcfFormHelper.php           maybe_render_form_head(), is_edit_mode(), render_edit_form().
+  AcfFormHelper.php           maybe_render_form_head(), is_edit_mode(), render_edit_form(). acf_form() scoped to content field keys via get_all_fields().
   AdminSync.php               Admin page + nonce-protected handler that calls SectionRegistry::sync().
   TemplateLoader.php          template_include filter → plugin templates for member-directory CPT.
   PmpResolver.php             resolve_viewer(), spoof_viewer(), can_view() (waterfall), is_member().

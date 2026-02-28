@@ -139,9 +139,13 @@ class AcfFormHelper {
 	/**
 	 * Render the ACF edit form for one section.
 	 *
-	 * Outputs the full ACF form (fields + submit button) scoped to the
-	 * section's field group. On submission, ACF saves all fields and
-	 * redirects back to the profile permalink.
+	 * Outputs the ACF form scoped to the content fields listed in the
+	 * section's field_groups config. PMP system fields, tab dividers,
+	 * and any fields present in the acf_group but not in field_groups
+	 * are excluded — PMP controls are handled by the left-column JS.
+	 *
+	 * On submission, ACF saves the rendered fields and redirects back
+	 * to the profile permalink.
 	 *
 	 * @param array $section  The section array from SectionRegistry.
 	 * @param int   $post_id  The member-directory post ID.
@@ -153,9 +157,20 @@ class AcfFormHelper {
 			return;
 		}
 
+		// Scope form to content fields only — excludes PMP system fields,
+		// tab dividers, and any test fields present in the acf_group but
+		// not listed in the section's field_groups config.
+		$content_fields = SectionRegistry::get_all_fields( $section );
+		$field_keys     = array_column( $content_fields, 'key' );
+
+		if ( empty( $field_keys ) ) {
+			return;
+		}
+
 		acf_form( [
 			'post_id'            => $post_id,
 			'field_groups'       => [ $field_group_key ],
+			'fields'             => $field_keys,
 			'return'             => get_permalink( $post_id ),
 			'submit_value'       => 'Save',
 			'updated_message'    => 'Profile updated.',
