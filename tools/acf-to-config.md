@@ -1,88 +1,75 @@
-# ACF Field Group → Member Directory Section Config Converter
+ACF Field Group → Member Directory Section Config Converter
+You are converting an ACF field group JSON export into a Member Directory section config file. The output is a single valid JSON file that gets dropped into the plugin's sections/ folder. You have everything you need in this document — no additional context is required.
 
-You are converting an ACF field group JSON export into a Member Directory section config file. The output is a single valid JSON file that gets dropped into the plugin's `sections/` folder. You have everything you need in this document — no additional context is required.
+How This Works
+The Member Directory plugin uses JSON config files to define sections (e.g. Profile, Business, Craft & Skills). Each config file lives in the sections/ folder. When an admin runs a sync, the plugin reads these files and registers the sections.
+Fields are organized into tab groups — each group corresponds to an ACF tab and appears as a nav item in the section's left column on the profile page. Fields that appear before the first tab in the ACF export are placed into an "General" group automatically.
+Your job: take a raw ACF field group JSON export, extract content fields grouped by their ACF tabs, add the required PMP system fields, and produce the final config file.
 
----
-
-## How This Works
-
-The Member Directory plugin uses JSON config files to define sections (e.g. Profile, Business, Craft & Skills). Each config file lives in the `sections/` folder. When an admin runs a sync, the plugin reads these files and registers the sections.
-
-Your job: take a raw ACF field group JSON export that the user pastes in, extract the content fields, add the required PMP system fields, and produce the final config file.
-
----
-
-## Step 1 — Ask the User These Questions
-
+Step 1 — Ask the User These Questions
 Before producing any output, ask the user all of the following questions. Do not skip any.
 
-1. **Section key** — What is the section key? This is a short lowercase slug with underscores, no spaces, no hyphens. Examples: `profile`, `business`, `craft_and_skills`, `vibe`.
+Section key — What is the section key? Short lowercase slug with underscores, no spaces, no hyphens. Examples: profile, business, craft_and_skills.
+Section label — What is the display name for this section? Examples: "Profile", "Business", "Craft & Skills".
+Order — What position should this section appear in? Integer. Lower numbers appear first.
+Can be primary? — Can this section be used as the primary section? Yes or no. Only profile and business should ever be true.
+Default PMP level — Default privacy level for this section: public, member, or private.
+Filterable taxonomies — For each taxonomy field found in the ACF export (you will list them), ask: "Should this taxonomy be filterable in the directory?" Yes or no, per field.
+Required fields — Are any fields other than the mandatory name field required? If yes, which ones?
 
-2. **Section label** — What is the display name for this section? This is what users see in the UI. Examples: "Profile", "Business", "Craft & Skills".
 
-3. **Order** — What position should this section appear in? This is an integer. Lower numbers appear first. Example: `1` for Profile, `2` for Business, `3` for Craft & Skills.
+Step 2 — Extract Content Fields Grouped by Tab
+Read the ACF field group JSON. Walk the fields array in order. Use ACF tab fields to define groups — each tab starts a new group. Fields before the first tab go into a group called "General".
 
-4. **Can be primary?** — Can this section be used as the primary section? Answer yes or no. Only `profile` and `business` should ever be `true`. Everything else is `false`.
+Fields to SKIP entirely
 
-5. **Default PMP level** — What is the default privacy level for this section? Options are `public`, `member`, or `private`. This is the starting PMP value for the section when a new member post is created.
+Any field with "type": "button_group"
+Any field with "type": "select" where the field key contains privacy
+Any field with "type": "post_title"
+Any field with "type": "display_name"
+Any field with "type": "first_name"
+Any field with "type": "last_name"
+Any field with "type": "allow_comments"
+Any field with "type": "repeater"
+Any field whose key contains privacy_mode
+Any field whose key contains privacy_level
+Any field whose key contains enabled
 
-6. **Filterable taxonomies** — For each taxonomy field found in the ACF export (you will list them), ask: "Should this taxonomy be filterable in the directory?" Yes or no, per field.
+Tab fields ("type": "tab") are NOT skipped — they define the group boundaries. They do not appear as content fields but their label becomes the group label.
 
-7. **Required fields** — Are any fields other than the mandatory name field required? If yes, which ones?
+Grouping algorithm
 
----
+Start with current group = { "tab": "General", "fields": [] }
+Walk the fields array in order:
 
-## Step 2 — Extract Content Fields from the ACF Export
+If type === "tab" → close the current group (if it has fields, add it to output), start a new group with "tab": tab.label
+If field is in the SKIP list → skip it
+Otherwise → extract the field and add it to the current group
 
-Read the ACF field group JSON the user pasted. Look at the `fields` array inside it. For each field, apply these rules:
 
-### Fields to SKIP entirely (do not include in the `fields` array)
+After the last field → close the final group (if it has fields, add it to output)
+Discard any group with zero content fields
 
-- Any field with `"type": "tab"`
-- Any field with `"type": "button_group"`
-- Any field with `"type": "select"` **where the field key contains** `privacy`
-- Any field with `"type": "post_title"`
-- Any field with `"type": "display_name"`
-- Any field with `"type": "first_name"`
-- Any field with `"type": "last_name"`
-- Any field with `"type": "allow_comments"`
-- Any field with `"type": "repeater"`
-- Any field whose `key` contains `privacy_mode`
-- Any field whose `key` contains `privacy_level`
-- Any field whose `key` contains `enabled`
+Fields to EXTRACT (per field within a group)
 
-These are either UI layout fields or PMP system fields that the skill generates automatically (see Step 3). They are not content.
+Property | Where it comes from
+---------|--------------------
+key | The ACF field's key value, copied exactly
+label | The ACF field's label value, copied exactly
+type | The ACF field's type value, copied exactly
+required | ACF's required as boolean (true/false) — also true for any field the user flagged in Step 1
+pmp_default | Always "inherit" unless user specifies otherwise
+filterable | false by default. true only if type is "taxonomy" and user said yes in Step 1
+taxonomy | null by default. If type is "taxonomy", set to the taxonomy slug from the ACF field's taxonomy property
 
-### Fields to EXTRACT (include in the `fields` array)
+Supported field types
+Only these types should appear in output. Warn user and ask how to handle anything else.
+text, textarea, wysiwyg, image, gallery, url, email, number, file, google_map, taxonomy, true_false, checkbox, radio
 
-For every remaining field, extract the following properties:
+Step 3 — Generate PMP System Fields
+These three fields are not in the ACF export. Generate them and prepend to acf_group.fields. Replace {section_key} with the actual section key.
 
-| Property | Where it comes from |
-|---|---|
-| `key` | The ACF field's `key` value, copied exactly |
-| `label` | The ACF field's `label` value, copied exactly |
-| `type` | The ACF field's `type` value, copied exactly — do **not** rename or translate types |
-| `required` | The ACF field's `required` value, as a boolean (`true` or `false`) — also mark as `true` any field the user flagged as required in Step 1 |
-| `pmp_default` | Always `"inherit"` unless the user specifies otherwise |
-| `filterable` | `false` by default. Set to `true` **only** if the field type is `"taxonomy"` **and** the user said yes to making it filterable in Step 1 |
-| `taxonomy` | `null` by default. If the field type is `"taxonomy"`, set this to the taxonomy slug from the ACF field's `taxonomy` property |
-
-### Supported field types
-
-Only these ACF field types should appear in the output. If you encounter a type not on this list, warn the user and ask how to handle it.
-
-`text`, `textarea`, `wysiwyg`, `image`, `gallery`, `url`, `email`, `number`, `file`, `google_map`, `taxonomy`, `true_false`, `checkbox`, `radio`
-
----
-
-## Step 3 — Generate PMP System Fields
-
-These three fields are **not** in the ACF export. You generate them yourself and add them to the `acf_group.fields` array in the output. They go at the **beginning** of the `acf_group.fields` array, before the content fields.
-
-Replace `{section_key}` with the actual section key from Step 1.
-
-### Field 1: Section Enabled Toggle
-
+Field 1: Section Enabled Toggle
 ```json
 {
   "key": "field_md_{section_key}_enabled",
@@ -96,8 +83,7 @@ Replace `{section_key}` with the actual section key from Step 1.
 }
 ```
 
-### Field 2: Privacy Mode Toggle
-
+Field 2: Privacy Mode Toggle
 ```json
 {
   "key": "field_md_{section_key}_privacy_mode",
@@ -113,8 +99,7 @@ Replace `{section_key}` with the actual section key from Step 1.
 }
 ```
 
-### Field 3: Privacy Level Selector
-
+Field 3: Privacy Level Selector
 ```json
 {
   "key": "field_md_{section_key}_privacy_level",
@@ -139,12 +124,8 @@ Replace `{section_key}` with the actual section key from Step 1.
 }
 ```
 
----
-
-## Step 4 — Assemble the Output
-
+Step 4 — Assemble the Output
 The final output is a single JSON object with this exact shape:
-
 ```json
 {
   "key": "",
@@ -152,49 +133,38 @@ The final output is a single JSON object with this exact shape:
   "order": 0,
   "can_be_primary": false,
   "pmp_default": "member",
-  "fields": [],
+  "field_groups": [],
   "acf_group": {}
 }
 ```
 
-Fill in the values:
+Key | Value
+----|-------
+key | Section key from Step 1
+label | Section label from Step 1
+order | Order integer from Step 1
+can_be_primary | Boolean from Step 1
+pmp_default | PMP level from Step 1
+field_groups | Array of tab group objects from Step 2
+acf_group | The entire original ACF field group object, untouched, except: prepend the three PMP system fields from Step 3 to the beginning of its fields array
 
-| Key | Value |
-|---|---|
-| `key` | Section key from Step 1 |
-| `label` | Section label from Step 1 |
-| `order` | Order integer from Step 1 |
-| `can_be_primary` | Boolean from Step 1 |
-| `pmp_default` | PMP level from Step 1 |
-| `fields` | The array of extracted content fields from Step 2 |
-| `acf_group` | The **entire original ACF field group object** the user pasted, completely untouched, **except**: prepend the three PMP system fields from Step 3 to the beginning of its `fields` array |
+Step 5 — Validate Before Outputting
 
----
+Required field check — If no field in any group has "required": true, warn: "No required fields found. Every section typically needs at least one required field. Are you sure?"
+Primary section check — If can_be_primary is true and section key is not profile or business, warn: "Only profile and business sections should be marked as primary. Are you sure?"
+Field count confirmation — State: "This config contains N tab groups with X total content fields, and 3 auto-generated PMP system fields. Ready to output?" Wait for confirmation.
 
-## Step 5 — Validate Before Outputting
 
-Run these checks and warn the user if any fail:
-
-1. **Required field check** — If no field in the `fields` array has `"required": true`, warn: *"No required fields found. Every section typically needs at least one required field (usually the name). Are you sure this is correct?"*
-
-2. **Primary section check** — If `can_be_primary` is `true` and the section key is not `profile` or `business`, warn: *"Only profile and business sections should be marked as primary. Are you sure you want can_be_primary: true for this section?"*
-
-3. **Field count confirmation** — Before outputting, state: *"This config contains N content fields and 3 auto-generated PMP system fields. The acf_group contains N+3 total fields. Ready to output?"* Wait for confirmation.
-
----
-
-## Worked Example
-
-### Input — User pastes this ACF field group export:
-
+Worked Example
+Input — User pastes this ACF export:
 ```json
 {
   "key": "group_artwork",
   "title": "Artwork",
   "fields": [
     {
-      "key": "field_artwork_tab",
-      "label": "Artwork",
+      "key": "field_artwork_tab_details",
+      "label": "Details",
       "type": "tab"
     },
     {
@@ -205,6 +175,11 @@ Run these checks and warn the user if any fail:
       "required": 1
     },
     {
+      "key": "field_artwork_tab_taxonomy",
+      "label": "Categories",
+      "type": "tab"
+    },
+    {
       "key": "field_artwork_medium",
       "label": "Medium",
       "name": "artwork_medium",
@@ -213,34 +188,21 @@ Run these checks and warn the user if any fail:
       "required": 0
     }
   ],
-  "location": [
-    [
-      {
-        "param": "post_type",
-        "operator": "==",
-        "value": "member-directory"
-      }
-    ]
-  ]
+  "location": [[{ "param": "post_type", "operator": "==", "value": "member-directory" }]]
 }
 ```
 
-### Conversation with the user:
+Conversation:
 
-> **Q1: Section key?** → `artwork`
-> **Q2: Section label?** → `Artwork`
-> **Q3: Order?** → `4`
-> **Q4: Can be primary?** → No
-> **Q5: Default PMP?** → `member`
-> **Q6: I found one taxonomy field: "Medium" (artwork_medium). Should it be filterable?** → Yes
-> **Q7: Any fields other than name that are required?** → No, just the ones already marked required in the export
+Q1: artwork — Q2: Artwork — Q3: 4 — Q4: No — Q5: member
+Q6: Found one taxonomy: "Medium" (artwork_medium). Filterable? → Yes
+Q7: No additional required fields
 
-### Validation:
+Validation:
 
-> "This config contains 2 content fields and 3 auto-generated PMP system fields. The acf_group contains 5 total fields. Ready to output?"
+"This config contains 2 tab groups with 2 total content fields, and 3 auto-generated PMP system fields. Ready to output?"
 
-### Output — `artwork.json`:
-
+Output — artwork.json:
 ```json
 {
   "key": "artwork",
@@ -248,24 +210,34 @@ Run these checks and warn the user if any fail:
   "order": 4,
   "can_be_primary": false,
   "pmp_default": "member",
-  "fields": [
+  "field_groups": [
     {
-      "key": "field_artwork_title",
-      "label": "Artwork Title",
-      "type": "text",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": true
+      "tab": "Details",
+      "fields": [
+        {
+          "key": "field_artwork_title",
+          "label": "Artwork Title",
+          "type": "text",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": true
+        }
+      ]
     },
     {
-      "key": "field_artwork_medium",
-      "label": "Medium",
-      "type": "taxonomy",
-      "pmp_default": "inherit",
-      "filterable": true,
-      "taxonomy": "artwork_medium",
-      "required": false
+      "tab": "Categories",
+      "fields": [
+        {
+          "key": "field_artwork_medium",
+          "label": "Medium",
+          "type": "taxonomy",
+          "pmp_default": "inherit",
+          "filterable": true,
+          "taxonomy": "artwork_medium",
+          "required": false
+        }
+      ]
     }
   ],
   "acf_group": {
@@ -287,10 +259,7 @@ Run these checks and warn the user if any fail:
         "label": "Privacy Mode",
         "name": "member_directory_artwork_privacy_mode",
         "type": "button_group",
-        "choices": {
-          "inherit": "Inherit",
-          "custom": "Custom"
-        },
+        "choices": { "inherit": "Inherit", "custom": "Custom" },
         "default_value": "inherit",
         "layout": "horizontal"
       },
@@ -299,25 +268,13 @@ Run these checks and warn the user if any fail:
         "label": "Privacy Level",
         "name": "member_directory_artwork_privacy_level",
         "type": "select",
-        "choices": {
-          "public": "Public",
-          "member": "Member",
-          "private": "Private"
-        },
+        "choices": { "public": "Public", "member": "Member", "private": "Private" },
         "default_value": "member",
-        "conditional_logic": [
-          [
-            {
-              "field": "field_md_artwork_privacy_mode",
-              "operator": "==",
-              "value": "custom"
-            }
-          ]
-        ]
+        "conditional_logic": [[{ "field": "field_md_artwork_privacy_mode", "operator": "==", "value": "custom" }]]
       },
       {
-        "key": "field_artwork_tab",
-        "label": "Artwork",
+        "key": "field_artwork_tab_details",
+        "label": "Details",
         "type": "tab"
       },
       {
@@ -328,6 +285,11 @@ Run these checks and warn the user if any fail:
         "required": 1
       },
       {
+        "key": "field_artwork_tab_taxonomy",
+        "label": "Categories",
+        "type": "tab"
+      },
+      {
         "key": "field_artwork_medium",
         "label": "Medium",
         "name": "artwork_medium",
@@ -336,23 +298,15 @@ Run these checks and warn the user if any fail:
         "required": 0
       }
     ],
-    "location": [
-      [
-        {
-          "param": "post_type",
-          "operator": "==",
-          "value": "member-directory"
-        }
-      ]
-    ]
+    "location": [[{ "param": "post_type", "operator": "==", "value": "member-directory" }]]
   }
 }
 ```
 
-### What happened in the example:
+What changed from the old skill:
 
-- The `tab` field was **skipped** in the `fields` array (it's a layout field, not content) but **kept** in `acf_group` (which is the original export, untouched except for the three prepended PMP fields).
-- The three PMP system fields (`_enabled`, `_privacy_mode`, `_privacy_level`) were **generated** and **prepended** to the `acf_group.fields` array.
-- The `required` values were converted from ACF's `1`/`0` integers to proper `true`/`false` booleans in the `fields` array.
-- The taxonomy field got `"filterable": true` and `"taxonomy": "artwork_medium"` because the user confirmed it.
-- The `acf_group` contains the **full original export** with the PMP system fields prepended — nothing else was changed inside it.
+- fields (flat array) → field_groups (array of tab group objects)
+- Tab fields now define group boundaries instead of being silently skipped
+- Each group has "tab" (label) and "fields" (content fields belonging to that tab)
+- Fields before the first tab go into a "General" group
+- acf_group is still the full original export with PMP fields prepended — unchanged
