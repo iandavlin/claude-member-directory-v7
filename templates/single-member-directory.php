@@ -23,6 +23,13 @@
  *
  * Planned additions (not yet included):
  *   - Left sidebar   (templates/parts/sidebar.php)
+ *
+ * HTML structure:
+ *   .memdir-profile
+ *     .memdir-profile__inner
+ *       .memdir-sticky       ← profile-header + pill-nav (stick together)
+ *       .memdir-sections     ← section loop
+ *     .memdir-right-panel    ← fixed panel; inside profile for CSS var cascade
  */
 
 use MemberDirectory\AcfFormHelper;
@@ -46,8 +53,6 @@ get_header();
 
 // ---------------------------------------------------------------------------
 // WordPress loop — bail with a footer if no post is found.
-// For a CPT single page this should always resolve to one post, but we
-// follow the standard WP loop pattern for correctness.
 // ---------------------------------------------------------------------------
 
 if ( ! have_posts() ) {
@@ -61,9 +66,6 @@ $post_id = get_the_ID();
 
 // ---------------------------------------------------------------------------
 // Build the viewer context.
-//
-// resolve_viewer() checks whether the current user is logged in, whether they
-// are the post author, and whether they have manage_options (admin).
 // ---------------------------------------------------------------------------
 
 $viewer = PmpResolver::resolve_viewer( $post_id );
@@ -72,25 +74,11 @@ $viewer = PmpResolver::resolve_viewer( $post_id );
 // Capture privileged status from the REAL viewer before any spoof.
 //
 // $viewer may be replaced below by a spoofed context. We capture the genuine
-// author/admin flag here so the right panel (which contains the View As toggle
-// itself) remains visible even while the author is using ?view_as.
+// author/admin flag here so the right panel (and header badges) remain visible
+// even while the author is using ?view_as.
 // ---------------------------------------------------------------------------
 
 $is_privileged = $viewer['is_author'] || $viewer['is_admin'];
-
-// ---------------------------------------------------------------------------
-// Render the sticky profile header.
-//
-// Must be included before the View As spoof so $viewer is the real viewer.
-// The partial accesses $is_privileged from scope. Default section label is
-// "All sections" for the initial page load.
-// ---------------------------------------------------------------------------
-
-$active_section_label = 'All sections';
-$profile_header       = plugin_dir_path( __FILE__ ) . 'parts/profile-header.php';
-if ( file_exists( $profile_header ) ) {
-	include $profile_header;
-}
 
 // ---------------------------------------------------------------------------
 // View As override.
@@ -120,69 +108,86 @@ if (
 $is_edit = AcfFormHelper::is_edit_mode( $post_id, $viewer );
 
 // ---------------------------------------------------------------------------
-// Collect enabled sections.
+// Collect sections and set initial navigation state.
 //
 // SectionRegistry::get_sections() returns all registered sections sorted by
-// their 'order' value. We filter to those the author has not disabled via the
-// section-level enabled toggle stored as an ACF field on the post.
+// their 'order' value. $active_section and $active_section_label default to
+// "all" / "All sections" for the initial page load; JS updates them on
+// section-pill clicks without a page reload.
 // ---------------------------------------------------------------------------
 
-$sections       = SectionRegistry::get_sections();
-$active_section = 'all';
-
-// ---------------------------------------------------------------------------
-// Render the pill navigation.
-//
-// Included after $sections is computed (pill-nav needs it for the enabled
-// count and per-section state) and after the View As spoof so $viewer is
-// in its final state for this request.
-// ---------------------------------------------------------------------------
-
-$pill_nav = plugin_dir_path( __FILE__ ) . 'parts/pill-nav.php';
-if ( file_exists( $pill_nav ) ) {
-	include $pill_nav;
-}
+$sections             = SectionRegistry::get_sections();
+$active_section       = 'all';
+$active_section_label = 'All sections';
 
 ?>
 <div class="memdir-profile">
+<div class="memdir-profile__inner">
 
-	<?php foreach ( $sections as $section ) : ?>
+	<?php // ----------------------------------------------------------------
+	// STICKY ZONE — header + pills stick together as a unit.
+	// ---------------------------------------------------------------- ?>
+	<div class="memdir-sticky">
+
 		<?php
-		// Check whether this section has been enabled by the post author.
-		// The ACF field name follows the pattern: member_directory_{key}_enabled.
-		// Default to enabled (true) when the field has never been saved so that
-		// a freshly created profile shows all sections rather than none.
-		$section_key     = $section['key'] ?? '';
-		$section_enabled = get_field( 'member_directory_' . $section_key . '_enabled', $post_id );
-
-		if ( $section_enabled === false ) {
-			continue; // Author has explicitly disabled this section — skip it.
-		}
-
-		// Choose the partial based on the rendering mode.
-		// $section, $post_id, and $viewer are available to the partial via
-		// PHP's normal include scope — no extract() needed.
-		// We use a direct filesystem include (not get_template_part) so the
-		// plugin's own partial is always used regardless of theme overrides.
-		$partial = $is_edit
-			? plugin_dir_path( __FILE__ ) . 'parts/section-edit.php'
-			: plugin_dir_path( __FILE__ ) . 'parts/section-view.php';
-
-		if ( file_exists( $partial ) ) {
-			include $partial;
+		$profile_header = plugin_dir_path( __FILE__ ) . 'parts/profile-header.php';
+		if ( file_exists( $profile_header ) ) {
+			include $profile_header;
 		}
 		?>
-	<?php endforeach; ?>
 
-</div>
+		<?php
+		$pill_nav = plugin_dir_path( __FILE__ ) . 'parts/pill-nav.php';
+		if ( file_exists( $pill_nav ) ) {
+			include $pill_nav;
+		}
+		?>
+
+	</div><!-- /.memdir-sticky -->
+
+	<?php // ----------------------------------------------------------------
+	// SECTIONS — stacked content cards, one per enabled section.
+	// ---------------------------------------------------------------- ?>
+	<div class="memdir-sections">
+
+		<?php foreach ( $sections as $section ) : ?>
+			<?php
+			// Check whether this section has been enabled by the post author.
+			// The ACF field name follows the pattern: member_directory_{key}_enabled.
+			// Default to enabled (true) when the field has never been saved so that
+			// a freshly created profile shows all sections rather than none.
+			$section_key     = $section['key'] ?? '';
+			$section_enabled = get_field( 'member_directory_' . $section_key . '_enabled', $post_id );
+
+			if ( $section_enabled === false ) {
+				continue; // Author has explicitly disabled this section — skip it.
+			}
+
+			// Choose the partial based on the rendering mode.
+			// $section, $post_id, and $viewer are available to the partial via
+			// PHP's normal include scope — no extract() needed.
+			$partial = $is_edit
+				? plugin_dir_path( __FILE__ ) . 'parts/section-edit.php'
+				: plugin_dir_path( __FILE__ ) . 'parts/section-view.php';
+
+			if ( file_exists( $partial ) ) {
+				include $partial;
+			}
+			?>
+		<?php endforeach; ?>
+
+	</div><!-- /.memdir-sections -->
+
+</div><!-- /.memdir-profile__inner -->
 
 <?php
 // ---------------------------------------------------------------------------
 // Right panel — author/admin only.
 //
-// Always keyed off $is_privileged (set from the real viewer before any spoof)
-// so the View As toggle stays visible while the author is previewing other
-// viewer types via ?view_as.
+// Placed inside .memdir-profile (so CSS custom properties cascade to it) but
+// outside .memdir-profile__inner (it is position:fixed, not in normal flow).
+// Keyed off $is_privileged (real viewer, pre-spoof) so the View As toggle
+// stays visible while the author is previewing other viewer types.
 // ---------------------------------------------------------------------------
 
 if ( $is_privileged ) :
@@ -192,5 +197,7 @@ if ( $is_privileged ) :
 	}
 endif;
 ?>
+
+</div><!-- /.memdir-profile -->
 
 <?php get_footer();
