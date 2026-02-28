@@ -123,10 +123,11 @@
 	//     → section.classList.add('has-unsaved')
 	//     → banner.style.display = ''
 	//
-	//   Save button click
+	//   Save button click  OR  Enter in any text input
 	//     → collect FormData from the section's .acf-form
 	//     → POST action=md_save_section, nonce, post_id, acf[…] fields
-	//     → success: redirect to pathname?active_section=…&active_tab=…
+	//     → success: show 'Saved ✓' on button; update .memdir-header__title
+	//               in place if field_md_profile_page_name was in the payload
 	//     → error:   show error state on button for 3 s
 	// -----------------------------------------------------------------------
 
@@ -143,6 +144,20 @@
 			// Show unsaved banner on any field change.
 			fieldContent.addEventListener( 'input',  function () { markUnsaved( section, banner ); } );
 			fieldContent.addEventListener( 'change', function () { markUnsaved( section, banner ); } );
+
+			// Intercept Enter in text inputs — treat it as a save rather than
+			// a native form submit. Textareas are excluded so Enter still adds
+			// new lines there.
+			fieldContent.addEventListener( 'keydown', function ( event ) {
+				if ( event.key !== 'Enter' ) {
+					return;
+				}
+				if ( event.target.tagName === 'TEXTAREA' ) {
+					return;
+				}
+				event.preventDefault();
+				saveSection( section, saveBtn, banner );
+			} );
 
 			// Wire save button.
 			saveBtn.addEventListener( 'click', function () {
@@ -215,6 +230,9 @@
 			? window.mdAjax.ajaxurl
 			: '/wp-admin/admin-ajax.php';
 
+		// Capture original label so we can restore it after the saved state.
+		var originalBtnText = saveBtn.textContent;
+
 		// Saving state.
 		saveBtn.classList.add( 'memdir-section-save--saving' );
 		saveBtn.disabled = true;
@@ -232,19 +250,32 @@
 				saveBtn.disabled = false;
 
 				if ( data.success ) {
-					// Capture active tab label before redirecting so the
-					// reloaded page can restore it via URL params.
-					var sectionKey     = section.dataset.section || '';
-					var activeTabBtn   = section.querySelector( '.memdir-section-controls__tab-item.is-active' );
-					var activeTabLabel = activeTabBtn ? activeTabBtn.textContent.trim() : '';
-
-					var reloadParams = new URLSearchParams();
-					reloadParams.set( 'active_section', sectionKey );
-					if ( activeTabLabel ) {
-						reloadParams.set( 'active_tab', activeTabLabel );
+					// Clear unsaved state.
+					section.classList.remove( 'has-unsaved' );
+					if ( banner ) {
+						banner.style.display = 'none';
 					}
 
-					window.location.href = window.location.pathname + '?' + reloadParams.toString();
+					// Show 'Saved ✓' on button for 2 s, then restore original label.
+					saveBtn.textContent = 'Saved ✓';
+					saveBtn.classList.add( 'memdir-section-save--saved' );
+					setTimeout( function () {
+						saveBtn.classList.remove( 'memdir-section-save--saved' );
+						saveBtn.textContent = originalBtnText;
+					}, 2000 );
+
+					// Update the page-name header title in place if that field
+					// was included in this section's saved payload.
+					var pageNameField = fieldContent.querySelector( '.acf-field[data-key="field_md_profile_page_name"]' );
+					if ( pageNameField ) {
+						var pageNameInput = pageNameField.querySelector( 'input' );
+						if ( pageNameInput ) {
+							var titleEl = document.querySelector( '.memdir-header__title' );
+							if ( titleEl ) {
+								titleEl.textContent = pageNameInput.value;
+							}
+						}
+					}
 				} else {
 					// Error feedback (3 s).
 					saveBtn.classList.add( 'memdir-section-save--error' );
