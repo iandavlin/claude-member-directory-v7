@@ -2,20 +2,20 @@
 /**
  * Partial: Section — Read-Only View Mode.
  *
- * Renders one section of a member profile in view mode.
- * Called from templates/single-member-directory.php.
+ * Renders one section in view mode using the two-column layout:
+ *   Left  — section controls (title, PMP buttons, Override, field list)
+ *   Right — section title + PmpResolver-filtered FieldRenderer output
  *
- * Expected variables (set by the caller before get_template_part / include):
+ * PMP checks are delegated entirely to PmpResolver; HTML output is
+ * delegated entirely to FieldRenderer. This partial only orchestrates.
  *
- *   @var array  $section  A section array from SectionRegistry::get_section().
- *                         Keys used: key, label, fields, pmp_default.
+ * Expected variables (set by the caller before include):
+ *
+ *   @var array  $section  Section array from SectionRegistry. Keys used:
+ *                         key, label, fields[], pmp_default.
  *   @var int    $post_id  The member-directory post ID being viewed.
  *   @var array  $viewer   Viewer context from PmpResolver::resolve_viewer()
  *                         or PmpResolver::spoof_viewer() for View As mode.
- *
- * This partial is responsible only for visibility decisions and rendering.
- * It never modifies data. PMP checks are delegated entirely to PmpResolver;
- * HTML output is delegated entirely to FieldRenderer.
  */
 
 use MemberDirectory\FieldRenderer;
@@ -23,103 +23,106 @@ use MemberDirectory\PmpResolver;
 
 defined( 'ABSPATH' ) || exit;
 
-// ---------------------------------------------------------------------------
-// 1. Resolve the section-level PMP value.
-//
-// Each section has two stored ACF fields that together represent its PMP:
-//
-//   privacy_mode  — 'inherit' (defer to global) or 'custom' (override)
-//   privacy_level — 'public', 'member', or 'private' (only meaningful
-//                   when privacy_mode is 'custom')
-//
-// When mode is 'inherit', the section has no explicit override; PmpResolver
-// will walk up to the global value. When mode is 'custom', the level value
-// IS the explicit section-level PMP and PmpResolver will stop there.
-// ---------------------------------------------------------------------------
+$section_key    = $section['key']    ?? '';
+$section_label  = $section['label']  ?? '';
+$section_fields = $section['fields'] ?? [];
 
-$section_key = $section['key'] ?? '';
+// ---------------------------------------------------------------------------
+// Resolve section PMP.
+//
+// Read privacy_mode / privacy_level pair — same fields used by section-edit.php
+// so the controls reflect the same effective level in both modes.
+//
+//   privacy_mode  'inherit' → defer to global   'custom' → use privacy_level
+//   privacy_level 'public' | 'member' | 'private' (only meaningful when custom)
+// ---------------------------------------------------------------------------
 
 $section_privacy_mode  = get_field( 'member_directory_' . $section_key . '_privacy_mode',  $post_id );
 $section_privacy_level = get_field( 'member_directory_' . $section_key . '_privacy_level', $post_id );
 
-// Translate mode + level into the single PMP string PmpResolver expects.
 $section_pmp = ( $section_privacy_mode === 'custom' )
 	? (string) $section_privacy_level  // Explicit override — use the stored level.
 	: 'inherit';                        // Defer to global.
 
 // ---------------------------------------------------------------------------
-// 2. Resolve the global PMP value.
+// Resolve global PMP.
 //
-// A single ACF field on the post stores the profile-wide default PMP.
-// Global can never be 'inherit' — it is the top of the waterfall and always
-// carries an explicit value. Default to 'member' as a safe fallback in case
-// the field is missing (e.g. before the first sync or save).
+// Profile-wide default. Cannot itself be 'inherit' — top of the waterfall.
+// Default to 'member' as a safe fallback.
 // ---------------------------------------------------------------------------
 
-$global_pmp = get_field( 'member_directory_global_pmp', $post_id );
+$global_pmp    = get_field( 'member_directory_global_pmp', $post_id ) ?: 'member';
+$effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 
-if ( empty( $global_pmp ) ) {
-	$global_pmp = 'member';
-}
-
-// ---------------------------------------------------------------------------
-// 3. Render the section wrapper and loop through fields.
-// ---------------------------------------------------------------------------
 ?>
 <div class="memdir-section" data-section="<?php echo esc_attr( $section_key ); ?>">
-	<h2 class="memdir-section-title"><?php echo esc_html( $section['label'] ?? '' ); ?></h2>
 
-	<?php foreach ( $section['fields'] as $field ) : ?>
-		<?php
-		// -----------------------------------------------------------------
-		// Resolve the field-level PMP value.
-		//
-		// Each content field has its own stored PMP override. The ACF field
-		// name is constructed from a fixed prefix plus the field's own key
-		// from the section config. Valid values: public, member, private,
-		// or inherit (defer to section, then global).
-		// -----------------------------------------------------------------
+	<div class="memdir-section-controls">
 
-		$field_pmp = get_field( 'member_directory_field_pmp_' . ( $field['key'] ?? '' ), $post_id );
+		<p class="memdir-section-controls__title"><?php echo esc_html( $section_label ); ?></p>
 
-		// Treat missing/null as inherit so the waterfall resolves naturally.
-		if ( empty( $field_pmp ) ) {
-			$field_pmp = 'inherit';
-		}
+		<div class="memdir-section-controls__pmp">
+			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--public<?php echo $effective_pmp === 'public'  ? ' memdir-section-controls__pmp-btn--active' : ''; ?>" data-pmp="public">🌐</button>
+			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--member<?php echo $effective_pmp === 'member'  ? ' memdir-section-controls__pmp-btn--active' : ''; ?>" data-pmp="member">👥</button>
+			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--private<?php echo $effective_pmp === 'private' ? ' memdir-section-controls__pmp-btn--active' : ''; ?>" data-pmp="private">🔒</button>
+			<button type="button" class="memdir-section-controls__override">Override</button>
+		</div>
 
-		// -----------------------------------------------------------------
-		// PMP visibility check.
-		//
-		// Pass all three levels to PmpResolver::can_view(). It applies the
-		// waterfall rule: field first, then section, then global. Author and
-		// admin always pass. Ghost behavior: if can_view() returns false,
-		// output nothing — no placeholder, no empty wrapper, nothing.
-		// -----------------------------------------------------------------
+		<div class="memdir-section-controls__fields">
+			<?php foreach ( $section_fields as $field ) : ?>
+			<button type="button" class="memdir-section-controls__field-item" data-field="<?php echo esc_attr( $field['key'] ?? '' ); ?>">
+				<?php echo esc_html( $field['label'] ?? '' ); ?>
+			</button>
+			<?php endforeach; ?>
+		</div>
 
-		$visible = PmpResolver::can_view(
-			[
-				'field_pmp'   => (string) $field_pmp,
-				'section_pmp' => $section_pmp,
-				'global_pmp'  => (string) $global_pmp,
-			],
-			$viewer
-		);
+	</div>
 
-		if ( ! $visible ) {
-			continue; // Ghost — this field does not exist for this viewer.
-		}
+	<div class="memdir-field-content">
+		<h2 class="memdir-section-title"><?php echo esc_html( $section_label ); ?></h2>
 
-		// -----------------------------------------------------------------
-		// Render the field.
-		//
-		// FieldRenderer knows nothing about PMP — it only knows how to turn
-		// a field definition + post ID into HTML. PMP was fully resolved
-		// above; by the time we reach here the field is confirmed visible.
-		// -----------------------------------------------------------------
+		<?php foreach ( $section_fields as $field ) : ?>
+			<?php
+			// -----------------------------------------------------------------
+			// Resolve field-level PMP.
+			//
+			// Each content field has its own stored PMP override. ACF field
+			// name: member_directory_field_pmp_{field_key}
+			// Valid values: public, member, private, inherit.
+			// Missing/null → treat as inherit so waterfall resolves naturally.
+			// -----------------------------------------------------------------
 
-		FieldRenderer::render( $field, $post_id );
-		?>
-	<?php endforeach; ?>
+			$field_pmp = get_field( 'member_directory_field_pmp_' . ( $field['key'] ?? '' ), $post_id );
+
+			if ( empty( $field_pmp ) ) {
+				$field_pmp = 'inherit';
+			}
+
+			// -----------------------------------------------------------------
+			// PMP visibility check.
+			//
+			// Waterfall: field → section → global. Author and admin always
+			// pass. Ghost behavior: false → output nothing, no empty wrapper.
+			// -----------------------------------------------------------------
+
+			$visible = PmpResolver::can_view(
+				[
+					'field_pmp'   => (string) $field_pmp,
+					'section_pmp' => $section_pmp,
+					'global_pmp'  => (string) $global_pmp,
+				],
+				$viewer
+			);
+
+			if ( ! $visible ) {
+				continue; // Ghost — this field does not exist for this viewer.
+			}
+
+			FieldRenderer::render( $field, $post_id );
+			?>
+		<?php endforeach; ?>
+
+	</div>
 
 </div><?php
 // No closing PHP tag — intentional. Prevents accidental whitespace output.
