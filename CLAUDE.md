@@ -16,6 +16,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 - `templates/single-member-directory.php` — full edit/view mode branching
 - `templates/parts/section-edit.php` — edit partial (acf_form per section)
 - `templates/parts/section-view.php` — view partial (PMP checks + FieldRenderer)
+- `templates/parts/right-panel.php` — View As toggle + Global Visibility note (author/admin only)
 - `sections/profile.json` — only section definition on disk
 
 ### Not Started / Scaffold Only
@@ -23,7 +24,6 @@ WordPress plugin: section-based member profile and directory system powered by A
 - `templates/archive-member-directory.php` — placeholder `<div>` only
 - `templates/parts/header.php` — not created
 - `templates/parts/sidebar.php` — not created
-- `templates/parts/right-panel.php` — not created (View As + Global PMP UI)
 - `templates/parts/directory-card.php` — not created
 
 ## Architecture Rules — Never Violate
@@ -72,6 +72,7 @@ templates/
   parts/
     section-edit.php          Edit partial. Calls AcfFormHelper::render_edit_form() per section.
     section-view.php          View partial. Resolves section/global PMP, loops fields, calls FieldRenderer.
+    right-panel.php           Author/admin panel. View As toggle + Global Visibility note.
 tools/
   acf-to-config.md            Claude skill: convert ACF JSON export to section config format.
 ```

@@ -24,7 +24,6 @@
  * Planned additions (not yet included):
  *   - Sticky header (templates/parts/header.php)
  *   - Left sidebar   (templates/parts/sidebar.php)
- *   - Right panel    (templates/parts/right-panel.php) — View As + Global PMP
  */
 
 use MemberDirectory\AcfFormHelper;
@@ -69,6 +68,16 @@ $post_id = get_the_ID();
 // ---------------------------------------------------------------------------
 
 $viewer = PmpResolver::resolve_viewer( $post_id );
+
+// ---------------------------------------------------------------------------
+// Capture privileged status from the REAL viewer before any spoof.
+//
+// $viewer may be replaced below by a spoofed context. We capture the genuine
+// author/admin flag here so the right panel (which contains the View As toggle
+// itself) remains visible even while the author is using ?view_as.
+// ---------------------------------------------------------------------------
+
+$is_privileged = $viewer['is_author'] || $viewer['is_admin'];
 
 // ---------------------------------------------------------------------------
 // View As override.
@@ -139,5 +148,22 @@ $sections = SectionRegistry::get_sections();
 	<?php endforeach; ?>
 
 </div>
+
+<?php
+// ---------------------------------------------------------------------------
+// Right panel — author/admin only.
+//
+// Always keyed off $is_privileged (set from the real viewer before any spoof)
+// so the View As toggle stays visible while the author is previewing other
+// viewer types via ?view_as.
+// ---------------------------------------------------------------------------
+
+if ( $is_privileged ) :
+	$right_panel = plugin_dir_path( __FILE__ ) . 'parts/right-panel.php';
+	if ( file_exists( $right_panel ) ) {
+		include $right_panel;
+	}
+endif;
+?>
 
 <?php get_footer();
