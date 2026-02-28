@@ -4,416 +4,152 @@
   "order": 1,
   "can_be_primary": true,
   "pmp_default": "member",
-  "fields": [
+  "field_groups": [
     {
-      "key": "field_md_profile_page_name",
-      "label": "Page Name",
-      "type": "text",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": true
+      "tab": "Page Name",
+      "fields": [
+        {
+          "key": "field_md_profile_page_name",
+          "label": "Page Name",
+          "type": "text",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": true
+        }
+      ]
     },
     {
-      "key": "field_md_profile_photo",
-      "label": "Profile Photo",
-      "type": "image",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
+      "tab": "Header",
+      "fields": [
+        {
+          "key": "field_md_profile_photo",
+          "label": "Profile Photo",
+          "type": "image",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_profile_cover_image",
+          "label": "Cover Image",
+          "type": "image",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_69a0e06d28c1b",
+          "label": "Primary Instrument",
+          "type": "taxonomy",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": "mp2t_work_on",
+          "required": false
+        }
+      ]
     },
     {
-      "key": "field_md_profile_cover_image",
-      "label": "Cover Image",
-      "type": "image",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
+      "tab": "About",
+      "fields": [
+        {
+          "key": "field_md_profile_bio",
+          "label": "Bio",
+          "type": "textarea",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_profile_featured_video",
+          "label": "Featured Video",
+          "type": "url",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        }
+      ]
     },
     {
-      "key": "field_md_profile_bio",
-      "label": "Bio",
-      "type": "textarea",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
-    },
-    {
-      "key": "field_md_profile_featured_video",
-      "label": "Featured Video",
-      "type": "url",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
-    },
-    {
-      "key": "field_md_profile_website",
-      "label": "Website",
-      "type": "url",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
-    },
-    {
-      "key": "field_md_profile_instagram",
-      "label": "Instagram",
-      "type": "url",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
-    },
-    {
-      "key": "field_md_profile_facebook",
-      "label": "Facebook",
-      "type": "url",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
-    },
-    {
-      "key": "field_md_profile_youtube",
-      "label": "YouTube",
-      "type": "url",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
-    },
-    {
-      "key": "field_md_profile_linktree",
-      "label": "Linktree",
-      "type": "url",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
-    },
-    {
-      "key": "field_6994d1c6ddb6e",
-      "label": "Google Map",
-      "type": "google_map",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
-    },
-    {
-      "key": "field_69a0de7913a9f",
-      "label": "Number",
-      "type": "number",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
-    },
-    {
-      "key": "field_69a0de943cc88",
-      "label": "File",
-      "type": "file",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
-    },
-    {
-      "key": "field_69a0deace6765",
-      "label": "Email",
-      "type": "email",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
-    },
-    {
-      "key": "field_69a0debe9fe3e",
-      "label": "URL",
-      "type": "url",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
-    },
-    {
-      "key": "field_69a0decd1944c",
-      "label": "WYSIWYG",
-      "type": "wysiwyg",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
-    },
-    {
-      "key": "field_69a0deea1944d",
-      "label": "Gallery",
-      "type": "gallery",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
-    },
-    {
-      "key": "field_69a0df04326ab",
-      "label": "True False",
-      "type": "true_false",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
-    },
-    {
-      "key": "field_69a0df36326ac",
-      "label": "Check Boxes",
-      "type": "checkbox",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
-    },
-    {
-      "key": "field_69a0df7499301",
-      "label": "Radio Buttons",
-      "type": "radio",
-      "pmp_default": "inherit",
-      "filterable": false,
-      "taxonomy": null,
-      "required": false
+      "tab": "Social Links",
+      "fields": [
+        {
+          "key": "field_md_profile_website",
+          "label": "Website",
+          "type": "url",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_profile_instagram",
+          "label": "Instagram",
+          "type": "url",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_profile_facebook",
+          "label": "Facebook",
+          "type": "url",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_profile_youtube",
+          "label": "YouTube",
+          "type": "url",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_profile_linktree",
+          "label": "Linktree",
+          "type": "url",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        }
+      ]
     }
   ],
   "acf_group": {
-    "qef_simple_location_rules": 0,
     "key": "group_md_02_profile",
-    "title": "Member Directory — Profile",
+    "title": "Member Directory - Profile",
     "fields": [
-      {
-        "key": "field_md_profile_enabled",
-        "label": "Enable Section",
-        "name": "member_directory_profile_enabled",
-        "type": "true_false",
-        "default_value": 1,
-        "ui": 1,
-        "ui_on_text": "Enabled",
-        "ui_off_text": "Disabled"
-      },
-      {
-        "key": "field_md_profile_privacy_mode",
-        "label": "Privacy Mode",
-        "name": "member_directory_profile_privacy_mode",
-        "type": "button_group",
-        "choices": {
-          "inherit": "Inherit",
-          "custom": "Custom"
-        },
-        "default_value": "inherit",
-        "layout": "horizontal"
-      },
-      {
-        "key": "field_md_profile_privacy_level",
-        "label": "Privacy Level",
-        "name": "member_directory_profile_privacy_level",
-        "type": "select",
-        "choices": {
-          "public": "Public",
-          "member": "Member",
-          "private": "Private"
-        },
-        "default_value": "member",
-        "conditional_logic": [
-          [
-            {
-              "field": "field_md_profile_privacy_mode",
-              "operator": "==",
-              "value": "custom"
-            }
-          ]
-        ]
-      },
-      {
-        "key": "field_md_tab_profile_privacy",
-        "label": "Privacy",
-        "name": "",
-        "type": "tab",
-        "placement": "top",
-        "endpoint": 0
-      },
-      {
-        "key": "field_md_tab_profile_page_name",
-        "label": "Page Name",
-        "name": "",
-        "type": "tab",
-        "placement": "top",
-        "endpoint": 0
-      },
-      {
-        "key": "field_md_profile_page_name",
-        "label": "Page Name",
-        "name": "member_directory_profile_page_name",
-        "type": "text",
-        "required": 1,
-        "instructions": "Your public page name. This will be your profile URL."
-      },
-      {
-        "key": "field_md_tab_profile_header",
-        "label": "Header",
-        "name": "",
-        "type": "tab",
-        "placement": "top",
-        "endpoint": 0
-      },
-      {
-        "key": "field_md_profile_photo",
-        "label": "Profile Photo",
-        "name": "member_directory_profile_photo",
-        "type": "image",
-        "return_format": "array",
-        "preview_size": "medium"
-      },
-      {
-        "key": "field_md_profile_cover_image",
-        "label": "Cover Image",
-        "name": "member_directory_profile_cover_image",
-        "type": "image",
-        "return_format": "array",
-        "preview_size": "medium"
-      },
-      {
-        "key": "field_md_tab_profile_about",
-        "label": "About",
-        "name": "",
-        "type": "tab",
-        "placement": "top",
-        "endpoint": 0
-      },
-      {
-        "key": "field_md_profile_bio",
-        "label": "Bio",
-        "name": "member_directory_profile_bio",
-        "type": "textarea",
-        "rows": 8
-      },
-      {
-        "key": "field_md_profile_featured_video",
-        "label": "Featured Video",
-        "name": "member_directory_profile_featured_video",
-        "type": "url",
-        "instructions": "YouTube or Vimeo URL"
-      },
-      {
-        "key": "field_md_tab_profile_social",
-        "label": "Social Links",
-        "name": "",
-        "type": "tab",
-        "placement": "top",
-        "endpoint": 0
-      },
-      {
-        "key": "field_md_profile_website",
-        "label": "Website",
-        "name": "member_directory_profile_website",
-        "type": "url"
-      },
-      {
-        "key": "field_md_profile_instagram",
-        "label": "Instagram",
-        "name": "member_directory_profile_instagram",
-        "type": "url"
-      },
-      {
-        "key": "field_md_profile_facebook",
-        "label": "Facebook",
-        "name": "member_directory_profile_facebook",
-        "type": "url"
-      },
-      {
-        "key": "field_md_profile_youtube",
-        "label": "YouTube",
-        "name": "member_directory_profile_youtube",
-        "type": "url"
-      },
-      {
-        "key": "field_md_profile_linktree",
-        "label": "Linktree",
-        "name": "member_directory_profile_linktree",
-        "type": "url"
-      },
-      {
-        "key": "field_6994d1c6ddb6e",
-        "label": "Google Map",
-        "name": "test",
-        "type": "google_map"
-      },
-      {
-        "key": "field_69a0de7913a9f",
-        "label": "Number",
-        "name": "",
-        "type": "number"
-      },
-      {
-        "key": "field_69a0de943cc88",
-        "label": "File",
-        "name": "",
-        "type": "file",
-        "return_format": "array"
-      },
-      {
-        "key": "field_69a0deace6765",
-        "label": "Email",
-        "name": "",
-        "type": "email"
-      },
-      {
-        "key": "field_69a0debe9fe3e",
-        "label": "URL",
-        "name": "",
-        "type": "url"
-      },
-      {
-        "key": "field_69a0decd1944c",
-        "label": "WYSIWYG",
-        "name": "wysiwyg_",
-        "type": "wysiwyg"
-      },
-      {
-        "key": "field_69a0deea1944d",
-        "label": "Gallery",
-        "name": "",
-        "type": "gallery",
-        "return_format": "array"
-      },
-      {
-        "key": "field_69a0df04326ab",
-        "label": "True False",
-        "name": "true_false",
-        "type": "true_false"
-      },
-      {
-        "key": "field_69a0df36326ac",
-        "label": "Check Boxes",
-        "name": "check_bos",
-        "type": "checkbox"
-      },
-      {
-        "key": "field_69a0df7499301",
-        "label": "Radio Buttons",
-        "name": "",
-        "type": "radio"
-      }
+      {"key": "field_md_profile_enabled","label": "Enable Section","name": "member_directory_profile_enabled","type": "true_false","default_value": 1,"ui": 1,"ui_on_text": "Enabled","ui_off_text": "Disabled"},
+      {"key": "field_md_profile_privacy_mode","label": "Privacy Mode","name": "member_directory_profile_privacy_mode","type": "button_group","choices": {"inherit": "Inherit","custom": "Custom"},"default_value": "inherit","layout": "horizontal"},
+      {"key": "field_md_profile_privacy_level","label": "Privacy Level","name": "member_directory_profile_privacy_level","type": "select","choices": {"public": "Public","member": "Member","private": "Private"},"default_value": "member","conditional_logic": [[{"field": "field_md_profile_privacy_mode","operator": "==","value": "custom"}]]},
+      {"key": "field_md_tab_profile_privacy","label": "Privacy","name": "","type": "tab","placement": "top","endpoint": 0},
+      {"key": "field_md_tab_profile_page_name","label": "Page Name","name": "","type": "tab","placement": "top","endpoint": 0},
+      {"key": "field_md_profile_page_name","label": "Page Name","name": "member_directory_profile_page_name","type": "text","required": 1,"instructions": "Your public page name.","default_value": "","placeholder": ""},
+      {"key": "field_md_tab_profile_header","label": "Header","name": "","type": "tab","placement": "top","endpoint": 0},
+      {"key": "field_md_profile_photo","label": "Profile Photo","name": "member_directory_profile_photo","type": "image","required": 0,"return_format": "array","preview_size": "medium","library": "all"},
+      {"key": "field_md_profile_cover_image","label": "Cover Image","name": "member_directory_profile_cover_image","type": "image","required": 0,"return_format": "array","preview_size": "medium","library": "all"},
+      {"key": "field_69a0e06d28c1b","label": "Primary Instrument","name": "taxonomy_","type": "taxonomy","required": 0,"taxonomy": "mp2t_work_on","field_type": "select","return_format": "id","allow_null": 1,"multiple": 0},
+      {"key": "field_md_tab_profile_about","label": "About","name": "","type": "tab","placement": "top","endpoint": 0},
+      {"key": "field_md_profile_bio","label": "Bio","name": "member_directory_profile_bio","type": "textarea","required": 0,"rows": 8},
+      {"key": "field_md_profile_featured_video","label": "Featured Video","name": "member_directory_profile_featured_video","type": "url","required": 0,"placeholder": "https://youtube.com/watch?v=..."},
+      {"key": "field_md_tab_profile_social","label": "Social Links","name": "","type": "tab","placement": "top","endpoint": 0},
+      {"key": "field_md_profile_website","label": "Website","name": "member_directory_profile_website","type": "url","required": 0,"placeholder": "https://"},
+      {"key": "field_md_profile_instagram","label": "Instagram","name": "member_directory_profile_instagram","type": "url","required": 0,"placeholder": "https://instagram.com/..."},
+      {"key": "field_md_profile_facebook","label": "Facebook","name": "member_directory_profile_facebook","type": "url","required": 0,"placeholder": "https://facebook.com/..."},
+      {"key": "field_md_profile_youtube","label": "YouTube","name": "member_directory_profile_youtube","type": "url","required": 0,"placeholder": "https://youtube.com/..."},
+      {"key": "field_md_profile_linktree","label": "Linktree","name": "member_directory_profile_linktree","type": "url","required": 0,"placeholder": "https://linktr.ee/..."}
     ],
-    "location": [
-      [
-        {
-          "param": "post_type",
-          "operator": "==",
-          "value": "member-directory"
-        }
-      ]
-    ],
+    "location": [[{"param": "post_type","operator": "==","value": "member-directory"}]],
     "menu_order": 2,
     "position": "normal",
     "style": "default",
