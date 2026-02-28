@@ -57,7 +57,7 @@ member-directory.php              Entry point. ACF dependency check. Boots Plugi
 member-directory-architecture.html Primary design reference. Read this when starting work on any new feature.
 includes/
   Plugin.php                  Bootstrap. Requires all classes. Registers CPT + hooks. Calls each class init().
-  SectionRegistry.php         Section data. sync() = JSON→DB. load_from_db() = DB→ACF. get_sections()/get_section().
+  SectionRegistry.php         Section data. sync() = JSON→DB. load_from_db() = DB→ACF. get_sections()/get_section()/get_all_fields()/get_field_groups().
   GlobalFields.php            ACF group: global_pmp + primary_section. ⚠ Has temporary debug code.
   AcfFormHelper.php           maybe_render_form_head(), is_edit_mode(), render_edit_form().
   AdminSync.php               Admin page + nonce-protected handler that calls SectionRegistry::sync().
@@ -66,7 +66,7 @@ includes/
   FieldRenderer.php           render() — field definition + post_id → escaped HTML output.
   DirectoryQuery.php          🔜 Not yet created.
 sections/
-  profile.json                Section config. Keys: key, label, order, can_be_primary, pmp_default, fields[], acf_group{}.
+  profile.json                Section config. Keys: key, label, order, can_be_primary, pmp_default, field_groups[], acf_group{}.
 templates/
   single-member-directory.php Single profile. Calls form_head first, then branches edit/view per section.
   archive-member-directory.php Scaffold only — no real implementation.
@@ -99,11 +99,16 @@ tools/
 {
   "key": "profile",
   "label": "Profile",
-  "order": 20,
+  "order": 1,
   "can_be_primary": true,
   "pmp_default": "member",
-  "fields": [
-    { "key": "display_name", "label": "Display Name", "type": "text", "acf_key": "field_md_profile_display_name" }
+  "field_groups": [
+    {
+      "tab": "Page Name",
+      "fields": [
+        { "key": "field_md_profile_page_name", "label": "Page Name", "type": "text", "pmp_default": "inherit", "filterable": false, "taxonomy": null, "required": true }
+      ]
+    }
   ],
   "acf_group": { /* full ACF field group definition — location rule: post_type == member-directory */ }
 }

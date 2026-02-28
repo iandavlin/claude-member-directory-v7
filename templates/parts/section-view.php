@@ -12,7 +12,7 @@
  * Expected variables (set by the caller before include):
  *
  *   @var array  $section  Section array from SectionRegistry. Keys used:
- *                         key, label, fields[], pmp_default.
+ *                         key, label, field_groups[], pmp_default.
  *   @var int    $post_id  The member-directory post ID being viewed.
  *   @var array  $viewer   Viewer context from PmpResolver::resolve_viewer()
  *                         or PmpResolver::spoof_viewer() for View As mode.
@@ -20,12 +20,14 @@
 
 use MemberDirectory\FieldRenderer;
 use MemberDirectory\PmpResolver;
+use MemberDirectory\SectionRegistry;
 
 defined( 'ABSPATH' ) || exit;
 
-$section_key    = $section['key']    ?? '';
-$section_label  = $section['label']  ?? '';
-$section_fields = $section['fields'] ?? [];
+$section_key    = $section['key']   ?? '';
+$section_label  = $section['label'] ?? '';
+$field_groups   = SectionRegistry::get_field_groups( $section );
+$all_fields     = SectionRegistry::get_all_fields( $section );
 
 // ---------------------------------------------------------------------------
 // Resolve section PMP.
@@ -68,10 +70,10 @@ $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 			<button type="button" class="memdir-section-controls__override">Override</button>
 		</div>
 
-		<div class="memdir-section-controls__fields">
-			<?php foreach ( $section_fields as $field ) : ?>
-			<button type="button" class="memdir-section-controls__field-item" data-field="<?php echo esc_attr( $field['key'] ?? '' ); ?>">
-				<?php echo esc_html( $field['label'] ?? '' ); ?>
+		<div class="memdir-section-controls__tabs">
+			<?php foreach ( $field_groups as $group ) : ?>
+			<button type="button" class="memdir-section-controls__tab-item" data-tab="<?php echo esc_attr( $group['tab'] ?? '' ); ?>">
+				<?php echo esc_html( $group['tab'] ?? '' ); ?>
 			</button>
 			<?php endforeach; ?>
 		</div>
@@ -81,7 +83,7 @@ $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 	<div class="memdir-field-content">
 		<h2 class="memdir-section-title"><?php echo esc_html( $section_label ); ?></h2>
 
-		<?php foreach ( $section_fields as $field ) : ?>
+		<?php foreach ( $all_fields as $field ) : ?>
 			<?php
 			// -----------------------------------------------------------------
 			// Resolve field-level PMP.

@@ -43,7 +43,7 @@ class SectionRegistry {
 		'order',
 		'can_be_primary',
 		'pmp_default',
-		'fields',
+		'field_groups',
 		'acf_group',
 	];
 
@@ -80,6 +80,40 @@ class SectionRegistry {
 	 */
 	public static function get_section( string $key ): ?array {
 		return self::$sections[ $key ] ?? null;
+	}
+
+	/**
+	 * Return the field_groups array from a section.
+	 *
+	 * Each element is a tab group object with keys 'tab' (string label)
+	 * and 'fields' (array of field objects belonging to that tab).
+	 *
+	 * @param array $section  A section array from get_sections() or get_section().
+	 * @return array<array{tab: string, fields: array}>
+	 */
+	public static function get_field_groups( array $section ): array {
+		return $section['field_groups'] ?? [];
+	}
+
+	/**
+	 * Flatten a section's field_groups into a single array of fields.
+	 *
+	 * Useful for any code that needs all fields regardless of tab grouping —
+	 * e.g. PMP resolution loops, field counts, or FieldRenderer iteration.
+	 *
+	 * @param array $section  A section array from get_sections() or get_section().
+	 * @return array  Flat array of field objects.
+	 */
+	public static function get_all_fields( array $section ): array {
+		$fields = [];
+
+		foreach ( self::get_field_groups( $section ) as $group ) {
+			if ( ! empty( $group['fields'] ) && is_array( $group['fields'] ) ) {
+				array_push( $fields, ...$group['fields'] );
+			}
+		}
+
+		return $fields;
 	}
 
 	/**

@@ -15,6 +15,8 @@
  *                                All Sections view (default on first load).
  */
 
+use MemberDirectory\SectionRegistry;
+
 defined( 'ABSPATH' ) || exit;
 
 // ---------------------------------------------------------------------------

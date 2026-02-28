@@ -12,18 +12,19 @@
  * Expected variables (set by the caller before include):
  *
  *   @var array  $section  Section array from SectionRegistry. Keys used:
- *                         key, label, fields[], acf_group.
+ *                         key, label, field_groups[], acf_group.
  *   @var int    $post_id  The member-directory post ID being edited.
  *   @var array  $viewer   Viewer context from PmpResolver::resolve_viewer().
  */
 
 use MemberDirectory\AcfFormHelper;
+use MemberDirectory\SectionRegistry;
 
 defined( 'ABSPATH' ) || exit;
 
-$section_key    = $section['key']    ?? '';
-$section_label  = $section['label']  ?? '';
-$section_fields = $section['fields'] ?? [];
+$section_key    = $section['key']   ?? '';
+$section_label  = $section['label'] ?? '';
+$field_groups   = SectionRegistry::get_field_groups( $section );
 
 // ---------------------------------------------------------------------------
 // Resolve section PMP for initial active-button state.
@@ -56,10 +57,10 @@ $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 			<button type="button" class="memdir-section-controls__override">Override</button>
 		</div>
 
-		<div class="memdir-section-controls__fields">
-			<?php foreach ( $section_fields as $field ) : ?>
-			<button type="button" class="memdir-section-controls__field-item" data-field="<?php echo esc_attr( $field['key'] ?? '' ); ?>">
-				<?php echo esc_html( $field['label'] ?? '' ); ?>
+		<div class="memdir-section-controls__tabs">
+			<?php foreach ( $field_groups as $group ) : ?>
+			<button type="button" class="memdir-section-controls__tab-item" data-tab="<?php echo esc_attr( $group['tab'] ?? '' ); ?>">
+				<?php echo esc_html( $group['tab'] ?? '' ); ?>
 			</button>
 			<?php endforeach; ?>
 		</div>
