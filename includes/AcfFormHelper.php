@@ -51,14 +51,12 @@ class AcfFormHelper {
 	 * Initialise the helper.
 	 * Called once from Plugin::init() during plugins_loaded.
 	 *
-	 * Currently a no-op placeholder — no hooks are needed at bootstrap
-	 * time because all work happens at template-render time via the
-	 * static methods below. Kept for consistency with the other classes
-	 * (GlobalFields, AdminSync, etc.) and as a hook point for future
-	 * enqueue or filter logic.
+	 * Registers the acf/save_post hook that performs a state-preserving
+	 * redirect after ACF processes a member-directory edit form submission.
+	 * Priority 20 ensures it runs after ACF has written all field values.
 	 */
 	public static function init(): void {
-		add_action( 'wp_ajax_md_save_section', [ self::class, 'handle_ajax_save' ] );
+		add_action( 'acf/save_post', [ self::class, 'redirect_after_save' ], 20 );
 	}
 
 	// -----------------------------------------------------------------------
@@ -167,77 +165,63 @@ class AcfFormHelper {
 			return;
 		}
 
+		// Hidden inputs carry section/tab identity through the POST so that
+		// redirect_after_save() can restore the user's position after save.
+		// md_active_tab starts empty — JS populates it just before submit.
+		$hidden  = '<input type="hidden" name="md_active_section" value="' . esc_attr( $section['key'] ?? '' ) . '">';
+		$hidden .= '<input type="hidden" name="md_active_tab" value="">';
+
 		acf_form( [
 			'post_id'            => $post_id,
 			'field_groups'       => [ $field_group_key ],
 			'fields'             => $field_keys,
-			'return'             => get_permalink( $post_id ),
+			'return'             => false,
 			'submit_value'       => 'Save',
 			'updated_message'    => 'Profile updated.',
-			'html_before_fields' => '',
+			'html_before_fields' => $hidden,
 			'html_after_fields'  => '',
 		] );
 	}
 
 	// -----------------------------------------------------------------------
-	// AJAX save
+	// Post-save redirect
 	// -----------------------------------------------------------------------
 
 	/**
-	 * AJAX handler: save ACF fields for one section without a full page reload.
+	 * Redirect with state params after ACF saves a member-directory section.
 	 *
-	 * Expects $_POST:
-	 *   nonce   — wp_create_nonce( 'md_save_nonce' )
-	 *   post_id — int, the member-directory post being edited
-	 *   acf     — array, ACF field values keyed by field key (field_md_*)
+	 * Hooked to acf/save_post at priority 20 — after ACF has written all
+	 * field values to the database. Fires only when the POST includes
+	 * md_active_section, which our forms always inject via a hidden input.
 	 *
-	 * Responds with wp_send_json_success / wp_send_json_error.
+	 * The redirect URL preserves active_section and active_tab as query
+	 * params so JS can restore the user's position on the reloaded page.
 	 *
-	 * Hooked via: add_action( 'wp_ajax_md_save_section', ... )
-	 * Only logged-in users can trigger wp_ajax_* — anonymous requests use
-	 * wp_ajax_nopriv_* which we deliberately do not register.
+	 * @param int $post_id The post that was just saved by ACF.
 	 */
-	public static function handle_ajax_save(): void {
-		// 1. Verify nonce.
-		if ( ! check_ajax_referer( 'md_save_nonce', 'nonce', false ) ) {
-			wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+	public static function redirect_after_save( int $post_id ): void {
+		// Only handle our member-directory edit form submissions.
+		if ( ! isset( $_POST['md_active_section'] ) ) {
+			return;
 		}
 
-		// 2. Validate post ID.
-		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
-
-		if ( ! $post_id ) {
-			wp_send_json_error( [ 'message' => 'Invalid post ID.' ], 400 );
-		}
-
-		// 3. Verify the post exists and is the correct type.
+		// Guard: correct post type only.
 		if ( get_post_type( $post_id ) !== 'member-directory' ) {
-			wp_send_json_error( [ 'message' => 'Invalid post.' ], 400 );
+			return;
 		}
 
-		// 4. Permission check — only the post author or an admin may save.
-		if ( ! current_user_can( 'edit_post', $post_id ) ) {
-			wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
-		}
+		$active_section = sanitize_text_field( wp_unslash( $_POST['md_active_section'] ?? '' ) );
+		$active_tab     = sanitize_text_field( wp_unslash( $_POST['md_active_tab']     ?? '' ) );
 
-		// 5. Save ACF field values.
-		//    wp_unslash removes the magic-quotes WordPress adds to all $_POST data.
-		//    update_field() handles type-specific sanitisation internally.
-		$acf_fields = isset( $_POST['acf'] ) && is_array( $_POST['acf'] )
-			? wp_unslash( $_POST['acf'] ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-			: [];
+		$redirect_url = add_query_arg(
+			[
+				'active_section' => $active_section,
+				'active_tab'     => $active_tab,
+			],
+			get_permalink( $post_id )
+		);
 
-		foreach ( $acf_fields as $field_key => $value ) {
-			$field_key = sanitize_text_field( $field_key );
-
-			// Guard: only process valid ACF field keys (must start with 'field_').
-			if ( strpos( $field_key, 'field_' ) !== 0 ) {
-				continue;
-			}
-
-			update_field( $field_key, $value, $post_id );
-		}
-
-		wp_send_json_success( [ 'message' => 'Saved.' ] );
+		wp_safe_redirect( $redirect_url );
+		exit;
 	}
 }
