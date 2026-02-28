@@ -101,13 +101,11 @@ if ( empty( $title ) ) {
 	<div class="memdir-header__badges">
 
 		<?php if ( $is_edit ) : ?>
-		<span class="memdir-header__badge memdir-header__badge--edit">Edit mode</span>
+		<div class="memdir-header__badge memdir-header__badge--edit">Edit mode</div>
 		<?php endif; ?>
 
 		<?php if ( ! empty( $active_section_label ) ) : ?>
-		<span class="memdir-header__badge memdir-header__badge--viewing">
-			Viewing: <?php echo esc_html( $active_section_label ); ?>
-		</span>
+		<div class="memdir-header__badge memdir-header__badge--viewing">Viewing: <?php echo esc_html( $active_section_label ); ?></div>
 		<?php endif; ?>
 
 	</div>
