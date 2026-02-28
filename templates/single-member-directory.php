@@ -22,7 +22,6 @@
  * depending on the mode.
  *
  * Planned additions (not yet included):
- *   - Sticky header (templates/parts/header.php)
  *   - Left sidebar   (templates/parts/sidebar.php)
  */
 
@@ -78,6 +77,20 @@ $viewer = PmpResolver::resolve_viewer( $post_id );
 // ---------------------------------------------------------------------------
 
 $is_privileged = $viewer['is_author'] || $viewer['is_admin'];
+
+// ---------------------------------------------------------------------------
+// Render the sticky profile header.
+//
+// Must be included before the View As spoof so $viewer is the real viewer.
+// The partial accesses $is_privileged from scope. Default section label is
+// "All sections" for the initial page load.
+// ---------------------------------------------------------------------------
+
+$active_section_label = 'All sections';
+$profile_header       = plugin_dir_path( __FILE__ ) . 'parts/profile-header.php';
+if ( file_exists( $profile_header ) ) {
+	include $profile_header;
+}
 
 // ---------------------------------------------------------------------------
 // View As override.
