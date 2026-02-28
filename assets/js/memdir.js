@@ -6,7 +6,7 @@
  * Sections:
  *   1. Tab navigation  — show/hide ACF fields by tab group within a section
  *   2. Pill navigation — section switching (stub)
- *   3. Section save    — standard form submit; populates md_active_tab before POST
+ *   3. Section save    — AJAX save for all fields in a section without reload
  */
 
 ( function () {
@@ -110,50 +110,158 @@
 	}
 
 	// -----------------------------------------------------------------------
-	// 3. Section save (standard form submit)
+	// 3. Section save (AJAX)
 	//
-	// The .memdir-section-save button submits the section's ACF form via
-	// standard browser POST — no fetch/AJAX. Before submitting, it writes
-	// the current active tab label into the form's hidden md_active_tab
-	// input so PHP can include it in the post-save redirect URL.
+	// Each .memdir-section--edit wraps:
+	//   .memdir-unsaved-banner  — shown when any field in the section changes.
+	//   .memdir-section-save    — button that collects the section's ACF form
+	//                             fields and POSTs them via fetch without a
+	//                             full page reload.
 	//
 	// Flow:
-	//   Save button click
-	//     → read active tab label from the .is-active tab button
-	//     → set form's input[name="md_active_tab"] to that label
-	//     → form.submit()
+	//   Any input/change inside .memdir-field-content
+	//     → section.classList.add('has-unsaved')
+	//     → banner.style.display = ''
 	//
-	//   PHP (AcfFormHelper::redirect_after_save) then redirects to:
-	//     permalink?active_section={key}&active_tab={label}
-	//   which initTabNav() and restoreStateFromUrl() use to restore state.
+	//   Save button click
+	//     → collect FormData from the section's .acf-form
+	//     → POST action=md_save_section, nonce, post_id, acf[…] fields
+	//     → success: redirect to pathname?active_section=…&active_tab=…
+	//     → error:   show error state on button for 3 s
 	// -----------------------------------------------------------------------
 
 	function initSectionSave() {
 		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
-			var saveBtn = section.querySelector( '.memdir-section-save' );
+			var fieldContent = section.querySelector( '.memdir-field-content' );
+			var banner       = section.querySelector( '.memdir-unsaved-banner' );
+			var saveBtn      = section.querySelector( '.memdir-section-save' );
 
-			if ( ! saveBtn ) {
+			if ( ! fieldContent || ! saveBtn ) {
 				return;
 			}
 
+			// Show unsaved banner on any field change.
+			fieldContent.addEventListener( 'input',  function () { markUnsaved( section, banner ); } );
+			fieldContent.addEventListener( 'change', function () { markUnsaved( section, banner ); } );
+
+			// Wire save button.
 			saveBtn.addEventListener( 'click', function () {
-				var form = section.querySelector( 'form' );
-				if ( ! form ) {
+				saveSection( section, saveBtn, banner );
+			} );
+		} );
+	}
+
+	/**
+	 * Mark a section as having unsaved changes.
+	 *
+	 * @param {Element}      section The .memdir-section--edit wrapper.
+	 * @param {Element|null} banner  The .memdir-unsaved-banner element, or null.
+	 */
+	function markUnsaved( section, banner ) {
+		section.classList.add( 'has-unsaved' );
+		if ( banner ) {
+			banner.style.display = '';
+		}
+	}
+
+	/**
+	 * Collect all field values from the section and POST via fetch.
+	 *
+	 * Iterates through all .acf-field[data-key] elements regardless of
+	 * visibility (visible tabs vs hidden tabs), and collects input values
+	 * from input, textarea, select elements within each field.
+	 *
+	 * @param {Element}      section The .memdir-section--edit wrapper.
+	 * @param {Element}      saveBtn The .memdir-section-save button.
+	 * @param {Element|null} banner  The .memdir-unsaved-banner element, or null.
+	 */
+	function saveSection( section, saveBtn, banner ) {
+		var fieldContent = section.querySelector( '.memdir-field-content' );
+		var postId = section.dataset.postId || '';
+
+		if ( ! fieldContent || ! postId ) {
+			return;
+		}
+
+		// Collect all .acf-field[data-key] elements, including those hidden by tab switcher.
+		var acfFieldDivs = fieldContent.querySelectorAll( '.acf-field[data-key]' );
+		var formData = new FormData();
+
+		formData.set( 'action',  'md_save_section' );
+		formData.set( 'nonce',   ( window.mdAjax && window.mdAjax.nonce )   ? window.mdAjax.nonce   : '' );
+		formData.set( 'post_id', postId );
+
+		// Iterate each field and collect its input values.
+		acfFieldDivs.forEach( function ( fieldDiv ) {
+			var fieldKey = fieldDiv.dataset.key || '';
+			if ( ! fieldKey ) {
+				return;
+			}
+
+			// Find all form controls within this field.
+			var inputs = fieldDiv.querySelectorAll( 'input, textarea, select' );
+			inputs.forEach( function ( input ) {
+				// Skip unchecked checkboxes and radios — they shouldn't be submitted.
+				if ( ( input.type === 'checkbox' || input.type === 'radio' ) && ! input.checked ) {
 					return;
 				}
 
-				// Populate the hidden tab input before submitting so PHP knows
-				// which tab to restore on the redirected page load.
-				var activeTabBtn   = section.querySelector( '.memdir-section-controls__tab-item.is-active' );
-				var activeTabLabel = activeTabBtn ? activeTabBtn.textContent.trim() : '';
-				var tabInput       = form.querySelector( 'input[name="md_active_tab"]' );
-				if ( tabInput ) {
-					tabInput.value = activeTabLabel;
-				}
-
-				form.submit();
+				// Append using ACF's name convention acf[field_key].
+				formData.append( 'acf[' + fieldKey + ']', input.value );
 			} );
 		} );
+
+		var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
+			? window.mdAjax.ajaxurl
+			: '/wp-admin/admin-ajax.php';
+
+		// Saving state.
+		saveBtn.classList.add( 'memdir-section-save--saving' );
+		saveBtn.disabled = true;
+
+		fetch( ajaxUrl, {
+			method:      'POST',
+			credentials: 'same-origin',
+			body:        formData,
+		} )
+			.then( function ( response ) {
+				return response.json();
+			} )
+			.then( function ( data ) {
+				saveBtn.classList.remove( 'memdir-section-save--saving' );
+				saveBtn.disabled = false;
+
+				if ( data.success ) {
+					// Capture active tab label before redirecting so the
+					// reloaded page can restore it via URL params.
+					var sectionKey     = section.dataset.section || '';
+					var activeTabBtn   = section.querySelector( '.memdir-section-controls__tab-item.is-active' );
+					var activeTabLabel = activeTabBtn ? activeTabBtn.textContent.trim() : '';
+
+					var reloadParams = new URLSearchParams();
+					reloadParams.set( 'active_section', sectionKey );
+					if ( activeTabLabel ) {
+						reloadParams.set( 'active_tab', activeTabLabel );
+					}
+
+					window.location.href = window.location.pathname + '?' + reloadParams.toString();
+				} else {
+					// Error feedback (3 s).
+					saveBtn.classList.add( 'memdir-section-save--error' );
+					setTimeout( function () {
+						saveBtn.classList.remove( 'memdir-section-save--error' );
+					}, 3000 );
+				}
+			} )
+			.catch( function () {
+				// Network / parse error.
+				saveBtn.classList.remove( 'memdir-section-save--saving' );
+				saveBtn.disabled = false;
+				saveBtn.classList.add( 'memdir-section-save--error' );
+				setTimeout( function () {
+					saveBtn.classList.remove( 'memdir-section-save--error' );
+				}, 3000 );
+			} );
 	}
 
 	// -----------------------------------------------------------------------
