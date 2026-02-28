@@ -18,12 +18,13 @@
  */
 
 use MemberDirectory\AcfFormHelper;
+use MemberDirectory\SectionRegistry;
 
 defined( 'ABSPATH' ) || exit;
 
-$section_key    = $section['key']          ?? '';
-$section_label  = $section['label']        ?? '';
-$field_groups   = $section['field_groups'] ?? [];
+$section_key    = $section['key']   ?? '';
+$section_label  = $section['label'] ?? '';
+$field_groups   = SectionRegistry::get_field_groups( $section );
 
 // ---------------------------------------------------------------------------
 // Resolve section PMP for initial active-button state.
