@@ -17,12 +17,12 @@ WordPress plugin: section-based member profile and directory system powered by A
 - `templates/parts/section-edit.php` — edit partial (acf_form per section)
 - `templates/parts/section-view.php` — view partial (PMP checks + FieldRenderer)
 - `templates/parts/right-panel.php` — View As toggle + Global Visibility note (author/admin only)
+- `templates/parts/profile-header.php` — sticky profile header; profile/business variant; eyebrow, title, badges
 - `sections/profile.json` — only section definition on disk
 
 ### Not Started / Scaffold Only
 - `includes/DirectoryQuery.php` — 🔜 not created yet
 - `templates/archive-member-directory.php` — placeholder `<div>` only
-- `templates/parts/header.php` — not created
 - `templates/parts/sidebar.php` — not created
 - `templates/parts/directory-card.php` — not created
 
@@ -70,6 +70,7 @@ templates/
   single-member-directory.php Single profile. Calls form_head first, then branches edit/view per section.
   archive-member-directory.php Scaffold only — no real implementation.
   parts/
+    profile-header.php        Sticky header. Profile/business variant, eyebrow, title, subline placeholder, badges.
     section-edit.php          Edit partial. Calls AcfFormHelper::render_edit_form() per section.
     section-view.php          View partial. Resolves section/global PMP, loops fields, calls FieldRenderer.
     right-panel.php           Author/admin panel. View As toggle + Global Visibility note.
