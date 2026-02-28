@@ -6,6 +6,7 @@
  * Sections:
  *   1. Tab navigation  — show/hide ACF fields by tab group within a section
  *   2. Pill navigation — section switching (stub)
+ *   3. Section save    — AJAX save for all fields in a section without reload
  */
 
 ( function () {
@@ -95,12 +96,139 @@
 	}
 
 	// -----------------------------------------------------------------------
+	// 3. Section save (AJAX)
+	//
+	// Each .memdir-section--edit wraps:
+	//   .memdir-unsaved-banner  — shown when any field in the section changes.
+	//   .memdir-section-save    — button that collects the section's ACF form
+	//                             fields and POSTs them via fetch without a
+	//                             full page reload.
+	//
+	// Flow:
+	//   Any input/change inside .memdir-field-content
+	//     → section.classList.add('has-unsaved')
+	//     → banner.style.display = ''
+	//
+	//   Save button click
+	//     → collect FormData from the section's .acf-form
+	//     → POST action=md_save_section, nonce, post_id, acf[…] fields
+	//     → success: clear has-unsaved, hide banner, brief 'Saved' state
+	//     → error:   show error state on button for 3 s
+	// -----------------------------------------------------------------------
+
+	function initSectionSave() {
+		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
+			var fieldContent = section.querySelector( '.memdir-field-content' );
+			var banner       = section.querySelector( '.memdir-unsaved-banner' );
+			var saveBtn      = section.querySelector( '.memdir-section-save' );
+
+			if ( ! fieldContent || ! saveBtn ) {
+				return;
+			}
+
+			// Show unsaved banner on any field change.
+			fieldContent.addEventListener( 'input',  function () { markUnsaved( section, banner ); } );
+			fieldContent.addEventListener( 'change', function () { markUnsaved( section, banner ); } );
+
+			// Wire save button.
+			saveBtn.addEventListener( 'click', function () {
+				saveSection( section, saveBtn, banner );
+			} );
+		} );
+	}
+
+	/**
+	 * Mark a section as having unsaved changes.
+	 *
+	 * @param {Element}      section The .memdir-section--edit wrapper.
+	 * @param {Element|null} banner  The .memdir-unsaved-banner element, or null.
+	 */
+	function markUnsaved( section, banner ) {
+		section.classList.add( 'has-unsaved' );
+		if ( banner ) {
+			banner.style.display = '';
+		}
+	}
+
+	/**
+	 * Collect field values from the section's ACF form and POST via fetch.
+	 *
+	 * @param {Element}      section The .memdir-section--edit wrapper.
+	 * @param {Element}      saveBtn The .memdir-section-save button.
+	 * @param {Element|null} banner  The .memdir-unsaved-banner element, or null.
+	 */
+	function saveSection( section, saveBtn, banner ) {
+		var form   = section.querySelector( '.memdir-field-content .acf-form' );
+		var postId = section.dataset.postId || '';
+
+		if ( ! form || ! postId ) {
+			return;
+		}
+
+		// Build form payload: all ACF inputs + our action/nonce/post_id.
+		var formData = new FormData( form );
+		formData.set( 'action',  'md_save_section' );
+		formData.set( 'nonce',   ( window.mdAjax && window.mdAjax.nonce )   ? window.mdAjax.nonce   : '' );
+		formData.set( 'post_id', postId );
+
+		var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
+			? window.mdAjax.ajaxurl
+			: '/wp-admin/admin-ajax.php';
+
+		// Saving state.
+		saveBtn.classList.add( 'memdir-section-save--saving' );
+		saveBtn.disabled = true;
+
+		fetch( ajaxUrl, {
+			method:      'POST',
+			credentials: 'same-origin',
+			body:        formData,
+		} )
+			.then( function ( response ) {
+				return response.json();
+			} )
+			.then( function ( data ) {
+				saveBtn.classList.remove( 'memdir-section-save--saving' );
+				saveBtn.disabled = false;
+
+				if ( data.success ) {
+					// Clear unsaved state.
+					section.classList.remove( 'has-unsaved' );
+					if ( banner ) {
+						banner.style.display = 'none';
+					}
+					// Brief 'Saved' feedback (2 s).
+					saveBtn.classList.add( 'memdir-section-save--saved' );
+					setTimeout( function () {
+						saveBtn.classList.remove( 'memdir-section-save--saved' );
+					}, 2000 );
+				} else {
+					// Error feedback (3 s).
+					saveBtn.classList.add( 'memdir-section-save--error' );
+					setTimeout( function () {
+						saveBtn.classList.remove( 'memdir-section-save--error' );
+					}, 3000 );
+				}
+			} )
+			.catch( function () {
+				// Network / parse error.
+				saveBtn.classList.remove( 'memdir-section-save--saving' );
+				saveBtn.disabled = false;
+				saveBtn.classList.add( 'memdir-section-save--error' );
+				setTimeout( function () {
+					saveBtn.classList.remove( 'memdir-section-save--error' );
+				}, 3000 );
+			} );
+	}
+
+	// -----------------------------------------------------------------------
 	// Boot
 	// -----------------------------------------------------------------------
 
 	document.addEventListener( 'DOMContentLoaded', function () {
 		initTabNav();
 		initPillNav();
+		initSectionSave();
 	} );
 
 }() );

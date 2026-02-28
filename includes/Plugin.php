@@ -167,5 +167,15 @@ class Plugin {
 			'0.1.0',
 			true      // Load in footer.
 		);
+
+		// Pass AJAX URL and nonce to JS so the save handler can POST securely.
+		wp_localize_script(
+			'member-directory',
+			'mdAjax',
+			[
+				'ajaxurl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'md_save_nonce' ),
+			]
+		);
 	}
 }

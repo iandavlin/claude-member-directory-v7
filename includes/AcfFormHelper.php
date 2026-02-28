@@ -58,7 +58,7 @@ class AcfFormHelper {
 	 * enqueue or filter logic.
 	 */
 	public static function init(): void {
-		// Reserved for future hooks (e.g. enqueue ACF form assets).
+		add_action( 'wp_ajax_md_save_section', [ self::class, 'handle_ajax_save' ] );
 	}
 
 	// -----------------------------------------------------------------------
@@ -177,5 +177,67 @@ class AcfFormHelper {
 			'html_before_fields' => '',
 			'html_after_fields'  => '',
 		] );
+	}
+
+	// -----------------------------------------------------------------------
+	// AJAX save
+	// -----------------------------------------------------------------------
+
+	/**
+	 * AJAX handler: save ACF fields for one section without a full page reload.
+	 *
+	 * Expects $_POST:
+	 *   nonce   — wp_create_nonce( 'md_save_nonce' )
+	 *   post_id — int, the member-directory post being edited
+	 *   acf     — array, ACF field values keyed by field key (field_md_*)
+	 *
+	 * Responds with wp_send_json_success / wp_send_json_error.
+	 *
+	 * Hooked via: add_action( 'wp_ajax_md_save_section', ... )
+	 * Only logged-in users can trigger wp_ajax_* — anonymous requests use
+	 * wp_ajax_nopriv_* which we deliberately do not register.
+	 */
+	public static function handle_ajax_save(): void {
+		// 1. Verify nonce.
+		if ( ! check_ajax_referer( 'md_save_nonce', 'nonce', false ) ) {
+			wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+		}
+
+		// 2. Validate post ID.
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+
+		if ( ! $post_id ) {
+			wp_send_json_error( [ 'message' => 'Invalid post ID.' ], 400 );
+		}
+
+		// 3. Verify the post exists and is the correct type.
+		if ( get_post_type( $post_id ) !== 'member-directory' ) {
+			wp_send_json_error( [ 'message' => 'Invalid post.' ], 400 );
+		}
+
+		// 4. Permission check — only the post author or an admin may save.
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+		}
+
+		// 5. Save ACF field values.
+		//    wp_unslash removes the magic-quotes WordPress adds to all $_POST data.
+		//    update_field() handles type-specific sanitisation internally.
+		$acf_fields = isset( $_POST['acf'] ) && is_array( $_POST['acf'] )
+			? wp_unslash( $_POST['acf'] ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+			: [];
+
+		foreach ( $acf_fields as $field_key => $value ) {
+			$field_key = sanitize_text_field( $field_key );
+
+			// Guard: only process valid ACF field keys (must start with 'field_').
+			if ( strpos( $field_key, 'field_' ) !== 0 ) {
+				continue;
+			}
+
+			update_field( $field_key, $value, $post_id );
+		}
+
+		wp_send_json_success( [ 'message' => 'Saved.' ] );
 	}
 }

@@ -44,7 +44,7 @@ $global_pmp    = get_field( 'member_directory_global_pmp', $post_id ) ?: 'member
 $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 
 ?>
-<div class="memdir-section memdir-section--edit" data-section="<?php echo esc_attr( $section_key ); ?>">
+<div class="memdir-section memdir-section--edit" data-section="<?php echo esc_attr( $section_key ); ?>" data-post-id="<?php echo esc_attr( (string) $post_id ); ?>">
 
 	<div class="memdir-section-controls">
 
@@ -55,6 +55,10 @@ $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--member<?php echo $effective_pmp === 'member'  ? ' memdir-section-controls__pmp-btn--active' : ''; ?>" data-pmp="member">👥</button>
 			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--private<?php echo $effective_pmp === 'private' ? ' memdir-section-controls__pmp-btn--active' : ''; ?>" data-pmp="private">🔒</button>
 			<button type="button" class="memdir-section-controls__override">Override</button>
+		</div>
+
+		<div class="memdir-unsaved-banner" style="display:none">
+			You have unsaved changes in this section.
 		</div>
 
 		<div class="memdir-section-controls__tabs">
@@ -69,6 +73,10 @@ $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 			</button>
 			<?php endforeach; ?>
 		</div>
+
+		<button type="button" class="memdir-section-save" data-section="<?php echo esc_attr( $section_key ); ?>">
+			Save <?php echo esc_html( $section_label ); ?>
+		</button>
 
 	</div>
 
