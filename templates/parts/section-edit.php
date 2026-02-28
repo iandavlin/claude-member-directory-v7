@@ -59,7 +59,12 @@ $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 
 		<div class="memdir-section-controls__tabs">
 			<?php foreach ( $field_groups as $group ) : ?>
-			<button type="button" class="memdir-section-controls__tab-item" data-tab="<?php echo esc_attr( $group['tab'] ?? '' ); ?>">
+			<button
+				type="button"
+				class="memdir-section-controls__tab-item"
+				data-tab="<?php echo esc_attr( $group['tab'] ?? '' ); ?>"
+				data-field-keys="<?php echo esc_attr( json_encode( array_column( $group['fields'] ?? [], 'key' ) ) ); ?>"
+			>
 				<?php echo esc_html( $group['tab'] ?? '' ); ?>
 			</button>
 			<?php endforeach; ?>
