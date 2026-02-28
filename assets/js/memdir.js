@@ -12,6 +12,10 @@
 ( function () {
 	'use strict';
 
+	// Module-level flag: set to true when a successful save triggers a page
+	// redirect, so the beforeunload handler doesn't prompt incorrectly.
+	var isSaving = false;
+
 	// -----------------------------------------------------------------------
 	// 1. Tab navigation
 	//
@@ -218,6 +222,8 @@
 						reloadParams.set( 'active_tab', activeTabLabel );
 					}
 
+					// Set flag so beforeunload doesn't prompt on intentional redirect.
+					isSaving = true;
 					window.location.href = window.location.pathname + '?' + reloadParams.toString();
 				} else {
 					// Error feedback (3 s).
@@ -273,6 +279,17 @@
 		initPillNav();
 		initSectionSave();
 		restoreStateFromUrl();
+
+		// Suppress unsaved-changes warning when intentionally redirecting
+		// after a successful save. The isSaving flag is set true just before
+		// window.location.href changes, so beforeunload won't prompt.
+		window.addEventListener( 'beforeunload', function ( event ) {
+			if ( isSaving ) {
+				return;
+			}
+			// Let the browser's default unsaved-changes handling proceed.
+			// (ACF or the form may set a returnValue here.)
+		} );
 	} );
 
 }() );
