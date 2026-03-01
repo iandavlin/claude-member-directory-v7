@@ -56,18 +56,20 @@ if ( isset( $_GET['view_as'] ) && $is_privileged ) {
 // Rendering mode — false when ?view_as is active (spoofed viewer fails check).
 $is_edit = AcfFormHelper::is_edit_mode( $post_id, $viewer );
 
-// Sections + initial navigation state. JS updates active_section on pill
-// clicks; PHP sets the default for the initial page load.
-$sections             = SectionRegistry::get_sections();
-$active_section       = 'all';
-$active_section_label = 'All sections';
+$sections = SectionRegistry::get_sections();
 
 ?>
 <div class="memdir-profile">
 	<div class="memdir-profile__main">
 
 		<div class="memdir-sticky">
-			<?php include plugin_dir_path( __FILE__ ) . 'parts/profile-header.php'; ?>
+			<?php
+			$primary_section = get_field( 'member_directory_primary_section', $post_id ) ?: 'profile';
+			$header_partial  = ( $primary_section === 'business' )
+				? 'parts/header-business.php'
+				: 'parts/header-profile.php';
+			include plugin_dir_path( __FILE__ ) . $header_partial;
+			?>
 			<?php include plugin_dir_path( __FILE__ ) . 'parts/pill-nav.php'; ?>
 		</div>
 
