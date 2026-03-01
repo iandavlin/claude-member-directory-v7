@@ -5,7 +5,7 @@
  *
  * Sections:
  *   1. Tab navigation  — show/hide ACF fields by tab group within a section
- *   2. Pill navigation — section switching (stub)
+ *   2. Pill navigation — single-section / all-sections view switching
  *   3. Section save    — AJAX save for all fields in a section without reload
  */
 
@@ -95,17 +95,58 @@
 	}
 
 	// -----------------------------------------------------------------------
-	// 2. Pill navigation (stub)
+	// 2. Pill navigation
 	//
-	// Full implementation: AJAX-save enabled state, show/hide sections in DOM,
-	// update Viewing badge in header. For now: log to console.
+	// Clicking a .memdir-pill (but NOT its checkbox child) activates
+	// single-section view:
+	//   - The matching .memdir-section[data-section='{key}'] is shown.
+	//   - All other .memdir-section elements are hidden.
+	//   - .memdir-pill--active moves to the clicked pill.
+	//
+	// Clicking the All Sections pill (data-section="all") restores all
+	// sections and marks that pill active.
+	//
+	// Checkbox clicks (.memdir-pill__checkbox) are intentionally ignored here
+	// so the checkbox can handle enable/disable toggling independently.
 	// -----------------------------------------------------------------------
 
 	function initPillNav() {
 		document.querySelectorAll( '.memdir-pill' ).forEach( function ( pill ) {
-			pill.addEventListener( 'click', function () {
-				console.log( 'pill clicked' );
+			pill.addEventListener( 'click', function ( e ) {
+				// Checkbox clicks: let the checkbox handle its own change event;
+				// don't switch sections.
+				if ( e.target.tagName === 'INPUT' && e.target.type === 'checkbox' ) {
+					return;
+				}
+
+				activatePill( pill.dataset.section || 'all' );
 			} );
+		} );
+	}
+
+	/**
+	 * Activate a pill and update section visibility in the DOM.
+	 *
+	 * Called both by pill click handlers and by restoreStateFromUrl() so the
+	 * logic lives in one place.
+	 *
+	 * @param {string} sectionKey  data-section value of the pill to activate,
+	 *                             or 'all' to show every section.
+	 */
+	function activatePill( sectionKey ) {
+		// Move the active class to the matching pill; clear it from all others.
+		document.querySelectorAll( '.memdir-pill' ).forEach( function ( p ) {
+			p.classList.toggle( 'memdir-pill--active', p.dataset.section === sectionKey );
+		} );
+
+		// Show the matching section; hide everything else.
+		document.querySelectorAll( '.memdir-section' ).forEach( function ( section ) {
+			if ( sectionKey === 'all' ) {
+				section.style.display = '';
+			} else {
+				section.style.display =
+					( section.dataset.section === sectionKey ) ? '' : 'none';
+			}
 		} );
 	}
 
@@ -315,10 +356,8 @@
 			return;
 		}
 
-		// Activate the pill that matches the restored section.
-		document.querySelectorAll( '.memdir-pill[data-section]' ).forEach( function ( pill ) {
-			pill.classList.toggle( 'is-active', pill.dataset.section === activeSection );
-		} );
+		// Reuse activatePill so pill classes and section visibility both update.
+		activatePill( activeSection );
 	}
 
 	// -----------------------------------------------------------------------
