@@ -81,6 +81,7 @@ $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 
 	<div class="memdir-field-content">
 		<h2 class="memdir-section-title"><?php echo esc_html( $section_label ); ?></h2>
+		<p class="memdir-section-subtitle">Edit surface mirrors live layout; fields update immediately.</p>
 		<?php AcfFormHelper::render_edit_form( $section, $post_id ); ?>
 	</div>
 

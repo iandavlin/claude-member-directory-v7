@@ -489,7 +489,7 @@
 			'.memdir-pill:not(.memdir-pill--all):not(.memdir-pill--disabled)'
 		).length;
 
-		countEl.textContent = String( enabledCount );
+		countEl.textContent = enabledCount + ' enabled';
 	}
 
 	/**

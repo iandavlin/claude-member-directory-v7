@@ -73,7 +73,7 @@ $primary_section = get_field( 'member_directory_primary_section', $post_id ) ?: 
 	>
 		<span class="memdir-pill__icon" aria-hidden="true">&#9776;</span>
 		<span class="memdir-pill__label">All sections</span>
-		<span class="memdir-pill__count"><?php echo esc_html( (string) $enabled_count ); ?></span>
+		<span class="memdir-pill__count"><?php echo esc_html( $enabled_count . ' enabled' ); ?></span>
 	</button>
 
 	<?php

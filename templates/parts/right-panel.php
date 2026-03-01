@@ -47,14 +47,16 @@ $primary_capable = array_filter(
 
 		<p class="memdir-panel__label">VIEW AS</p>
 
-		<a href="<?php echo esc_url( $base_url ); ?>"
-		   class="memdir-panel__view-btn<?php echo $view_as === '' ? ' is-active' : ''; ?>">Edit</a>
+		<div class="memdir-panel__view-group">
+			<a href="<?php echo esc_url( $base_url ); ?>"
+			   class="memdir-panel__view-btn<?php echo $view_as === '' ? ' is-active' : ''; ?>">Edit</a>
 
-		<a href="<?php echo esc_url( add_query_arg( 'view_as', 'member', $base_url ) ); ?>"
-		   class="memdir-panel__view-btn<?php echo $view_as === 'member' ? ' is-active' : ''; ?>">Member</a>
+			<a href="<?php echo esc_url( add_query_arg( 'view_as', 'member', $base_url ) ); ?>"
+			   class="memdir-panel__view-btn<?php echo $view_as === 'member' ? ' is-active' : ''; ?>">Member</a>
 
-		<a href="<?php echo esc_url( add_query_arg( 'view_as', 'public', $base_url ) ); ?>"
-		   class="memdir-panel__view-btn<?php echo $view_as === 'public' ? ' is-active' : ''; ?>">Public</a>
+			<a href="<?php echo esc_url( add_query_arg( 'view_as', 'public', $base_url ) ); ?>"
+			   class="memdir-panel__view-btn<?php echo $view_as === 'public' ? ' is-active' : ''; ?>">Public</a>
+		</div>
 
 		<p class="memdir-panel__label">GLOBAL DEFAULT</p>
 
@@ -82,6 +84,10 @@ $primary_capable = array_filter(
 		><?php echo esc_html( $s_label ); ?></button>
 		<?php endforeach; ?>
 		<?php endif; ?>
+
+		<div class="memdir-panel__notes">
+			<p class="memdir-panel__notes-text">Notes appear here.</p>
+		</div>
 
 	</div>
 </div><?php

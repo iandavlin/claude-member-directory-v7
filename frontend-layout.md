@@ -55,13 +55,13 @@ The right panel is fixed position, visible only to post author and admin. It doe
 **Profile header** — shown when the active/default section is Profile, or for any section that is not Business:
 - Eyebrow label: `MEMBER PROFILE` (all caps, small, muted)
 - Title: value of `member_directory_profile_page_name`
-- Subline: TBD — likely tagline field + bullet + location field from Profile section, possibly augmented with taxonomy terms from Discovery section
+- Subline: TBD — likely tagline field + bullet + location field from Profile section, possibly augmented with taxonomy terms from Discovery section. The `.memdir-header__subline` div always renders in the DOM (even when empty) to reserve the layout slot.
 - Social links: pulled from global social fields shared across all author posts
 
 **Business header** — shown when the active/default section is Business:
 - Eyebrow label: `BUSINESS PROFILE` (all caps, small, muted)
 - Title: value of business name field from Business section
-- Subline: TBD — likely industry/type + location from Business section, possibly augmented with Business taxonomy terms
+- Subline: TBD — likely industry/type + location from Business section, possibly augmented with Business taxonomy terms. Same always-render rule applies.
 - Social links: same global social fields
 
 **Switching rule:** If the member's Primary Section (set in Global Controls) is `profile`, all section views use the Profile header. If Primary Section is `business`, all section views use the Business header. The header does not change as the user navigates between section pills — it reflects the primary section only.
@@ -99,12 +99,14 @@ A horizontal row of pills immediately below the header. Sticks with the header a
 **All Sections pill** (always first):
 - Hamburger/list icon on left
 - Label: "All sections"
-- Count badge: number of currently enabled sections
+- Count badge: "N enabled" text (not just the number)
+- Dark filled background (--md-green-sage) with white text — always visually prominent
 - Clicking shows all enabled sections stacked vertically in the content area
 
 **Section pills** (one per registered section, in section `order`):
-- Checkbox on left inside the pill — this is the section enabled/disabled toggle
+- Checkbox (16px) on left inside the pill — this is the section enabled/disabled toggle
 - Label: section label
+- Consistent min-height: 36px, padding: 8px 14px
 - Active state: filled background using that section's tint color, darker border
 - Disabled state: checkbox unchecked, label muted/greyed, pill is still present but content is hidden
 - Toggling a pill checkbox immediately hides/shows that section in the content area without a page reload
@@ -149,13 +151,21 @@ Only the selected section renders. Same two-column layout.
 └──────────────────┴─────────────────────────────────────────┘
 ```
 
+**Section card treatment:**
+- Border-radius: 12px, subtle box-shadow (0 1px 4px rgba(0,0,0,0.06))
+- Clean 1px border
+
 **Left column — Section Controls:**
+- White background (not tinted)
 - Section title (all caps, small, bold)
 - PMP control row (three icon buttons)
-- Field list (one item per content field, clickable)
+- Tab nav items rendered as white mini-cards: border, border-radius 8px, subtle box-shadow. Active tab: green tint background (--md-green-pale), sage border, bold text
+- Save button at bottom
 
 **Right column — Field Content:**
+- Clean white background, padding 24px
 - Section title (large, styled)
+- Subtitle line below title: small, muted, italic. In edit mode: "Edit surface mirrors live layout; fields update immediately."
 - In edit mode: ACF form scoped to this section's field group
 - In view mode: rendered field output from FieldRenderer
 
@@ -198,6 +208,8 @@ Three icon buttons in a row:
 .memdir-section-controls__pmp-btn--private
 .memdir-section-controls__override
 .memdir-section-controls__override--active
+.memdir-section-controls__tabs
+.memdir-section-controls__tab-item
 .memdir-section-controls__fields
 .memdir-section-controls__field-item
 .memdir-section-controls__field-item--active
@@ -236,6 +248,8 @@ Three icon buttons in a row:
 ### CSS classes
 ```
 .memdir-field-content
+.memdir-section-title
+.memdir-section-subtitle
 .memdir-field
 .memdir-field--{type}
 .memdir-field-label
@@ -254,37 +268,50 @@ Three icon buttons in a row:
 
 ## Right Panel (Author/Admin Only)
 
-Fixed position, right side of viewport. Never scrolls. Hidden from all viewers who are not the post author or admin.
+Sticky position inside the CSS grid right column. Visible only to post author and admin. White card treatment with 12px border-radius and subtle shadow.
+
+### Panel heading
+- "CONTROLS" — all caps, 11px, bold, muted color. Always the first element in the card.
 
 ### View As block
-- Heading: "VIEW AS" (all caps, small)
-- Three toggle buttons: Edit / Member / Public
-- Active button: filled/highlighted
+- Heading: "VIEW AS" (all caps, small, muted)
+- Three buttons rendered as a **single horizontal button group row**: Edit | Member | Public — side by side, not stacked
+- Active button: filled green background (--md-green-sage), white text
 - Behavior: clicking Member or Public appends `?view_as=member` or `?view_as=public` to the URL and reloads — the page then renders in the spoofed viewer mode. Edit removes the param and returns to edit mode.
 - In Member or Public mode: edit form is hidden, view mode renders, right panel still shows with View As active state
 
 ### Global Default block
-- Heading: "GLOBAL DEFAULT" (all caps, small)
-- Three clickable rows: Public (globe icon) / Members (people icon) / Private (lock icon)
-- Active row: highlighted with section tint or accent color
+- Heading: "GLOBAL DEFAULT" (all caps, small, muted)
+- Three full-width rows: icon on left + label on right
+  - 🌐 Public / 👥 Members / 🔒 Private
+- Rounded card style per row: border, border-radius, subtle background on active (--md-green-pale)
 - Behavior: clicking a row saves the global PMP via AJAX immediately — no save button
 - Updates take effect immediately for subsequent page views by other users
 - The currently saved value is highlighted on load
 
+### Primary Section block
+- Heading: "PRIMARY SECTION" (all caps, small, muted)
+- One button per primary-capable section (Profile, Business)
+- Active button highlighted
+
+### Notes block
+- At the bottom of the panel, separated by a top border
+- Small muted text. Currently hardcoded placeholder: "Notes appear here."
+- Will be made dynamic in a future iteration.
+
 ### CSS classes
 ```
 .memdir-right-panel
-.memdir-panel-block
-.memdir-panel-block__heading
-.memdir-view-as
-.memdir-view-as__btn
-.memdir-view-as__btn--active
-.memdir-global-default
-.memdir-global-default__option
-.memdir-global-default__option--active
-.memdir-global-default__option--public
-.memdir-global-default__option--member
-.memdir-global-default__option--private
+.memdir-right-panel__card
+.memdir-panel__heading
+.memdir-panel__label
+.memdir-panel__view-group
+.memdir-panel__view-btn
+.memdir-panel__global-btn
+.memdir-panel__global-btn--active
+.memdir-panel__primary-btn
+.memdir-panel__notes
+.memdir-panel__notes-text
 ```
 
 ---
@@ -299,7 +326,7 @@ Each section gets a light background tint drawn from the green palette. Assign b
 | 2 | Business | `#F1DE83` at 15% opacity |
 | 3+ | Others | Cycle through greens sequentially |
 
-Tints apply to the section's content area background. Section controls left column uses a slightly darker version of the same tint. Active pill uses the section tint at full opacity.
+As of the Feb 2026 mockup refresh, both columns use white backgrounds. Tints are preserved as CSS custom properties for accent use (hover states, badges) but no longer drive the section background directly. Active pill uses the section tint at full opacity.
 
 Coral (`#FE6B4F`) is reserved for: unsaved banner, error states, destructive actions. Never use as a section tint.
 
