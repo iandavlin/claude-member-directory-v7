@@ -244,10 +244,57 @@ class SectionRegistry {
 
 	/**
 	 * Absolute path to the plugin's sections/ directory, with trailing slash.
+	 * Public so AdminSync can resolve the same path for file uploads.
 	 */
-	private static function sections_dir(): string {
+	public static function sections_dir(): string {
 		// Walk up from includes/ to the plugin root, then into sections/.
 		return dirname( __DIR__ ) . '/sections/';
+	}
+
+	/**
+	 * Validate a single section config for upload.
+	 *
+	 * Combines the required-keys check and the integrity check into one
+	 * public call suitable for use outside this class (e.g. the upload
+	 * handler in AdminSync).
+	 *
+	 * For the cross-section collision check, the currently-loaded sections
+	 * are used as the baseline — the section being uploaded is excluded so
+	 * a valid overwrite does not trigger a false positive.
+	 *
+	 * @param  array  $data  Decoded section config.
+	 * @return string|null   First error message found, or null if clean.
+	 */
+	public static function validate_for_upload( array $data ): ?string {
+		$missing = self::missing_required_keys( $data );
+		if ( ! empty( $missing ) ) {
+			return 'Missing required keys: ' . implode( ', ', $missing ) . '.';
+		}
+
+		// Build the seen_keys map from all currently-live sections,
+		// skipping the section being uploaded (valid overwrite).
+		$uploading_key = $data['key'];
+		$seen_keys     = [];
+
+		foreach ( self::get_sections() as $existing ) {
+			if ( $existing['key'] === $uploading_key ) {
+				continue;
+			}
+			foreach ( $existing['acf_group']['fields'] ?? [] as $field ) {
+				if ( ! empty( $field['key'] ) ) {
+					$seen_keys[ $field['key'] ] = $existing['key'];
+				}
+			}
+			foreach ( $existing['field_groups'] ?? [] as $group ) {
+				foreach ( $group['fields'] ?? [] as $field ) {
+					if ( ! empty( $field['key'] ) ) {
+						$seen_keys[ $field['key'] ] = $existing['key'];
+					}
+				}
+			}
+		}
+
+		return self::validate_section_integrity( $data, $seen_keys );
 	}
 
 	/**
