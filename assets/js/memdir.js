@@ -575,6 +575,9 @@
 		if ( sticky ) {
 			sticky.dataset.primarySection = newPrimaryKey;
 		}
+
+		// Navigate to the new primary so it becomes the active single-section view.
+		activatePill( newPrimaryKey );
 	}
 
 	// -----------------------------------------------------------------------
