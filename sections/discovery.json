@@ -1,0 +1,383 @@
+{
+  "key": "discovery",
+  "label": "Discovery",
+  "order": 3,
+  "can_be_primary": false,
+  "pmp_default": "member",
+  "field_groups": [
+    {
+      "tab": "Instruments",
+      "fields": [
+        {
+          "key": "field_md_craft_instruments",
+          "label": "Instruments I Work On",
+          "type": "taxonomy",
+          "pmp_default": "inherit",
+          "filterable": true,
+          "taxonomy": "mp2t_instruments",
+          "required": false
+        },
+        {
+          "key": "field_md_craft_featured_instruments",
+          "label": "Featured Instruments",
+          "type": "taxonomy",
+          "pmp_default": "inherit",
+          "filterable": true,
+          "taxonomy": "mp2t_instruments",
+          "required": false
+        }
+      ]
+    },
+    {
+      "tab": "Knowledge",
+      "fields": [
+        {
+          "key": "field_md_craft_domains",
+          "label": "Knowledge Domains",
+          "type": "taxonomy",
+          "pmp_default": "inherit",
+          "filterable": true,
+          "taxonomy": "mp2t_knowledge_domains",
+          "required": false
+        },
+        {
+          "key": "field_md_craft_contexts",
+          "label": "Musical Contexts",
+          "type": "taxonomy",
+          "pmp_default": "inherit",
+          "filterable": true,
+          "taxonomy": "mp2t_musical_contexts",
+          "required": false
+        }
+      ]
+    },
+    {
+      "tab": "Level",
+      "fields": [
+        {
+          "key": "field_md_craft_level",
+          "label": "Experience Level",
+          "type": "select",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_craft_years",
+          "label": "Years in the Craft",
+          "type": "number",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        }
+      ]
+    }
+  ],
+  "acf_group": {
+    "qef_simple_location_rules": 0,
+    "key": "group_md_03_craft",
+    "title": "MD: Discovery",
+    "fields": [
+      {
+        "key": "field_md_discovery_enabled",
+        "label": "Enable Section",
+        "name": "member_directory_discovery_enabled",
+        "type": "true_false",
+        "default_value": 1,
+        "ui": 1,
+        "ui_on_text": "Enabled",
+        "ui_off_text": "Disabled"
+      },
+      {
+        "key": "field_md_discovery_privacy_mode",
+        "label": "Privacy Mode",
+        "name": "member_directory_discovery_privacy_mode",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "custom": "Custom"
+        },
+        "default_value": "inherit",
+        "layout": "horizontal"
+      },
+      {
+        "key": "field_md_discovery_privacy_level",
+        "label": "Privacy Level",
+        "name": "member_directory_discovery_privacy_level",
+        "type": "select",
+        "choices": {
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "member",
+        "conditional_logic": [
+          [
+            {
+              "field": "field_md_discovery_privacy_mode",
+              "operator": "==",
+              "value": "custom"
+            }
+          ]
+        ]
+      },
+      {
+        "key": "field_md_tab_craft_privacy",
+        "label": "Privacy",
+        "name": "",
+        "aria-label": "",
+        "type": "tab",
+        "instructions": "",
+        "required": 0,
+        "conditional_logic": 0,
+        "wrapper": { "width": "", "class": "", "id": "" },
+        "placement": "top",
+        "endpoint": 0,
+        "selected": 0
+      },
+      {
+        "key": "field_md_craft_privacy_mode",
+        "label": "Privacy Mode",
+        "name": "member_directory_craft_privacy_mode",
+        "aria-label": "",
+        "type": "button_group",
+        "instructions": "",
+        "required": 0,
+        "conditional_logic": 0,
+        "wrapper": { "width": "", "class": "", "id": "" },
+        "choices": {
+          "inherit": "Inherit Global",
+          "custom": "Custom"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
+      },
+      {
+        "key": "field_md_craft_privacy_level",
+        "label": "Privacy Level",
+        "name": "member_directory_craft_privacy_level",
+        "aria-label": "",
+        "type": "select",
+        "instructions": "",
+        "required": 0,
+        "conditional_logic": [
+          [
+            {
+              "field": "field_md_craft_privacy_mode",
+              "operator": "==",
+              "value": "custom"
+            }
+          ]
+        ],
+        "wrapper": { "width": "", "class": "", "id": "" },
+        "choices": {
+          "public": "Public",
+          "members": "Members Only",
+          "private": "Private"
+        },
+        "default_value": "members",
+        "return_format": "value",
+        "multiple": 0,
+        "allow_null": 0,
+        "ui": 0,
+        "ajax": 0,
+        "placeholder": "",
+        "create_options": 0,
+        "save_options": 0
+      },
+      {
+        "key": "field_md_tab_craft_instruments",
+        "label": "Instruments",
+        "name": "",
+        "aria-label": "",
+        "type": "tab",
+        "instructions": "",
+        "required": 0,
+        "conditional_logic": 0,
+        "wrapper": { "width": "", "class": "", "id": "" },
+        "placement": "top",
+        "endpoint": 0,
+        "selected": 0
+      },
+      {
+        "key": "field_md_craft_instruments",
+        "label": "Instruments I Work On",
+        "name": "member_directory_craft_instruments",
+        "aria-label": "",
+        "type": "taxonomy",
+        "instructions": "",
+        "required": 0,
+        "conditional_logic": 0,
+        "wrapper": { "width": "", "class": "", "id": "" },
+        "taxonomy": "mp2t_instruments",
+        "add_term": 1,
+        "save_terms": 1,
+        "load_terms": 1,
+        "return_format": "id",
+        "field_type": "multi_select",
+        "allow_null": 1,
+        "multiple": 0,
+        "bidirectional_target": []
+      },
+      {
+        "key": "field_md_craft_featured_instruments",
+        "label": "Featured Instruments",
+        "name": "member_directory_craft_featured_instruments",
+        "aria-label": "",
+        "type": "taxonomy",
+        "instructions": "Select up to 3 instruments to highlight in your header.",
+        "required": 0,
+        "conditional_logic": 0,
+        "wrapper": { "width": "", "class": "", "id": "" },
+        "taxonomy": "mp2t_instruments",
+        "add_term": 0,
+        "save_terms": 0,
+        "load_terms": 0,
+        "return_format": "id",
+        "field_type": "multi_select",
+        "allow_null": 1,
+        "multiple": 0,
+        "bidirectional_target": []
+      },
+      {
+        "key": "field_md_tab_craft_knowledge",
+        "label": "Knowledge",
+        "name": "",
+        "aria-label": "",
+        "type": "tab",
+        "instructions": "",
+        "required": 0,
+        "conditional_logic": 0,
+        "wrapper": { "width": "", "class": "", "id": "" },
+        "placement": "top",
+        "endpoint": 0,
+        "selected": 0
+      },
+      {
+        "key": "field_md_craft_domains",
+        "label": "Knowledge Domains",
+        "name": "member_directory_craft_domains",
+        "aria-label": "",
+        "type": "taxonomy",
+        "instructions": "",
+        "required": 0,
+        "conditional_logic": 0,
+        "wrapper": { "width": "", "class": "", "id": "" },
+        "taxonomy": "mp2t_knowledge_domains",
+        "add_term": 1,
+        "save_terms": 1,
+        "load_terms": 1,
+        "return_format": "id",
+        "field_type": "multi_select",
+        "allow_null": 1,
+        "multiple": 0,
+        "bidirectional_target": []
+      },
+      {
+        "key": "field_md_craft_contexts",
+        "label": "Musical Contexts",
+        "name": "member_directory_craft_contexts",
+        "aria-label": "",
+        "type": "taxonomy",
+        "instructions": "",
+        "required": 0,
+        "conditional_logic": 0,
+        "wrapper": { "width": "", "class": "", "id": "" },
+        "taxonomy": "mp2t_musical_contexts",
+        "add_term": 1,
+        "save_terms": 1,
+        "load_terms": 1,
+        "return_format": "id",
+        "field_type": "multi_select",
+        "allow_null": 1,
+        "multiple": 0,
+        "bidirectional_target": []
+      },
+      {
+        "key": "field_md_tab_craft_level",
+        "label": "Level",
+        "name": "",
+        "aria-label": "",
+        "type": "tab",
+        "instructions": "",
+        "required": 0,
+        "conditional_logic": 0,
+        "wrapper": { "width": "", "class": "", "id": "" },
+        "placement": "top",
+        "endpoint": 0,
+        "selected": 0
+      },
+      {
+        "key": "field_md_craft_level",
+        "label": "Experience Level",
+        "name": "member_directory_craft_level",
+        "aria-label": "",
+        "type": "select",
+        "instructions": "",
+        "required": 0,
+        "conditional_logic": 0,
+        "wrapper": { "width": "", "class": "", "id": "" },
+        "choices": {
+          "": "— Not Set —",
+          "student": "Student",
+          "hobbyist": "Hobbyist",
+          "apprentice": "Apprentice",
+          "journeyman": "Journeyman",
+          "professional": "Professional",
+          "master": "Master"
+        },
+        "default_value": false,
+        "return_format": "value",
+        "multiple": 0,
+        "allow_null": 1,
+        "ui": 0,
+        "ajax": 0,
+        "placeholder": "",
+        "create_options": 0,
+        "save_options": 0
+      },
+      {
+        "key": "field_md_craft_years",
+        "label": "Years in the Craft",
+        "name": "member_directory_craft_years",
+        "aria-label": "",
+        "type": "number",
+        "instructions": "",
+        "required": 0,
+        "conditional_logic": 0,
+        "wrapper": { "width": "", "class": "", "id": "" },
+        "default_value": "",
+        "min": 0,
+        "max": 100,
+        "step": "",
+        "placeholder": "",
+        "prepend": "",
+        "append": ""
+      }
+    ],
+    "location": [
+      [
+        {
+          "param": "post_type",
+          "operator": "==",
+          "value": "member-directory"
+        }
+      ]
+    ],
+    "menu_order": 3,
+    "position": "normal",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "hide_on_screen": "",
+    "active": true,
+    "description": "Discovery section: instruments, knowledge domains, musical contexts, experience level.",
+    "show_in_rest": 0,
+    "display_title": "",
+    "no_values_message": ""
+  }
+}
