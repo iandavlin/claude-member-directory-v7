@@ -715,9 +715,21 @@ a.memdir-field-value:hover {
   background: rgba(151, 169, 124, 0.08);
 }
 
-.memdir-panel__global-btn--active {
+/* Explicitly override BuddyBoss :focus/:active button styles */
+.memdir-panel__global-btn:focus,
+.memdir-panel__global-btn:active {
+  outline: none;
+  background: var(--md-white);
+  color: var(--md-text);
+  border-color: var(--md-border);
+}
+
+.memdir-panel__global-btn--active,
+.memdir-panel__global-btn--active:focus,
+.memdir-panel__global-btn--active:active {
   background: var(--md-green-pale);
   border-color: var(--md-green-mid);
+  color: var(--md-text);
   font-weight: 600;
 }
 

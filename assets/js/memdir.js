@@ -508,6 +508,15 @@
 					return;
 				}
 
+				// Optimistic UI: apply the active class immediately and blur the button
+				// so BuddyBoss's :focus/:active styles don't override the new background.
+				var prevPmp = '';
+				panel.querySelectorAll( '.memdir-panel__global-btn' ).forEach( function ( b ) {
+					if ( b.classList.contains( 'memdir-panel__global-btn--active' ) ) { prevPmp = b.dataset.pmp || ''; }
+					b.classList.toggle( 'memdir-panel__global-btn--active', b.dataset.pmp === pmp );
+				} );
+				btn.blur();
+
 				var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
 					? window.mdAjax.ajaxurl
 					: '/wp-admin/admin-ajax.php';
@@ -530,12 +539,11 @@
 					.then( function ( data ) {
 						if ( ! data.success ) {
 							console.error( 'MemberDirectory: global PMP AJAX returned error', data );
-							return;
+							// Revert optimistic change.
+							panel.querySelectorAll( '.memdir-panel__global-btn' ).forEach( function ( b ) {
+								b.classList.toggle( 'memdir-panel__global-btn--active', b.dataset.pmp === prevPmp );
+							} );
 						}
-						// Move active highlight to the clicked button.
-						panel.querySelectorAll( '.memdir-panel__global-btn' ).forEach( function ( b ) {
-							b.classList.toggle( 'memdir-panel__global-btn--active', b.dataset.pmp === pmp );
-						} );
 					} )
 					.catch( function ( err ) {
 						console.error( 'MemberDirectory: global PMP AJAX failed', err );
