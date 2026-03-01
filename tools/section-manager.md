@@ -17,6 +17,29 @@ Reorder           | "Reorder sections" / "Move [section] before [other]" / "Chan
 Revert            | "Revert [section] to [filename]" / "Restore [section] from backup" / "Undo changes to [section]"
 
 
+Drop-in Commands
+
+If the user attaches or pastes a raw JSON file alongside a short command, skip the step-by-step preamble and act immediately. The two recognised drop-in commands are:
+
+  "add pmp" (or "inject pmp", "prep this")
+      -- Treat as a standalone ACF Group Preparer run.
+      -- Ask for the section key (needed to name the fields).
+      -- Inject the two PMP system fields (enabled toggle + 4-state visibility button)
+         into the provided JSON.
+      -- Output labelled: ENRICHED ACF JSON -- import via WP Admin -> ACF -> Tools -> Import
+      -- Do NOT build a section config. Stop after outputting the enriched JSON.
+
+  "turn this into a config" (or "make a config", "make this a config", "make this a config for [name]")
+      -- Treat as ADD.
+      -- The JSON provided IS the ACF export -- skip Q3 in Step 2.
+      -- If a section name was given in the command, pre-fill the label and suggest a key;
+         confirm with the user before proceeding.
+      -- Continue with Step 1 confirmation, then Step 2 (Q1 and Q2 only), then Step 4a.
+
+For any other short command with an attached JSON, state your best interpretation and
+confirm before acting.
+
+
 Step 1 -- Confirm Intent
 
 Parse the user's message. State your interpretation in plain English:
@@ -93,8 +116,12 @@ Follow the full Section Config Builder flow:
             file, google_map, taxonomy, true_false, checkbox, radio, select, repeater.
             Warn and ask how to handle any other type.
   v.   PMP system fields -- scan the ACF export for field_md_{key}_enabled and
-       field_md_{key}_privacy_mode. If both are present, copy them verbatim to the top
-       of acf_group.fields. If neither is present, generate them:
+       field_md_{key}_privacy_mode.
+
+       Both present: copy them verbatim to the top of acf_group.fields. Continue.
+
+       Neither present: inject them inline now -- do NOT stop or ask the user to run
+       a separate prep step. Generate both fields and prepend to acf_group.fields:
 
          Enabled toggle:
          { "key": "field_md_{key}_enabled", "label": "Enable Section",
@@ -109,12 +136,23 @@ Follow the full Section Config Builder flow:
            "default_value": "inherit", "return_format": "value",
            "allow_null": 0, "layout": "horizontal" }
 
-       If only one is present, stop and warn the user -- partial injection is invalid.
+       Only one present: stop and warn -- partial injection is invalid. Ask the user
+       to remove the lone field and let this step regenerate both cleanly.
 
   vi.  Validate: warn if no required fields; warn if can_be_primary is true and key is not
        profile or business. State field count and wait for confirmation.
+
   vii. Output labelled: NEW -- save to: sections/{key}.json
        Remind: run Sync after saving.
+
+  viii. After outputting the config, ask:
+       "The section config includes the full ACF field group definition -- the plugin
+        registers it automatically and no WP Admin import is needed.
+        Do you also want the enriched ACF JSON to import into WP Admin -> ACF -> Field
+        Groups? (This lets you manage and export fields visually through the ACF UI.)"
+       If yes, output the acf_group object from the finished config, labelled:
+         ENRICHED ACF JSON -- import via WP Admin -> ACF -> Tools -> Import
+       If no, skip it.
 
 
 --- 4b: CHANGE (update existing section with new ACF export) ---
