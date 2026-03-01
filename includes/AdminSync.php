@@ -80,11 +80,27 @@ class AdminSync {
 			</form>
 
 			<hr>
-			<h2>ACF to Section Config Converter</h2>
-			<p>Use this skill to convert an ACF field group JSON export into a section config file ready to drop into the <code>sections/</code> folder.</p>
+			<h2>Claude Skills</h2>
+			<p>Download these skill files and attach them to a Claude conversation to build new sections.</p>
+
+			<h3>Step 1 &mdash; ACF Group Preparer</h3>
+			<p>Takes a raw ACF field group export and injects the two required PMP system fields
+			(<em>Enable Section</em> and <em>Visibility</em>) into the <code>fields</code> array.
+			Use this first if you want to re-import the enriched group back into ACF, or skip it
+			and let the Section Config Builder add the fields automatically.</p>
+			<p>
+				<a class="button button-secondary" href="<?php echo esc_url( plugin_dir_url( dirname( __FILE__ ) ) . 'tools/acf-pmp-prep.md' ); ?>" download>
+					Download ACF Group Preparer
+				</a>
+			</p>
+
+			<h3>Step 2 &mdash; Section Config Builder</h3>
+			<p>Converts an ACF field group export (pre-prepped or raw) into a finished
+			<code>sections/*.json</code> config file. Drop the output into the
+			<code>sections/</code> folder and run Sync.</p>
 			<p>
 				<a class="button button-secondary" href="<?php echo esc_url( plugin_dir_url( dirname( __FILE__ ) ) . 'tools/acf-to-config.md' ); ?>" download>
-					Download Converter Skill
+					Download Section Config Builder
 				</a>
 			</p>
 		</div>
