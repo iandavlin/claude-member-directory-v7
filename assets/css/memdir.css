@@ -353,6 +353,19 @@ body.single-member-directory #primary {
   color: var(--md-white);
 }
 
+/* Icons via CSS ::before — immune to third-party JS clearing button innerHTML */
+.memdir-section-controls .memdir-section-controls__pmp-btn::before {
+  font-style: normal;
+  font-size: 15px;
+  line-height: 1;
+  display: block;
+  pointer-events: none;
+}
+.memdir-section-controls .memdir-section-controls__pmp-btn--inherit::before { content: '🔗'; }
+.memdir-section-controls .memdir-section-controls__pmp-btn--public::before  { content: '🌐'; }
+.memdir-section-controls .memdir-section-controls__pmp-btn--member::before  { content: '👥'; }
+.memdir-section-controls .memdir-section-controls__pmp-btn--private::before { content: '🔒'; }
+
 .memdir-section-controls__pmp-status {
   font-family: var(--md-font);
   font-size: 11px;
