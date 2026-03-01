@@ -58,7 +58,8 @@ class AcfFormHelper {
 	 * enqueue or filter logic.
 	 */
 	public static function init(): void {
-		add_action( 'wp_ajax_md_save_section', [ self::class, 'handle_ajax_save' ] );
+		add_action( 'wp_ajax_md_save_section',                    [ self::class, 'handle_ajax_save' ] );
+		add_action( 'wp_ajax_memdir_ajax_save_section_enabled',   [ self::class, 'handle_save_section_enabled' ] );
 	}
 
 	// -----------------------------------------------------------------------
@@ -239,5 +240,62 @@ class AcfFormHelper {
 		}
 
 		wp_send_json_success( [ 'message' => 'Saved.' ] );
+	}
+
+	/**
+	 * AJAX handler: save the enabled/disabled state for one section.
+	 *
+	 * Toggles the section's ACF true_false field (field_md_{key}_enabled).
+	 * Storing 0 makes get_field() return PHP false, which the pill-nav.php
+	 * partial reads as disabled. Storing 1 restores the enabled default.
+	 *
+	 * The primary section cannot be disabled — a server-side guard prevents it
+	 * even if JS somehow allows the request through.
+	 *
+	 * Expects $_POST:
+	 *   nonce       — wp_create_nonce( 'md_save_nonce' )
+	 *   post_id     — int, the member-directory post being edited
+	 *   section_key — string, e.g. 'profile' or 'business'
+	 *   enabled     — '1' (enable) or '0' (disable)
+	 *
+	 * Action: wp_ajax_memdir_ajax_save_section_enabled
+	 */
+	public static function handle_save_section_enabled(): void {
+		if ( ! check_ajax_referer( 'md_save_nonce', 'nonce', false ) ) {
+			wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+		}
+
+		$post_id     = isset( $_POST['post_id'] )     ? absint( $_POST['post_id'] )                                   : 0;
+		$section_key = isset( $_POST['section_key'] ) ? sanitize_text_field( wp_unslash( $_POST['section_key'] ) ) : '';
+		$enabled     = isset( $_POST['enabled'] )     ? (bool) absint( $_POST['enabled'] )                          : true;
+
+		if ( ! $post_id || get_post_type( $post_id ) !== 'member-directory' ) {
+			wp_send_json_error( [ 'message' => 'Invalid post.' ], 400 );
+		}
+
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+		}
+
+		// Validate section_key against known registered sections.
+		$valid_keys = array_column( SectionRegistry::get_sections(), 'key' );
+		if ( ! in_array( $section_key, $valid_keys, true ) ) {
+			wp_send_json_error( [ 'message' => 'Invalid section key.' ], 400 );
+		}
+
+		// Primary section cannot be disabled — guard against rogue requests.
+		$primary = get_field( 'member_directory_primary_section', $post_id ) ?: 'profile';
+		if ( $section_key === $primary ) {
+			wp_send_json_error( [ 'message' => 'Primary section cannot be disabled.' ], 400 );
+		}
+
+		// Save via the ACF field key so ACF formats it as true_false (0 → get_field returns false).
+		$field_key = 'field_md_' . $section_key . '_enabled';
+		update_field( $field_key, $enabled ? 1 : 0, $post_id );
+
+		wp_send_json_success( [
+			'section_key' => $section_key,
+			'enabled'     => $enabled,
+		] );
 	}
 }

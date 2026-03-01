@@ -8,6 +8,7 @@
  *   2. Pill navigation — single-section / all-sections view switching
  *   3. Section save    — AJAX save for all fields in a section without reload
  *   4. Right panel     — Primary Section AJAX save + pill DOM update
+ *   5. Pill enable/disable — checkbox toggles section on/off + DOM reorder
  */
 
 ( function () {
@@ -362,6 +363,169 @@
 	}
 
 	// -----------------------------------------------------------------------
+	// 5. Pill enable/disable
+	//
+	// Checkboxes on non-primary pills toggle whether a section is shown.
+	// Unchecking a checkbox:
+	//   - Adds .memdir-pill--disabled to the pill.
+	//   - Hides the matching .memdir-section[data-section] in the content area.
+	//   - Moves the pill to the end (after enabled pills, before other disabled).
+	//   - Saves via AJAX (memdir_ajax_save_section_enabled, enabled=0).
+	//
+	// Checking a checkbox:
+	//   - Removes .memdir-pill--disabled.
+	//   - Shows the matching section.
+	//   - Moves the pill before the first disabled pill (end of enabled group).
+	//   - Saves via AJAX (enabled=1).
+	//
+	// On page load: any pills that are already disabled are sorted to the end.
+	// -----------------------------------------------------------------------
+
+	function initPillCheckboxes() {
+		var nav = document.querySelector( '.memdir-pills' );
+		if ( ! nav ) {
+			return;
+		}
+
+		// Sort any already-disabled pills to the end on page load.
+		reorderPills( nav );
+		updateAllSectionsBadge( nav );
+
+		// Wire change events on all existing checkboxes.
+		nav.querySelectorAll( '.memdir-pill__checkbox' ).forEach( function ( checkbox ) {
+			bindCheckbox( checkbox, nav );
+		} );
+	}
+
+	/**
+	 * Attach the change handler to a single pill checkbox.
+	 *
+	 * Called on init and also when updatePrimarySection() injects a new
+	 * checkbox onto the demoted primary pill.
+	 *
+	 * @param {HTMLInputElement} checkbox  The checkbox element.
+	 * @param {Element}          nav       The .memdir-pills nav element.
+	 */
+	function bindCheckbox( checkbox, nav ) {
+		checkbox.addEventListener( 'change', function () {
+			var sectionKey = checkbox.dataset.section || '';
+			var pill       = checkbox.closest( '.memdir-pill' );
+			var postId     = nav.dataset.postId || '';
+			var enabled    = checkbox.checked;
+
+			if ( ! pill || ! sectionKey ) {
+				return;
+			}
+
+			// Toggle disabled class on the pill.
+			pill.classList.toggle( 'memdir-pill--disabled', ! enabled );
+
+			// Show/hide the matching section in the content area.
+			var sectionEl = document.querySelector(
+				'.memdir-section[data-section="' + sectionKey + '"]'
+			);
+			if ( sectionEl ) {
+				sectionEl.style.display = enabled ? '' : 'none';
+			}
+
+			// Reorder pills: disabled pills go to the end.
+			reorderPills( nav );
+
+			// Update the All Sections badge count.
+			updateAllSectionsBadge( nav );
+
+			// Persist via AJAX (fire-and-forget — UI is already updated).
+			if ( postId ) {
+				saveSectionEnabled( postId, sectionKey, enabled );
+			}
+		} );
+	}
+
+	/**
+	 * Reorder pills so disabled pills appear after enabled pills.
+	 *
+	 * Order: All Sections → primary → enabled non-primary → disabled non-primary.
+	 * Relative order within each group is preserved (DOM order at call time).
+	 *
+	 * @param {Element} nav  The .memdir-pills nav element.
+	 */
+	function reorderPills( nav ) {
+		var all      = Array.from( nav.querySelectorAll( '.memdir-pill' ) );
+		var allPill  = all.filter( function ( p ) {
+			return p.classList.contains( 'memdir-pill--all' );
+		} );
+		var primary  = all.filter( function ( p ) {
+			return p.classList.contains( 'memdir-pill--primary' );
+		} );
+		var enabled  = all.filter( function ( p ) {
+			return ! p.classList.contains( 'memdir-pill--all' ) &&
+			       ! p.classList.contains( 'memdir-pill--primary' ) &&
+			       ! p.classList.contains( 'memdir-pill--disabled' );
+		} );
+		var disabled = all.filter( function ( p ) {
+			return ! p.classList.contains( 'memdir-pill--all' ) &&
+			       ! p.classList.contains( 'memdir-pill--primary' ) &&
+			       p.classList.contains( 'memdir-pill--disabled' );
+		} );
+
+		allPill.concat( primary ).concat( enabled ).concat( disabled ).forEach( function ( p ) {
+			nav.appendChild( p );
+		} );
+	}
+
+	/**
+	 * Update the count badge on the All Sections pill to reflect the number
+	 * of currently enabled sections (primary + non-primary, excluding disabled).
+	 *
+	 * @param {Element} nav  The .memdir-pills nav element.
+	 */
+	function updateAllSectionsBadge( nav ) {
+		var countEl = nav.querySelector( '.memdir-pill--all .memdir-pill__count' );
+		if ( ! countEl ) {
+			return;
+		}
+
+		var enabledCount = nav.querySelectorAll(
+			'.memdir-pill:not(.memdir-pill--all):not(.memdir-pill--disabled)'
+		).length;
+
+		countEl.textContent = String( enabledCount );
+	}
+
+	/**
+	 * AJAX: persist section enabled/disabled state.
+	 *
+	 * Fire-and-forget — the UI is already updated before this is called.
+	 *
+	 * @param {string}  postId      The member-directory post ID.
+	 * @param {string}  sectionKey  The section key (e.g. 'profile', 'business').
+	 * @param {boolean} enabled     True = enabled, false = disabled.
+	 */
+	function saveSectionEnabled( postId, sectionKey, enabled ) {
+		var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
+			? window.mdAjax.ajaxurl
+			: '/wp-admin/admin-ajax.php';
+		var nonce = ( window.mdAjax && window.mdAjax.nonce )
+			? window.mdAjax.nonce
+			: '';
+
+		var formData = new FormData();
+		formData.set( 'action',      'memdir_ajax_save_section_enabled' );
+		formData.set( 'nonce',       nonce );
+		formData.set( 'post_id',     postId );
+		formData.set( 'section_key', sectionKey );
+		formData.set( 'enabled',     enabled ? '1' : '0' );
+
+		fetch( ajaxUrl, {
+			method:      'POST',
+			credentials: 'same-origin',
+			body:        formData,
+		} ).catch( function () {
+			// Silently fail — UI is already updated.
+		} );
+	}
+
+	// -----------------------------------------------------------------------
 	// 4. Right panel controls
 	//
 	// PRIMARY SECTION buttons — clicking a .memdir-panel__primary-btn saves
@@ -469,6 +633,9 @@
 			checkbox.checked       = true; // Enabled by default when demoted.
 			oldPrimaryPill.insertBefore( checkbox, oldPrimaryPill.firstChild );
 			oldPrimaryPill.classList.remove( 'memdir-pill--primary' );
+
+			// Wire the new checkbox into the enable/disable handler.
+			bindCheckbox( checkbox, nav );
 		}
 
 		// Move new primary pill to first position (right after All Sections pill).
@@ -485,6 +652,7 @@
 	document.addEventListener( 'DOMContentLoaded', function () {
 		initTabNav();
 		initPillNav();
+		initPillCheckboxes();
 		initSectionSave();
 		initRightPanel();
 		restoreStateFromUrl();
