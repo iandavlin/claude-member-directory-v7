@@ -145,9 +145,14 @@
 		} );
 
 		// Show the matching section; hide everything else.
+		// For 'all', respect the pill's disabled state so unchecked sections
+		// stay hidden even when "All Sections" is clicked within the same load.
 		document.querySelectorAll( '.memdir-section' ).forEach( function ( section ) {
 			if ( sectionKey === 'all' ) {
-				section.style.display = '';
+				var sKey       = section.dataset.section || '';
+				var pill       = document.querySelector( '.memdir-pill[data-section="' + sKey + '"]' );
+				var isDisabled = pill && pill.classList.contains( 'memdir-pill--disabled' );
+				section.style.display = isDisabled ? 'none' : '';
 			} else {
 				section.style.display =
 					( section.dataset.section === sectionKey ) ? '' : 'none';
