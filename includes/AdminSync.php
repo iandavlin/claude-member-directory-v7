@@ -104,6 +104,12 @@ class AdminSync {
 					<input type="file" name="section_config_file" accept=".json" style="margin-right:8px;">
 					<?php submit_button( 'Upload &amp; Sync', 'secondary', 'upload_submit', false ); ?>
 				</p>
+				<p>
+					<label>
+						<input type="checkbox" name="allow_key_removal" value="1">
+						Allow field key removal &mdash; <span style="color:#b94a00;">check this only if you intentionally deleted fields. Member data stored under removed keys will become inaccessible.</span>
+					</label>
+				</p>
 			</form>
 
 			<hr>
@@ -230,7 +236,8 @@ class AdminSync {
 		}
 
 		// Structural + integrity validation (reuses the same checks as sync()).
-		$error = SectionRegistry::validate_for_upload( $data );
+		$allow_key_removal = isset( $_POST['allow_key_removal'] ) && $_POST['allow_key_removal'] === '1';
+		$error             = SectionRegistry::validate_for_upload( $data, $allow_key_removal );
 		if ( $error !== null ) {
 			self::render_upload_result( false, $error );
 			return;

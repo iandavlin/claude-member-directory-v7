@@ -306,12 +306,14 @@ class SectionRegistry {
 	 *
 	 * For existing sections, a diff check is also run: if the incoming config
 	 * removes any content field keys that exist in the current stored config,
-	 * the upload is blocked to prevent orphaning live member data.
+	 * the upload is blocked unless $allow_key_removal is true. Pass true only
+	 * when the admin has explicitly confirmed they intend to delete fields.
 	 *
-	 * @param  array  $data  Decoded section config.
-	 * @return string|null   First error message found, or null if clean.
+	 * @param  array  $data               Decoded section config.
+	 * @param  bool   $allow_key_removal  Skip the removed-keys diff check.
+	 * @return string|null                First error message found, or null if clean.
 	 */
-	public static function validate_for_upload( array $data ): ?string {
+	public static function validate_for_upload( array $data, bool $allow_key_removal = false ): ?string {
 		$missing = self::missing_required_keys( $data );
 		if ( ! empty( $missing ) ) {
 			return 'Missing required keys: ' . implode( ', ', $missing ) . '.';
@@ -321,10 +323,10 @@ class SectionRegistry {
 
 		// --- Diff check: block removal of content field keys -----------------
 		// Removing a field key from an existing section orphans any member data
-		// stored under that key in wp_postmeta. Block the upload and name the
-		// missing keys so the admin can make an explicit decision.
+		// stored under that key in wp_postmeta. Block unless the admin has
+		// explicitly confirmed the removal via $allow_key_removal.
 		$current = self::get_section( $uploading_key );
-		if ( $current !== null ) {
+		if ( ! $allow_key_removal && $current !== null ) {
 			$current_keys  = self::content_field_keys( $current );
 			$incoming_keys = self::content_field_keys( $data );
 			$removed       = array_diff( $current_keys, $incoming_keys );
