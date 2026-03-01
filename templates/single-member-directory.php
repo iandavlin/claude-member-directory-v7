@@ -79,7 +79,10 @@ $primary_section = get_field( 'member_directory_primary_section', $post_id ) ?: 
 				$section_key     = $section['key'] ?? '';
 				$section_enabled = get_field( 'member_directory_' . $section_key . '_enabled', $post_id );
 
-				if ( $section_enabled === false ) {
+				// Primary section must always render — it can never be hidden, even
+				// if its enabled flag was saved as false during a period when it was
+				// a non-primary section.
+				if ( $section_enabled === false && $section_key !== $primary_section ) {
 					continue;
 				}
 

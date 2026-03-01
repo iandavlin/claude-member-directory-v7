@@ -30,13 +30,19 @@ defined( 'ABSPATH' ) || exit;
 // badge before rendering any pills.
 // ---------------------------------------------------------------------------
 
+// Primary section — resolved early so the enabled-map loop can reference it.
+$primary_section = get_field( 'member_directory_primary_section', $post_id ) ?: 'profile';
+
 $section_enabled_map = [];
 $enabled_count       = 0;
 
 foreach ( $sections as $section ) {
 	$key   = $section['key'] ?? '';
 	$value = get_field( 'member_directory_' . $key . '_enabled', $post_id );
-	$is_on = ( $value !== false );
+
+	// Primary section is always on — it can't be hidden, so treat any saved
+	// false value as enabled for both the badge count and the enabled map.
+	$is_on = ( $key === $primary_section ) ? true : ( $value !== false );
 
 	$section_enabled_map[ $key ] = $is_on;
 
@@ -47,9 +53,6 @@ foreach ( $sections as $section ) {
 
 // Normalise active_section — fall back to 'all' if the caller didn't set it.
 $active_section = isset( $active_section ) ? (string) $active_section : 'all';
-
-// Primary section — drives pill order and checkbox suppression.
-$primary_section = get_field( 'member_directory_primary_section', $post_id ) ?: 'profile';
 
 ?>
 <nav class="memdir-pills"
