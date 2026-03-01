@@ -6,29 +6,6 @@
   "pmp_default": "member",
   "field_groups": [
     {
-      "tab": "Privacy",
-      "fields": [
-        {
-          "key": "field_md_business_privacy_mode",
-          "label": "Privacy Mode",
-          "type": "button_group",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        },
-        {
-          "key": "field_md_business_privacy_level",
-          "label": "Privacy Level",
-          "type": "select",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        }
-      ]
-    },
-    {
       "tab": "Identity",
       "fields": [
         {
@@ -220,6 +197,16 @@
     "key": "group_md_05_business",
     "title": "MD: Business",
     "fields": [
+      {
+        "key": "field_md_business_enabled",
+        "label": "Enable Section",
+        "name": "member_directory_business_enabled",
+        "type": "true_false",
+        "default_value": 1,
+        "ui": 1,
+        "ui_on_text": "Enabled",
+        "ui_off_text": "Disabled"
+      },
       {
         "key": "field_md_tab_business_privacy",
         "label": "Privacy",
