@@ -139,6 +139,17 @@
 	 *                             or 'all' to show every section.
 	 */
 	function activatePill( sectionKey ) {
+		// Guard: if the target section's pill is disabled, fall back to 'all'.
+		// Prevents showing an empty content area when sessionStorage or a direct
+		// pill click targets a section that PHP did not render (enabled === false).
+		if ( sectionKey !== 'all' ) {
+			var targetPill = document.querySelector( '.memdir-pill[data-section="' + sectionKey + '"]' );
+			if ( targetPill && targetPill.classList.contains( 'memdir-pill--disabled' ) ) {
+				activatePill( 'all' );
+				return;
+			}
+		}
+
 		// Move the active class to the matching pill; clear it from all others.
 		document.querySelectorAll( '.memdir-pill' ).forEach( function ( p ) {
 			p.classList.toggle( 'memdir-pill--active', p.dataset.section === sectionKey );
@@ -592,12 +603,25 @@
 			// Toggle disabled class on the pill.
 			pill.classList.toggle( 'memdir-pill--disabled', ! enabled );
 
-			// Show/hide the matching section in the content area.
+			// Show/hide the matching section, but respect the current view mode.
+			// In single-section view, enabling a different section must not
+			// override activatePill()'s visibility — only hiding is safe there.
 			var sectionEl = document.querySelector(
 				'.memdir-section[data-section="' + sectionKey + '"]'
 			);
 			if ( sectionEl ) {
-				sectionEl.style.display = enabled ? '' : 'none';
+				var activePill = document.querySelector( '.memdir-pill--active' );
+				var activeKey  = activePill ? ( activePill.dataset.section || 'all' ) : 'all';
+
+				if ( activeKey === 'all' || activeKey === sectionKey ) {
+					// "All sections" view, or the active section's own checkbox:
+					// apply the enabled/disabled state immediately.
+					sectionEl.style.display = enabled ? '' : 'none';
+				} else if ( ! enabled ) {
+					// Single-section view for a different section: safe to hide,
+					// but never force-show — activatePill() owns that.
+					sectionEl.style.display = 'none';
+				}
 			}
 
 			// Reorder pills: disabled pills go to the end.
