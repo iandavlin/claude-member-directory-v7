@@ -268,11 +268,8 @@ body.single-member-directory #primary {
 .memdir-section {
   display: grid;
   grid-template-columns: var(--md-controls-width) 1fr;
-  gap: 0;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid var(--md-border);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+  gap: 16px;
+  background: transparent;
 }
 
 /* Section tints by order — applied via data-section attribute */
@@ -297,9 +294,10 @@ body.single-member-directory #primary {
 ───────────────────────────────────────────────────────────── */
 
 .memdir-section-controls {
-  background: var(--md-white);
+  background: var(--section-tint);
   padding: 20px 16px;
-  border-right: 1px solid var(--md-border);
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
 .memdir-section-controls__title {
@@ -438,6 +436,8 @@ body.single-member-directory #primary {
 .memdir-field-content {
   background: var(--md-white);
   padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
 
 .memdir-section-title {
@@ -454,6 +454,15 @@ body.single-member-directory #primary {
   color: var(--md-text-muted);
   font-style: italic;
   margin: 0 0 20px;
+}
+
+/* View mode — hide controls column, stretch field content to full width */
+.memdir-section:not(.memdir-section--edit) {
+  grid-template-columns: 1fr;
+}
+
+.memdir-section:not(.memdir-section--edit) .memdir-section-controls {
+  display: none;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -826,11 +835,6 @@ a.memdir-field-value:hover {
 
   .memdir-section {
     grid-template-columns: 1fr;
-  }
-
-  .memdir-section-controls {
-    border-right: none;
-    border-bottom: 1px solid var(--md-border);
   }
 
   .memdir-header__badges {
