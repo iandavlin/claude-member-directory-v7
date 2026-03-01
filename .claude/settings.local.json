@@ -13,7 +13,11 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(git revert:*)"
+      "Bash(git revert:*)",
+      "Bash(for f in includes/*.php templates/parts/*.php templates/*.php member-directory.php)",
+      "Bash(do php -l \"$f\")",
+      "Bash(done)",
+      "Bash(for f in includes/GlobalFields.php templates/parts/right-panel.php templates/parts/pill-nav.php)"
     ]
   }
 }
