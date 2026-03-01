@@ -323,7 +323,7 @@ body.single-member-directory #primary {
   display: flex;
   flex-direction: row;
   gap: 4px;
-  margin-bottom: 16px;
+  margin-bottom: 6px;
   align-items: center;
 }
 
@@ -353,21 +353,13 @@ body.single-member-directory #primary {
   color: var(--md-white);
 }
 
-.memdir-section-controls__override {
-  font-size: 11px;
-  padding: 3px 8px;
-  border-radius: var(--md-radius-pill);
-  border: 1px dashed var(--md-green-sage);
-  background: transparent;
-  color: var(--md-green-dark);
-  cursor: pointer;
+.memdir-section-controls__pmp-status {
   font-family: var(--md-font);
-  transition: background 0.15s;
-}
-
-.memdir-section-controls__override:hover,
-.memdir-section-controls__override--active {
-  background: rgba(151, 169, 124, 0.15);
+  font-size: 11px;
+  font-style: italic;
+  color: var(--md-text-muted);
+  margin: 0 0 12px;
+  line-height: 1.4;
 }
 
 .memdir-section-controls__fields {

@@ -60,6 +60,7 @@ class AcfFormHelper {
 	public static function init(): void {
 		add_action( 'wp_ajax_md_save_section',                    [ self::class, 'handle_ajax_save' ] );
 		add_action( 'wp_ajax_memdir_ajax_save_section_enabled',   [ self::class, 'handle_save_section_enabled' ] );
+		add_action( 'wp_ajax_memdir_ajax_save_section_pmp',       [ self::class, 'handle_save_section_pmp' ] );
 	}
 
 	// -----------------------------------------------------------------------
@@ -297,5 +298,56 @@ class AcfFormHelper {
 			'section_key' => $section_key,
 			'enabled'     => $enabled,
 		] );
+	}
+
+	/**
+	 * AJAX handler: save the PMP (visibility) level for one section.
+	 *
+	 * Accepts four values for pmp:
+	 *   'inherit'  — section defers to global PMP; privacy_mode set to 'inherit'.
+	 *   'public'   — explicit override; privacy_mode = 'custom', privacy_level = 'public'.
+	 *   'member'   — explicit override; privacy_mode = 'custom', privacy_level = 'member'.
+	 *   'private'  — explicit override; privacy_mode = 'custom', privacy_level = 'private'.
+	 *
+	 * Expects $_POST:
+	 *   nonce       — wp_create_nonce( 'md_save_nonce' )
+	 *   post_id     — int, the member-directory post being edited
+	 *   section_key — string, e.g. 'profile' or 'business'
+	 *   pmp         — 'inherit' | 'public' | 'member' | 'private'
+	 *
+	 * Action: wp_ajax_memdir_ajax_save_section_pmp
+	 */
+	public static function handle_save_section_pmp(): void {
+		if ( ! check_ajax_referer( 'md_save_nonce', 'nonce', false ) ) {
+			wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+		}
+
+		$post_id     = isset( $_POST['post_id'] )     ? absint( $_POST['post_id'] )                                   : 0;
+		$section_key = isset( $_POST['section_key'] ) ? sanitize_text_field( wp_unslash( $_POST['section_key'] ) ) : '';
+		$pmp         = isset( $_POST['pmp'] )         ? sanitize_text_field( wp_unslash( $_POST['pmp'] ) )         : '';
+
+		if ( ! $post_id || get_post_type( $post_id ) !== 'member-directory' ) {
+			wp_send_json_error( [ 'message' => 'Invalid post.' ], 400 );
+		}
+
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+		}
+
+		$valid_keys = array_column( SectionRegistry::get_sections(), 'key' );
+		if ( ! in_array( $section_key, $valid_keys, true ) ) {
+			wp_send_json_error( [ 'message' => 'Invalid section key.' ], 400 );
+		}
+
+		if ( $pmp === 'inherit' ) {
+			update_field( 'field_md_' . $section_key . '_privacy_mode', 'inherit', $post_id );
+		} elseif ( in_array( $pmp, [ 'public', 'member', 'private' ], true ) ) {
+			update_field( 'field_md_' . $section_key . '_privacy_mode', 'custom', $post_id );
+			update_field( 'field_md_' . $section_key . '_privacy_level', $pmp, $post_id );
+		} else {
+			wp_send_json_error( [ 'message' => 'Invalid PMP value.' ], 400 );
+		}
+
+		wp_send_json_success( [ 'section_key' => $section_key, 'pmp' => $pmp ] );
 	}
 }

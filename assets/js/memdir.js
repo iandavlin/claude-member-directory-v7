@@ -1,16 +1,17 @@
 /**
- * Member Directory — memdir.js
+ * Member Directory -- memdir.js
  *
  * Front-end interactions for the Member Directory profile page.
  *
  * Sections:
- *   1. Tab navigation     — show/hide ACF fields by tab group within a section
- *   2. Pill navigation    — single-section / all-sections view switching
- *   3. Header swap        — show correct header variant based on active pill
- *   4. Section save       — AJAX save for all fields in a section without reload
- *   5. Right panel        — Primary Section AJAX save + pill DOM update
- *   6. Pill enable/disable — checkbox toggles section on/off + DOM reorder
- *   7. State restore      — sessionStorage + URL param restore on page load
+ *   1. Tab navigation     -- show/hide ACF fields by tab group within a section
+ *   2. Pill navigation    -- single-section / all-sections view switching
+ *   3. Header swap        -- show correct header variant based on active pill
+ *   4. Section save       -- AJAX save for all fields in a section without reload
+ *   5. Right panel        -- Primary Section AJAX save + pill DOM update
+ *   6. Pill enable/disable -- checkbox toggles section on/off + DOM reorder
+ *   7. State restore      -- sessionStorage + URL param restore on page load
+ *   8. Section PMP        -- 4-button inherit/public/member/private + eyebrow cascade
  */
 
 ( function () {
@@ -123,7 +124,7 @@
 					return;
 				}
 
-				// Disabled pills are not navigable — only the checkbox can re-enable.
+				// Disabled pills are not navigable -- only the checkbox can re-enable.
 				if ( pill.classList.contains( 'memdir-pill--disabled' ) ) {
 					return;
 				}
@@ -198,9 +199,9 @@
 	// The correct one is shown based on the active pill and the primary section.
 	//
 	// Rule:
-	//   Business primary → show profile header ONLY when Profile pill is active;
+	//   Business primary -> show profile header ONLY when Profile pill is active;
 	//                       show business header for all other pills.
-	//   Profile primary  → show business header ONLY when Business pill is active;
+	//   Profile primary  -> show business header ONLY when Business pill is active;
 	//                       show profile header for all other pills.
 	//
 	// .memdir-sticky[data-primary-section] is the source of truth for the
@@ -242,22 +243,22 @@
 	// 4. Section save (AJAX)
 	//
 	// Each .memdir-section--edit wraps:
-	//   .memdir-unsaved-banner  — shown when any field in the section changes.
-	//   .memdir-section-save    — button that collects the section's ACF form
+	//   .memdir-unsaved-banner  -- shown when any field in the section changes.
+	//   .memdir-section-save    -- button that collects the section's ACF form
 	//                             fields and POSTs them via fetch without a
 	//                             full page reload.
 	//
 	// Flow:
 	//   Any input/change inside .memdir-field-content
-	//     → section.classList.add('has-unsaved')
-	//     → banner.style.display = ''
+	//     -> section.classList.add('has-unsaved')
+	//     -> banner.style.display = ''
 	//
 	//   Save button click  OR  Enter in any text input
-	//     → collect FormData from the section's .acf-form
-	//     → POST action=md_save_section, nonce, post_id, acf[…] fields
-	//     → success: show 'Saved ✓' on button; update .memdir-header__title
+	//     -> collect FormData from the section's .acf-form
+	//     -> POST action=md_save_section, nonce, post_id, acf[...] fields
+	//     -> success: show 'Saved checkmark' on button; update .memdir-header__title
 	//               in place if field_md_profile_page_name was in the payload
-	//     → error:   show error state on button for 3 s
+	//     -> error:   show error state on button for 3 s
 	// -----------------------------------------------------------------------
 
 	function initSectionSave() {
@@ -274,7 +275,7 @@
 			fieldContent.addEventListener( 'input',  function () { markUnsaved( section, banner ); } );
 			fieldContent.addEventListener( 'change', function () { markUnsaved( section, banner ); } );
 
-			// Intercept Enter in text inputs — treat it as a save rather than
+			// Intercept Enter in text inputs -- treat it as a save rather than
 			// a native form submit. Textareas are excluded so Enter still adds
 			// new lines there.
 			fieldContent.addEventListener( 'keydown', function ( event ) {
@@ -345,7 +346,7 @@
 			// Find all form controls within this field.
 			var inputs = fieldDiv.querySelectorAll( 'input, textarea, select' );
 			inputs.forEach( function ( input ) {
-				// Skip unchecked checkboxes and radios — they shouldn't be submitted.
+				// Skip unchecked checkboxes and radios -- they shouldn't be submitted.
 				if ( ( input.type === 'checkbox' || input.type === 'radio' ) && ! input.checked ) {
 					return;
 				}
@@ -385,8 +386,8 @@
 						banner.style.display = 'none';
 					}
 
-					// Show 'Saved ✓' on button for 2 s, then restore original label.
-					saveBtn.textContent = 'Saved ✓';
+					// Show 'Saved checkmark' on button for 2 s, then restore original label.
+					saveBtn.textContent = 'Saved \u2713';
 					saveBtn.classList.add( 'memdir-section-save--saved' );
 					setTimeout( function () {
 						saveBtn.classList.remove( 'memdir-section-save--saved' );
@@ -434,7 +435,7 @@
 	// -----------------------------------------------------------------------
 	// 5. Right panel controls
 	//
-	// PRIMARY SECTION buttons — clicking a .memdir-panel__primary-btn saves
+	// PRIMARY SECTION buttons -- clicking a .memdir-panel__primary-btn saves
 	// the new primary section via AJAX, then:
 	//   - Updates button active states in the panel.
 	//   - Calls updatePrimarySection() to reorder pills in the nav.
@@ -495,9 +496,9 @@
 			} );
 		} );
 
-		// GLOBAL PMP buttons — clicking a .memdir-panel__global-btn saves the
+		// GLOBAL PMP buttons -- clicking a .memdir-panel__global-btn saves the
 		// profile-wide default visibility level via AJAX and toggles the active
-		// highlight to the clicked button.
+		// highlight to the clicked button. Also cascades to inherit-mode sections.
 		panel.querySelectorAll( '.memdir-panel__global-btn' ).forEach( function ( btn ) {
 			btn.addEventListener( 'click', function () {
 				var pmp    = btn.dataset.pmp || '';
@@ -516,6 +517,9 @@
 					b.classList.toggle( 'memdir-panel__global-btn--active', b.dataset.pmp === pmp );
 				} );
 				btn.blur();
+
+				// Cascade to inherit-mode sections immediately.
+				cascadeGlobalPmpToSections( pmp );
 
 				var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
 					? window.mdAjax.ajaxurl
@@ -543,6 +547,7 @@
 							panel.querySelectorAll( '.memdir-panel__global-btn' ).forEach( function ( b ) {
 								b.classList.toggle( 'memdir-panel__global-btn--active', b.dataset.pmp === prevPmp );
 							} );
+							cascadeGlobalPmpToSections( prevPmp );
 						}
 					} )
 					.catch( function ( err ) {
@@ -587,7 +592,7 @@
 		}
 		newPrimaryPill.classList.add( 'memdir-pill--primary' );
 
-		// Always ensure the pill is visible — hideEmptySectionPills() may have
+		// Always ensure the pill is visible -- hideEmptySectionPills() may have
 		// hidden it via inline style when its section was absent from the DOM.
 		newPrimaryPill.style.display = '';
 
@@ -726,7 +731,7 @@
 			// Update the All Sections badge count.
 			updateAllSectionsBadge( nav );
 
-			// Persist via AJAX (fire-and-forget — UI is already updated).
+			// Persist via AJAX (fire-and-forget -- UI is already updated).
 			if ( postId ) {
 				saveSectionEnabled( postId, sectionKey, enabled );
 			}
@@ -736,7 +741,7 @@
 	/**
 	 * Reorder pills so disabled pills appear after enabled pills.
 	 *
-	 * Order: All Sections → primary → enabled non-primary → disabled non-primary.
+	 * Order: All Sections -> primary -> enabled non-primary -> disabled non-primary.
 	 * Relative order within each group is preserved (DOM order at call time).
 	 *
 	 * @param {Element} nav  The .memdir-pills nav element.
@@ -816,14 +821,14 @@
 			}
 		}
 
-		// No enabled section pill found — fall back to All Sections view.
+		// No enabled section pill found -- fall back to All Sections view.
 		return 'all';
 	}
 
 	/**
 	 * AJAX: persist section enabled/disabled state.
 	 *
-	 * Fire-and-forget — the UI is already updated before this is called.
+	 * Fire-and-forget -- the UI is already updated before this is called.
 	 *
 	 * @param {string}  postId      The member-directory post ID.
 	 * @param {string}  sectionKey  The section key (e.g. 'profile', 'business').
@@ -849,7 +854,7 @@
 			credentials: 'same-origin',
 			body:        formData,
 		} ).catch( function () {
-			// Silently fail — UI is already updated.
+			// Silently fail -- UI is already updated.
 		} );
 	}
 
@@ -857,9 +862,9 @@
 	// 7. State restore
 	//
 	// Priority order on DOMContentLoaded:
-	//   1. URL param ?active_section={key} — post-save reloads pass this.
-	//   2. sessionStorage keyed to post ID — remembers state within a session.
-	//   3. Primary section key — default active pill (not 'all').
+	//   1. URL param ?active_section={key} -- post-save reloads pass this.
+	//   2. sessionStorage keyed to post ID -- remembers state within a session.
+	//   3. Primary section key -- default active pill (not 'all').
 	//
 	// activatePill() writes to sessionStorage on every activation, so the
 	// stored value stays current as the user navigates between pills.
@@ -872,7 +877,7 @@
 	 * On load we detect absent sections and hide their pills, then sync the
 	 * badge count so it only reflects actually-visible sections.
 	 *
-	 * Skips pills that are already --disabled — those are managed by the
+	 * Skips pills that are already --disabled -- those are managed by the
 	 * checkbox system and must stay visible so the author can re-enable them.
 	 */
 	function hideEmptySectionPills() {
@@ -886,7 +891,7 @@
 			if ( ! key || pill.classList.contains( 'memdir-pill--all' ) ) {
 				return;
 			}
-			// Already disabled — managed by checkbox system, leave visible.
+			// Already disabled -- managed by checkbox system, leave visible.
 			if ( pill.classList.contains( 'memdir-pill--disabled' ) ) {
 				return;
 			}
@@ -908,7 +913,7 @@
 		var nav    = document.querySelector( '.memdir-pills' );
 		var postId = nav ? ( nav.dataset.postId || '' ) : '';
 
-		// 1. URL param — post-save page reload passes ?active_section={key}.
+		// 1. URL param -- post-save page reload passes ?active_section={key}.
 		var params = new URLSearchParams( window.location.search );
 		var urlKey = params.get( 'active_section' ) || '';
 		if ( urlKey ) {
@@ -916,14 +921,14 @@
 			return;
 		}
 
-		// 2. sessionStorage — remembers which pill the user last activated for
+		// 2. sessionStorage -- remembers which pill the user last activated for
 		//    this specific post, persisted across navigations in the same session.
 		if ( postId ) {
 			var stored = '';
 			try {
 				stored = sessionStorage.getItem( 'memdir_active_pill_' + postId ) || '';
 			} catch ( e ) {
-				// sessionStorage unavailable — private browsing or quota exceeded.
+				// sessionStorage unavailable -- private browsing or quota exceeded.
 			}
 			if ( stored ) {
 				activatePill( stored );
@@ -939,6 +944,157 @@
 	}
 
 	// -----------------------------------------------------------------------
+	// 8. Section PMP
+	//
+	// Each .memdir-section--edit has a .memdir-section-controls__pmp block with
+	// four buttons: inherit (link), public (globe), member (people), private (lock).
+	//
+	// Clicking a button:
+	//   - Moves is-active to the clicked button (optimistic).
+	//   - Updates the eyebrow text (.memdir-section-controls__pmp-status).
+	//   - POSTs to memdir_ajax_save_section_pmp.
+	//   - On error: reverts button and eyebrow.
+	//
+	// When global PMP changes, all inherit-mode sections update their eyebrow.
+	// -----------------------------------------------------------------------
+
+	/** Human-readable labels matching the PHP $pmp_labels array. */
+	var PMP_LABELS = {
+		'public':  'Public',
+		'member':  'Members only',
+		'private': 'Private',
+	};
+
+	/**
+	 * Wire up PMP button clicks for each edit-mode section.
+	 */
+	function initSectionPmp() {
+		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
+			var controls = section.querySelector( '.memdir-section-controls' );
+			if ( ! controls ) {
+				return;
+			}
+
+			var btns   = controls.querySelectorAll( '.memdir-section-controls__pmp-btn' );
+			var status = controls.querySelector( '.memdir-section-controls__pmp-status' );
+
+			btns.forEach( function ( btn ) {
+				btn.addEventListener( 'click', function () {
+					var pmp        = btn.dataset.pmp || '';
+					var postId     = section.dataset.postId || '';
+					var sectionKey = section.dataset.section || '';
+
+					if ( ! pmp || ! postId || ! sectionKey ) {
+						return;
+					}
+
+					// Optimistic: move is-active to clicked button.
+					var prevPmp = '';
+					btns.forEach( function ( b ) {
+						if ( b.classList.contains( 'is-active' ) ) {
+							prevPmp = b.dataset.pmp || '';
+						}
+						b.classList.toggle( 'is-active', b === btn );
+					} );
+
+					// Update eyebrow text immediately.
+					if ( status ) {
+						updateSectionPmpStatus( status, pmp );
+					}
+
+					// AJAX save.
+					var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
+						? window.mdAjax.ajaxurl
+						: '/wp-admin/admin-ajax.php';
+					var nonce = ( window.mdAjax && window.mdAjax.nonce )
+						? window.mdAjax.nonce
+						: '';
+
+					var formData = new FormData();
+					formData.set( 'action',      'memdir_ajax_save_section_pmp' );
+					formData.set( 'nonce',       nonce );
+					formData.set( 'post_id',     postId );
+					formData.set( 'section_key', sectionKey );
+					formData.set( 'pmp',         pmp );
+
+					fetch( ajaxUrl, {
+						method:      'POST',
+						credentials: 'same-origin',
+						body:        formData,
+					} )
+						.then( function ( response ) { return response.json(); } )
+						.then( function ( data ) {
+							if ( ! data.success ) {
+								console.error( 'MemberDirectory: section PMP AJAX returned error', data );
+								// Revert optimistic change.
+								btns.forEach( function ( b ) {
+									b.classList.toggle( 'is-active', b.dataset.pmp === prevPmp );
+								} );
+								if ( status ) {
+									updateSectionPmpStatus( status, prevPmp );
+								}
+							}
+						} )
+						.catch( function ( err ) {
+							console.error( 'MemberDirectory: section PMP AJAX failed', err );
+						} );
+				} );
+			} );
+		} );
+	}
+
+	/**
+	 * Update a section's eyebrow text and data-pmp-mode attribute.
+	 *
+	 * @param {Element} statusEl  The .memdir-section-controls__pmp-status element.
+	 * @param {string}  pmp       The new PMP value: 'inherit'|'public'|'member'|'private'.
+	 */
+	function updateSectionPmpStatus( statusEl, pmp ) {
+		var globalPmp = getGlobalPmp();
+
+		if ( pmp === 'inherit' ) {
+			statusEl.textContent     = 'Global default: ' + ( PMP_LABELS[ globalPmp ] || 'Public' );
+			statusEl.dataset.pmpMode = 'inherit';
+		} else {
+			statusEl.textContent     = 'Section override: ' + ( PMP_LABELS[ pmp ] || pmp );
+			statusEl.dataset.pmpMode = 'override';
+		}
+	}
+
+	/**
+	 * Read the currently active global PMP from the right panel buttons.
+	 *
+	 * @returns {string}  'public', 'member', or 'private'.
+	 */
+	function getGlobalPmp() {
+		var activeBtn = document.querySelector( '.memdir-panel__global-btn--active' );
+		return activeBtn ? ( activeBtn.dataset.pmp || 'public' ) : 'public';
+	}
+
+	/**
+	 * Update the eyebrow text of all inherit-mode sections when global PMP changes.
+	 *
+	 * Called after the global PMP button is clicked (optimistically) and on revert.
+	 *
+	 * @param {string} newGlobalPmp  The new global PMP value.
+	 */
+	function cascadeGlobalPmpToSections( newGlobalPmp ) {
+		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
+			var status = section.querySelector( '.memdir-section-controls__pmp-status' );
+			if ( ! status ) {
+				return;
+			}
+
+			// Only update sections currently in inherit mode.
+			if ( status.dataset.pmpMode !== 'inherit' ) {
+				return;
+			}
+
+			status.textContent = 'Global default: ' + ( PMP_LABELS[ newGlobalPmp ] || 'Public' );
+		} );
+	}
+
+	// -----------------------------------------------------------------------
 	// Boot
 	// -----------------------------------------------------------------------
 
@@ -948,6 +1104,7 @@
 		initPillCheckboxes();
 		initSectionSave();
 		initRightPanel();
+		initSectionPmp();
 		hideEmptySectionPills(); // hide pills for PHP-dropped empty/PMP-blocked sections
 		restoreState();
 	} );
