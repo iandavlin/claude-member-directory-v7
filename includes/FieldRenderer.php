@@ -134,6 +134,16 @@ class FieldRenderer {
 				self::render_map( $label, $value );
 				break;
 
+			case 'select':
+				// get_field() with return_format:'value' returns the stored key (e.g. 'student').
+				// Look up the human-readable label from the ACF field object's choices array;
+				// fall back to a capitalised version of the raw key if lookup fails.
+				$field_obj   = get_field_object( $key, $post_id );
+				$choices     = ( is_array( $field_obj ) && isset( $field_obj['choices'] ) ) ? $field_obj['choices'] : [];
+				$display_val = $choices[ (string) $value ] ?? ucfirst( str_replace( '_', ' ', (string) $value ) );
+				self::render_text( $label, 'select', $display_val );
+				break;
+
 			case 'checkbox':
 			case 'radio':
 				// radio returns a single string from ACF; normalise to array
