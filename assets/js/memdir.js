@@ -531,6 +531,26 @@
 		}
 		newPrimaryPill.classList.add( 'memdir-pill--primary' );
 
+		// Primary sections are always enabled. If the promoted pill was previously
+		// disabled, clear that state, show its section, update the badge, and persist.
+		if ( newPrimaryPill.classList.contains( 'memdir-pill--disabled' ) ) {
+			newPrimaryPill.classList.remove( 'memdir-pill--disabled' );
+
+			var newPrimarySection = document.querySelector(
+				'.memdir-section[data-section="' + newPrimaryKey + '"]'
+			);
+			if ( newPrimarySection ) {
+				newPrimarySection.style.display = '';
+			}
+
+			var postId = nav.dataset.postId || '';
+			if ( postId ) {
+				saveSectionEnabled( postId, newPrimaryKey, true );
+			}
+
+			updateAllSectionsBadge( nav );
+		}
+
 		// Restore checkbox on the old primary pill.
 		if ( oldPrimaryPill && ! oldPrimaryPill.querySelector( '.memdir-pill__checkbox' ) ) {
 			var checkbox             = document.createElement( 'input' );
