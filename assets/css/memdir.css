@@ -60,19 +60,17 @@ body.single-member-directory #primary {
 ───────────────────────────────────────────────────────────── */
 
 .memdir-profile {
-  font-family: var(--md-font);
-  color: var(--md-text);
-  background: var(--md-bg);
-  min-height: 60vh;
-  padding-left: 24px;
-  padding-right: calc(var(--md-panel-width) + 32px);
-  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: 1fr var(--md-panel-width);
+  gap: 24px;
+  align-items: start;
+  padding: 0 16px;
+  max-width: 1400px;
+  margin: 0 auto;
 }
 
-.memdir-profile__inner {
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
+.memdir-profile__main {
+  min-width: 0;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -305,7 +303,8 @@ body.single-member-directory #primary {
 
 .memdir-section-controls__pmp {
   display: flex;
-  gap: 6px;
+  flex-direction: row;
+  gap: 4px;
   margin-bottom: 16px;
   align-items: center;
 }
@@ -329,44 +328,11 @@ body.single-member-directory #primary {
   background: rgba(151, 169, 124, 0.1);
 }
 
-.memdir-section-controls__pmp-btn--active {
+.memdir-section-controls__pmp-btn--active,
+.memdir-section-controls__pmp-btn.is-active {
   background: var(--md-green-sage);
   border-color: var(--md-green-dark);
   color: var(--md-white);
-}
-
-/* Vertical PMP stack (edit mode left column) */
-.memdir-section-controls__pmp--vertical {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  margin-bottom: 12px;
-}
-
-.memdir-section-controls__pmp--vertical button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  padding: 6px 10px;
-  border: 1px solid var(--md-border);
-  border-radius: var(--md-radius);
-  background: var(--md-white);
-  cursor: pointer;
-  font-size: 13px;
-  font-family: var(--md-font);
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.memdir-section-controls__pmp--vertical button:hover {
-  border-color: var(--md-green-sage);
-  background: rgba(151, 169, 124, 0.08);
-}
-
-.memdir-section-controls__pmp--vertical button.is-active {
-  background: var(--md-green-pale);
-  border-color: var(--md-green-mid);
-  font-weight: 600;
 }
 
 .memdir-section-controls__override {
@@ -409,9 +375,45 @@ body.single-member-directory #primary {
   background: rgba(255,255,255,0.6);
 }
 
-.memdir-section-controls__field-item--active {
-  background: var(--md-white);
+.memdir-section-controls__field-item--active,
+.memdir-section-controls__field-item.is-active {
+  background: var(--md-green-pale);
   font-weight: 600;
+  color: var(--md-green-dark);
+}
+
+/* Tab nav (vertical stack in left controls column) */
+.memdir-section-controls__tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 12px;
+}
+
+.memdir-section-controls__tab-item {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  border-radius: var(--md-radius);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: var(--md-font);
+  color: var(--md-text);
+  transition: background 0.1s;
+  box-sizing: border-box;
+}
+
+.memdir-section-controls__tab-item:hover {
+  background: rgba(255,255,255,0.5);
+}
+
+.memdir-section-controls__tab-item.is-active {
+  background: var(--md-green-pale);
+  font-weight: 600;
+  color: var(--md-green-dark);
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -568,12 +570,9 @@ a.memdir-field-value:hover {
 ───────────────────────────────────────────────────────────── */
 
 .memdir-right-panel {
-  position: fixed;
+  position: sticky;
   top: 80px;
-  right: 0;
-  width: var(--md-panel-width);
-  padding: 0;
-  z-index: 200;
+  width: 100%;
   font-family: var(--md-font);
 }
 
@@ -582,7 +581,6 @@ a.memdir-field-value:hover {
   border: 1px solid var(--md-border);
   border-radius: var(--md-radius);
   padding: 16px;
-  margin: 16px;
 }
 
 .memdir-panel__heading {
@@ -734,18 +732,18 @@ a.memdir-field-value:hover {
 ───────────────────────────────────────────────────────────── */
 
 @media (max-width: 1100px) {
-  .memdir-right-panel {
-    display: none; /* collapse panel on narrow viewports */
+  .memdir-profile {
+    grid-template-columns: 1fr;
   }
 
-  .memdir-profile {
-    padding-right: 0;
+  .memdir-right-panel {
+    display: none; /* collapse panel on narrow viewports */
   }
 }
 
 @media (max-width: 768px) {
-  .memdir-profile__inner {
-    width: 95%;
+  .memdir-profile__main {
+    width: 100%;
   }
 
   .memdir-section {

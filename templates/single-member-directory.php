@@ -13,12 +13,11 @@
  * acf_form_head() MUST fire before any HTML output (Architecture Rule 1).
  *
  * HTML structure:
- *   .memdir-profile
- *     .memdir-profile__inner
- *       .memdir-sticky       ← profile-header + pill-nav (stick as unit)
- *       .memdir-sections     ← section loop
- *     .memdir-right-panel    ← inside .memdir-profile (CSS var cascade),
- *                               outside .memdir-profile__inner (fixed pos)
+ *   .memdir-profile            ← CSS grid: 1fr | --md-panel-width
+ *     .memdir-profile__main    ← left column: sticky + sections
+ *       .memdir-sticky         ← profile-header + pill-nav (stick as unit)
+ *       .memdir-sections       ← section loop
+ *     .memdir-right-panel      ← right column: sticky controls panel
  */
 
 use MemberDirectory\AcfFormHelper;
@@ -65,7 +64,7 @@ $active_section_label = 'All sections';
 
 ?>
 <div class="memdir-profile">
-	<div class="memdir-profile__inner">
+	<div class="memdir-profile__main">
 
 		<div class="memdir-sticky">
 			<?php include plugin_dir_path( __FILE__ ) . 'parts/profile-header.php'; ?>
