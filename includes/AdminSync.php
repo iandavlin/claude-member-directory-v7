@@ -109,22 +109,13 @@ class AdminSync {
 				</a>
 			</p>
 
-			<h3>Helper Tools</h3>
-			<p>Use these individually if you prefer a step-by-step workflow or want to prep an ACF export before importing it back into ACF.</p>
+			<h3>Helper Tool</h3>
 
 			<h4>ACF Group Preparer</h4>
-			<p>Injects the two required PMP system fields (<em>Enable Section</em> and <em>Visibility</em>) into a raw ACF field group export. Run the output through ACF &rarr; Tools &rarr; Import, or feed it straight into the Section Config Builder.</p>
+			<p>Injects the two required PMP system fields (<em>Enable Section</em> and <em>Visibility</em>) into a raw ACF field group export so it can be re-imported into ACF via Tools &rarr; Import. Optional &mdash; Section Manager adds these fields automatically if you skip this step.</p>
 			<p>
 				<a class="button button-secondary" href="<?php echo esc_url( plugin_dir_url( dirname( __FILE__ ) ) . 'tools/acf-pmp-prep.md' ); ?>" download>
 					Download ACF Group Preparer
-				</a>
-			</p>
-
-			<h4>Section Config Builder</h4>
-			<p>Converts an ACF field group export (pre-prepped or raw) into a finished <code>sections/*.json</code> config file. New sections only &mdash; no merge, no backup.</p>
-			<p>
-				<a class="button button-secondary" href="<?php echo esc_url( plugin_dir_url( dirname( __FILE__ ) ) . 'tools/acf-to-config.md' ); ?>" download>
-					Download Section Config Builder
 				</a>
 			</p>
 		</div>
