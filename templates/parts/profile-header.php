@@ -63,10 +63,7 @@ $active_section_label = isset( $active_section_label ) ? (string) $active_sectio
 if ( $variant === 'business' ) {
 
 	$eyebrow = 'BUSINESS PROFILE';
-
-	// Business section field key TBD — pending business.json section definition.
-	// Replace this placeholder once field_md_business_name is confirmed.
-	$title = ''; // TODO: get_field( 'member_directory_business_name', $post_id );
+	$title   = (string) get_field( 'member_directory_business_name', $post_id );
 
 } else {
 
