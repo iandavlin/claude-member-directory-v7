@@ -1,0 +1,502 @@
+{
+  "key": "business",
+  "label": "Business",
+  "order": 5,
+  "can_be_primary": true,
+  "pmp_default": "member",
+  "field_groups": [
+    {
+      "tab": "Privacy",
+      "fields": [
+        {
+          "key": "field_md_business_privacy_mode",
+          "label": "Privacy Mode",
+          "type": "button_group",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_business_privacy_level",
+          "label": "Privacy Level",
+          "type": "select",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        }
+      ]
+    },
+    {
+      "tab": "Identity",
+      "fields": [
+        {
+          "key": "field_md_business_name",
+          "label": "Business Name",
+          "type": "text",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_business_logo",
+          "label": "Business Logo",
+          "type": "image",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_business_hero",
+          "label": "Business Hero Image",
+          "type": "image",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_business_description",
+          "label": "Business Description",
+          "type": "textarea",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        }
+      ]
+    },
+    {
+      "tab": "Contact",
+      "fields": [
+        {
+          "key": "field_md_business_phone",
+          "label": "Phone",
+          "type": "text",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_business_email",
+          "label": "Email",
+          "type": "email",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_business_contact_notes",
+          "label": "Contact Notes",
+          "type": "textarea",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        }
+      ]
+    },
+    {
+      "tab": "Services",
+      "fields": [
+        {
+          "key": "field_md_business_services",
+          "label": "Services Offered",
+          "type": "taxonomy",
+          "pmp_default": "inherit",
+          "filterable": true,
+          "taxonomy": "mp2t_services",
+          "required": false
+        },
+        {
+          "key": "field_md_business_featured_services",
+          "label": "Featured Services",
+          "type": "taxonomy",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": "mp2t_services",
+          "required": false
+        },
+        {
+          "key": "field_md_business_instruments",
+          "label": "Instruments Serviced",
+          "type": "taxonomy",
+          "pmp_default": "inherit",
+          "filterable": true,
+          "taxonomy": "mp2t_instruments",
+          "required": false
+        },
+        {
+          "key": "field_md_business_warranty",
+          "label": "Warranty",
+          "type": "textarea",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        }
+      ]
+    },
+    {
+      "tab": "Location & Hours",
+      "fields": [
+        {
+          "key": "field_md_business_location",
+          "label": "Business Location",
+          "type": "google_map",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_business_location_precision",
+          "label": "Location Precision",
+          "type": "select",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_business_parking",
+          "label": "Parking",
+          "type": "text",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_business_accessibility",
+          "label": "Accessibility",
+          "type": "textarea",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_business_hours",
+          "label": "Business Hours",
+          "type": "textarea",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        }
+      ]
+    },
+    {
+      "tab": "Booking",
+      "fields": [
+        {
+          "key": "field_md_business_booking_url",
+          "label": "Booking URL",
+          "type": "url",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        },
+        {
+          "key": "field_md_business_languages",
+          "label": "Languages",
+          "type": "repeater",
+          "pmp_default": "inherit",
+          "filterable": false,
+          "taxonomy": null,
+          "required": false
+        }
+      ]
+    }
+  ],
+  "acf_group": {
+    "key": "group_md_05_business",
+    "title": "MD: Business",
+    "fields": [
+      {
+        "key": "field_md_tab_business_privacy",
+        "label": "Privacy",
+        "name": "",
+        "type": "tab",
+        "placement": "top",
+        "endpoint": 0
+      },
+      {
+        "key": "field_md_business_privacy_mode",
+        "label": "Privacy Mode",
+        "name": "member_directory_business_privacy_mode",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit Global",
+          "custom": "Custom"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
+      },
+      {
+        "key": "field_md_business_privacy_level",
+        "label": "Privacy Level",
+        "name": "member_directory_business_privacy_level",
+        "type": "select",
+        "choices": {
+          "public": "Public",
+          "members": "Members Only",
+          "private": "Private"
+        },
+        "default_value": "members",
+        "return_format": "value",
+        "multiple": 0,
+        "allow_null": 0,
+        "ui": 0,
+        "ajax": 0,
+        "conditional_logic": [
+          [
+            {
+              "field": "field_md_business_privacy_mode",
+              "operator": "==",
+              "value": "custom"
+            }
+          ]
+        ]
+      },
+      {
+        "key": "field_md_tab_business_identity",
+        "label": "Identity",
+        "name": "",
+        "type": "tab",
+        "placement": "top",
+        "endpoint": 0
+      },
+      {
+        "key": "field_md_business_name",
+        "label": "Business Name",
+        "name": "member_directory_business_name",
+        "type": "text",
+        "default_value": ""
+      },
+      {
+        "key": "field_md_business_logo",
+        "label": "Business Logo",
+        "name": "member_directory_business_logo",
+        "type": "image",
+        "return_format": "array",
+        "library": "all",
+        "preview_size": "medium"
+      },
+      {
+        "key": "field_md_business_hero",
+        "label": "Business Hero Image",
+        "name": "member_directory_business_hero",
+        "type": "image",
+        "instructions": "Banner image for the business header (e.g. storefront photo).",
+        "return_format": "array",
+        "library": "all",
+        "preview_size": "large"
+      },
+      {
+        "key": "field_md_business_description",
+        "label": "Business Description",
+        "name": "member_directory_business_description",
+        "type": "textarea",
+        "instructions": "Brief mission statement or elevator pitch.",
+        "rows": 4
+      },
+      {
+        "key": "field_md_tab_business_contact",
+        "label": "Contact",
+        "name": "",
+        "type": "tab",
+        "placement": "top",
+        "endpoint": 0
+      },
+      {
+        "key": "field_md_business_phone",
+        "label": "Phone",
+        "name": "member_directory_business_phone",
+        "type": "text"
+      },
+      {
+        "key": "field_md_business_email",
+        "label": "Email",
+        "name": "member_directory_business_email",
+        "type": "email"
+      },
+      {
+        "key": "field_md_business_contact_notes",
+        "label": "Contact Notes",
+        "name": "member_directory_business_contact_notes",
+        "type": "textarea",
+        "instructions": "Best way to reach you, preferred contact method, etc.",
+        "rows": 3
+      },
+      {
+        "key": "field_md_tab_business_services",
+        "label": "Services",
+        "name": "",
+        "type": "tab",
+        "placement": "top",
+        "endpoint": 0
+      },
+      {
+        "key": "field_md_business_services",
+        "label": "Services Offered",
+        "name": "member_directory_business_services",
+        "type": "taxonomy",
+        "taxonomy": "mp2t_services",
+        "add_term": 1,
+        "save_terms": 1,
+        "load_terms": 1,
+        "return_format": "id",
+        "field_type": "multi_select",
+        "allow_null": 1
+      },
+      {
+        "key": "field_md_business_featured_services",
+        "label": "Featured Services",
+        "name": "member_directory_business_featured_services",
+        "type": "taxonomy",
+        "instructions": "Select up to 3 services to highlight.",
+        "taxonomy": "mp2t_services",
+        "add_term": 0,
+        "save_terms": 0,
+        "load_terms": 0,
+        "return_format": "id",
+        "field_type": "multi_select",
+        "allow_null": 1
+      },
+      {
+        "key": "field_md_business_instruments",
+        "label": "Instruments Serviced",
+        "name": "member_directory_business_instruments",
+        "type": "taxonomy",
+        "instructions": "What instruments the business works on (may differ from personal craft).",
+        "taxonomy": "mp2t_instruments",
+        "add_term": 0,
+        "save_terms": 0,
+        "load_terms": 0,
+        "return_format": "id",
+        "field_type": "multi_select",
+        "allow_null": 1
+      },
+      {
+        "key": "field_md_business_warranty",
+        "label": "Warranty",
+        "name": "member_directory_business_warranty",
+        "type": "textarea",
+        "rows": 3
+      },
+      {
+        "key": "field_md_tab_business_location",
+        "label": "Location & Hours",
+        "name": "",
+        "type": "tab",
+        "placement": "top",
+        "endpoint": 0
+      },
+      {
+        "key": "field_md_business_location",
+        "label": "Business Location",
+        "name": "member_directory_business_location",
+        "type": "google_map",
+        "center_lat": "39.7392",
+        "center_lng": "-104.9903",
+        "zoom": 10
+      },
+      {
+        "key": "field_md_business_location_precision",
+        "label": "Location Precision",
+        "name": "member_directory_business_location_precision",
+        "type": "select",
+        "choices": {
+          "exact": "Exact Address",
+          "neighborhood": "Neighborhood",
+          "city": "City Only",
+          "hide": "Hide Location"
+        },
+        "default_value": "exact"
+      },
+      {
+        "key": "field_md_business_parking",
+        "label": "Parking",
+        "name": "member_directory_business_parking",
+        "type": "text",
+        "placeholder": "Street parking available, lot in rear, etc."
+      },
+      {
+        "key": "field_md_business_accessibility",
+        "label": "Accessibility",
+        "name": "member_directory_business_accessibility",
+        "type": "textarea",
+        "rows": 3
+      },
+      {
+        "key": "field_md_business_hours",
+        "label": "Business Hours",
+        "name": "member_directory_business_hours",
+        "type": "textarea",
+        "instructions": "Free-form hours (flexible for \"by appointment only\", seasonal hours, etc.)",
+        "rows": 4
+      },
+      {
+        "key": "field_md_tab_business_booking",
+        "label": "Booking",
+        "name": "",
+        "type": "tab",
+        "placement": "top",
+        "endpoint": 0
+      },
+      {
+        "key": "field_md_business_booking_url",
+        "label": "Booking URL",
+        "name": "member_directory_business_booking_url",
+        "type": "url",
+        "instructions": "Link to your scheduling system (Calendly, Square, etc.)",
+        "placeholder": "https://calendly.com/..."
+      },
+      {
+        "key": "field_md_business_languages",
+        "label": "Languages",
+        "name": "member_directory_business_languages",
+        "type": "repeater",
+        "layout": "table",
+        "min": 0,
+        "max": 10,
+        "button_label": "Add Row",
+        "rows_per_page": 20,
+        "sub_fields": [
+          {
+            "key": "field_md_business_language_name",
+            "label": "Language",
+            "name": "language",
+            "type": "text"
+          }
+        ]
+      }
+    ],
+    "location": [
+      [
+        {
+          "param": "post_type",
+          "operator": "==",
+          "value": "member-directory"
+        }
+      ]
+    ],
+    "menu_order": 5,
+    "position": "normal",
+    "style": "default",
+    "label_placement": "top",
+    "instruction_placement": "label",
+    "active": true,
+    "description": "Business section: identity, contact, services, location, hours, booking, languages."
+  }
+}
