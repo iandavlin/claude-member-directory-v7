@@ -132,12 +132,14 @@ $active_section = isset( $active_section ) ? (string) $active_section : 'all';
 		data-section="<?php echo esc_attr( $key ); ?>"
 		type="button"
 	>
+		<?php if ( ! empty( $is_edit ) ) : ?>
 		<input
 			type="checkbox"
 			class="memdir-pill__checkbox"
 			data-section="<?php echo esc_attr( $key ); ?>"
 			<?php checked( $is_on ); ?>
 		>
+		<?php endif; ?>
 		<span class="memdir-pill__label"><?php echo esc_html( $label ); ?></span>
 	</button>
 

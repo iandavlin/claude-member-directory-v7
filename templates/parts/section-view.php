@@ -53,7 +53,10 @@ $section_pmp = ( $section_privacy_mode === 'custom' )
 // Default to 'member' as a safe fallback.
 // ---------------------------------------------------------------------------
 
-$global_pmp    = get_field( 'member_directory_global_pmp', $post_id ) ?: 'member';
+// Default to 'public' so fields are visible when the global PMP ACF field
+// has not yet been set (e.g. GlobalFields meta box not yet active).
+// Change to 'member' once global PMP controls are fully wired up.
+$global_pmp    = get_field( 'member_directory_global_pmp', $post_id ) ?: 'public';
 $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 
 ?>
