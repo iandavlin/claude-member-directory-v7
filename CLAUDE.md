@@ -16,10 +16,16 @@ WordPress plugin: section-based member profile and directory system powered by A
 - `templates/single-member-directory.php` — full edit/view mode branching
 - `templates/parts/section-edit.php` — edit partial (acf_form per section)
 - `templates/parts/section-view.php` — view partial (PMP checks + FieldRenderer)
-- `templates/parts/right-panel.php` — View As toggle + Global Visibility note (author/admin only)
+- `templates/parts/right-panel.php` — author/admin panel: View As button group, Global Default block, Primary Section block, Notes block
 - `templates/parts/profile-header.php` — sticky profile header; profile/business variant; eyebrow, title, badges
 - `templates/parts/pill-nav.php` — pill navigation row; All Sections + per-section pills with enable/disable checkboxes
-- `sections/profile.json` — only section definition on disk
+- `sections/profile.json` — section definition (Profile)
+- `sections/business.json` — section definition (Business) — fully formed, not scaffold
+- `sections/discovery.json` — section definition (Discovery) — fully formed, not scaffold
+- AJAX handlers wired:
+  - `md_save_section` → `AcfFormHelper::handle_ajax_save`
+  - `memdir_ajax_save_section_enabled` → `AcfFormHelper::handle_save_section_enabled`
+  - `memdir_ajax_save_primary_section` → `GlobalFields::handle_save_primary_section`
 
 ### Not Started / Scaffold Only
 - `includes/DirectoryQuery.php` — 🔜 not created yet
@@ -66,7 +72,9 @@ includes/
   FieldRenderer.php           render() — field definition + post_id → escaped HTML output.
   DirectoryQuery.php          🔜 Not yet created.
 sections/
-  profile.json                Section config. Keys: key, label, order, can_be_primary, pmp_default, field_groups[], acf_group{}.
+  profile.json                Section config (Profile). Keys: key, label, order, can_be_primary, pmp_default, field_groups[], acf_group{}.
+  discovery.json              Section config (Discovery). order=3, can_be_primary=false.
+  business.json               Section config (Business). order=5, can_be_primary=true.
 templates/
   single-member-directory.php Single profile. Calls form_head first, then branches edit/view per section.
   archive-member-directory.php Scaffold only — no real implementation.
@@ -75,7 +83,7 @@ templates/
     pill-nav.php              Pill navigation. All Sections pill + one pill per section with enable/disable checkbox.
     section-edit.php          Edit partial. Calls AcfFormHelper::render_edit_form() per section.
     section-view.php          View partial. Resolves section/global PMP, loops fields, calls FieldRenderer.
-    right-panel.php           Author/admin panel. View As toggle + Global Visibility note.
+    right-panel.php           Author/admin panel. View As button group, Global Default block, Primary Section block, Notes block.
 tools/
   acf-to-config.md            Claude skill: convert ACF JSON export to section config format.
 ```
@@ -116,7 +124,9 @@ tools/
 
 ## Known Issues
 
-### GlobalFields meta box not appearing (UNRESOLVED)
+### ⚠ UNRESOLVED BLOCKER — GlobalFields meta box not appearing
+The Global Controls meta box (profile visibility + primary section) does not appear in the WP Admin post editor. All registration code runs but the meta box is invisible.
+
 - `GlobalFields::register()` is confirmed called (error_log fires)
 - `acf_add_local_field_group()` is confirmed called with key `group_md_global_controls`
 - Location rule nesting is correct (3-level: `[ [ [ param/op/value ] ] ]`)
@@ -127,8 +137,20 @@ tools/
 
 ### Temporary debug code in GlobalFields.php (needs cleanup)
 Remove once meta box issue resolved:
-- `error_log(...)` calls in `init()` and `register()`
-- `debug_filters()` static method + its call in `init()`
+- `error_log(...)` calls in `init()` and `register()` (lines 42, 75, 97, 98)
+- `debug_filters()` static method + its call in `init()` (lines 60–68 and line 49)
+
+## Sections on Disk
+
+Three section configs live in `sections/`. Each must be synced via **WP Admin → Member Directory → Sync** before it is active at runtime. Sync writes the config to `member_directory_sections` in the WP options table; `SectionRegistry::load_from_db()` reads that option and registers ACF field groups on every page load.
+
+| File | Key | Label | order | can_be_primary |
+|------|-----|-------|-------|----------------|
+| `sections/profile.json` | `profile` | Profile | 1 | true |
+| `sections/discovery.json` | `discovery` | Discovery | 3 | false |
+| `sections/business.json` | `business` | Business | 5 | true |
+
+> **After editing any section JSON, always run Sync — the runtime registry will not reflect file changes until it does.**
 
 ---
 
