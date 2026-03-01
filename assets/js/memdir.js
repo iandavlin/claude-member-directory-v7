@@ -587,6 +587,10 @@
 		}
 		newPrimaryPill.classList.add( 'memdir-pill--primary' );
 
+		// Always ensure the pill is visible — hideEmptySectionPills() may have
+		// hidden it via inline style when its section was absent from the DOM.
+		newPrimaryPill.style.display = '';
+
 		// Primary sections are always enabled. If the promoted pill was previously
 		// disabled, clear that state, show its section, update the badge, and persist.
 		if ( newPrimaryPill.classList.contains( 'memdir-pill--disabled' ) ) {
@@ -867,6 +871,9 @@
 	 * In view mode PHP silently skips sections with zero visible fields.
 	 * On load we detect absent sections and hide their pills, then sync the
 	 * badge count so it only reflects actually-visible sections.
+	 *
+	 * Skips pills that are already --disabled — those are managed by the
+	 * checkbox system and must stay visible so the author can re-enable them.
 	 */
 	function hideEmptySectionPills() {
 		var nav = document.querySelector( '.memdir-pills' );
@@ -877,6 +884,10 @@
 		nav.querySelectorAll( '.memdir-pill[data-section]' ).forEach( function ( pill ) {
 			var key = pill.dataset.section || '';
 			if ( ! key || pill.classList.contains( 'memdir-pill--all' ) ) {
+				return;
+			}
+			// Already disabled — managed by checkbox system, leave visible.
+			if ( pill.classList.contains( 'memdir-pill--disabled' ) ) {
 				return;
 			}
 			// If no matching section element exists in the DOM, PHP dropped it.
