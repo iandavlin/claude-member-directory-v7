@@ -573,6 +573,7 @@ a.memdir-field-value:hover {
   position: sticky;
   top: 80px;
   width: 100%;
+  align-self: start;
   font-family: var(--md-font);
 }
 
