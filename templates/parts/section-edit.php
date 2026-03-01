@@ -50,11 +50,10 @@ $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 
 		<p class="memdir-section-controls__title"><?php echo esc_html( $section_label ); ?></p>
 
-		<div class="memdir-section-controls__pmp">
-			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--public<?php echo $effective_pmp === 'public'  ? ' memdir-section-controls__pmp-btn--active' : ''; ?>" data-pmp="public">🌐</button>
-			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--member<?php echo $effective_pmp === 'member'  ? ' memdir-section-controls__pmp-btn--active' : ''; ?>" data-pmp="member">👥</button>
-			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--private<?php echo $effective_pmp === 'private' ? ' memdir-section-controls__pmp-btn--active' : ''; ?>" data-pmp="private">🔒</button>
-			<button type="button" class="memdir-section-controls__override">Override</button>
+		<div class="memdir-section-controls__pmp memdir-section-controls__pmp--vertical">
+			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--public<?php echo $effective_pmp === 'public'  ? ' memdir-section-controls__pmp-btn--active is-active' : ''; ?>" data-pmp="public">🌐 Public</button>
+			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--member<?php echo $effective_pmp === 'member'  ? ' memdir-section-controls__pmp-btn--active is-active' : ''; ?>" data-pmp="member">👥 Members</button>
+			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--private<?php echo $effective_pmp === 'private' ? ' memdir-section-controls__pmp-btn--active is-active' : ''; ?>" data-pmp="private">🔒 Private</button>
 		</div>
 
 		<div class="memdir-unsaved-banner" style="display:none">

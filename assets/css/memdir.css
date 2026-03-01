@@ -335,6 +335,40 @@ body.single-member-directory #primary {
   color: var(--md-white);
 }
 
+/* Vertical PMP stack (edit mode left column) */
+.memdir-section-controls__pmp--vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.memdir-section-controls__pmp--vertical button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
+  background: var(--md-white);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: var(--md-font);
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.memdir-section-controls__pmp--vertical button:hover {
+  border-color: var(--md-green-sage);
+  background: rgba(151, 169, 124, 0.08);
+}
+
+.memdir-section-controls__pmp--vertical button.is-active {
+  background: var(--md-green-pale);
+  border-color: var(--md-green-mid);
+  font-weight: 600;
+}
+
 .memdir-section-controls__override {
   font-size: 11px;
   padding: 3px 8px;
@@ -535,108 +569,104 @@ a.memdir-field-value:hover {
 
 .memdir-right-panel {
   position: fixed;
-  top: 80px; /* clear theme header */
+  top: 80px;
   right: 0;
   width: var(--md-panel-width);
-  background: var(--md-white);
-  border-left: 1px solid var(--md-border);
-  border-bottom: 1px solid var(--md-border);
-  border-radius: 0 0 0 var(--md-radius);
-  padding: 16px;
+  padding: 0;
   z-index: 200;
   font-family: var(--md-font);
-  box-shadow: -2px 4px 12px rgba(0,0,0,0.06);
 }
 
-.memdir-panel-block {
-  margin-bottom: 20px;
+.memdir-right-panel__card {
+  background: var(--md-white);
+  border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
+  padding: 16px;
+  margin: 16px;
 }
 
-.memdir-panel-block:last-child {
-  margin-bottom: 0;
-}
-
-.memdir-panel-block__heading {
-  font-size: 10px;
+.memdir-panel__heading {
+  font-size: 14px;
   font-weight: 700;
-  letter-spacing: 0.12em;
+  margin-bottom: 16px;
+  margin-top: 0;
   text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.memdir-panel__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--md-text-muted);
-  margin: 0 0 10px;
+  margin-bottom: 8px;
+  margin-top: 16px;
 }
 
-/* View As */
-.memdir-view-as {
-  display: flex;
-  gap: 4px;
+.memdir-panel__label:first-of-type {
+  margin-top: 0;
 }
 
-.memdir-view-as__btn {
-  flex: 1;
-  padding: 6px 4px;
-  border-radius: var(--md-radius);
-  border: 1px solid var(--md-border);
-  background: var(--md-white);
-  font-family: var(--md-font);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--md-text);
-  cursor: pointer;
-  text-align: center;
-  text-decoration: none;
-  transition: background 0.15s, border-color 0.15s;
+/* View As buttons */
+.memdir-panel__view-btn {
   display: block;
-}
-
-.memdir-view-as__btn:hover {
-  border-color: var(--md-green-sage);
-  background: rgba(151, 169, 124, 0.1);
-}
-
-.memdir-view-as__btn--active {
-  background: var(--md-green-pale);
-  border-color: var(--md-green-sage);
-  font-weight: 700;
-  color: var(--md-text);
-}
-
-/* Global Default */
-.memdir-global-default {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.memdir-global-default__option {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-radius: var(--md-radius);
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 4px;
   border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
   background: var(--md-white);
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+  color: var(--md-text);
   font-family: var(--md-font);
   font-size: 13px;
-  font-weight: 500;
-  color: var(--md-text);
-  cursor: pointer;
+  box-sizing: border-box;
   transition: background 0.15s, border-color 0.15s;
 }
 
-.memdir-global-default__option:hover {
+.memdir-panel__view-btn:hover {
   border-color: var(--md-green-sage);
   background: rgba(151, 169, 124, 0.08);
 }
 
-.memdir-global-default__option--active {
+.memdir-panel__view-btn.is-active {
   background: var(--md-green-pale);
-  border-color: var(--md-green-sage);
+  border-color: var(--md-green-mid);
   font-weight: 600;
 }
 
-.memdir-global-default__option--public .memdir-pmp-icon::before    { content: '🌐'; }
-.memdir-global-default__option--member .memdir-pmp-icon::before    { content: '👥'; }
-.memdir-global-default__option--private .memdir-pmp-icon::before   { content: '🔒'; }
+/* Global Default buttons */
+.memdir-panel__global-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
+  background: var(--md-white);
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--md-font);
+  font-size: 13px;
+  box-sizing: border-box;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.memdir-panel__global-btn:hover {
+  border-color: var(--md-green-sage);
+  background: rgba(151, 169, 124, 0.08);
+}
+
+.memdir-panel__global-btn--active {
+  background: var(--md-green-pale);
+  border-color: var(--md-green-mid);
+  font-weight: 600;
+}
 
 /* ─────────────────────────────────────────────────────────────
    ACF FORM OVERRIDES (edit mode)

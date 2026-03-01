@@ -3,8 +3,8 @@
  * Partial: Right Panel.
  *
  * Renders the author/admin utility panel on a member profile page.
- * Contains the View As toggle (Edit / Member / Public) and a note
- * directing the author to the post editor for Global Visibility.
+ * Contains the View As toggle (Edit / Member / Public) and the Global
+ * Default visibility selector.
  *
  * Only included when the viewer is the genuine post author or admin —
  * the caller is responsible for that gate. Never include this for
@@ -27,34 +27,42 @@ defined( 'ABSPATH' ) || exit;
 // correct button. Empty string means the author is in their own edit mode.
 // ---------------------------------------------------------------------------
 
-$base_url = get_permalink( $post_id );
-$view_as  = isset( $_GET['view_as'] )
+$base_url   = get_permalink( $post_id );
+$view_as    = isset( $_GET['view_as'] )
 	? sanitize_text_field( wp_unslash( $_GET['view_as'] ) )
 	: '';
 
+$global_pmp = get_field( 'member_directory_global_pmp', $post_id ) ?: 'member';
+
 ?>
 <div class="memdir-right-panel">
+	<div class="memdir-right-panel__card">
 
-	<div class="memdir-panel-block">
-		<h3>View As</h3>
-		<div class="memdir-view-as">
+		<h3 class="memdir-panel__heading">Controls</h3>
 
-			<a href="<?php echo esc_url( $base_url ); ?>"
-			   class="button<?php echo $view_as === '' ? ' is-active' : ''; ?>">Edit</a>
+		<p class="memdir-panel__label">VIEW AS</p>
 
-			<a href="<?php echo esc_url( add_query_arg( 'view_as', 'member', $base_url ) ); ?>"
-			   class="button<?php echo $view_as === 'member' ? ' is-active' : ''; ?>">Member</a>
+		<a href="<?php echo esc_url( $base_url ); ?>"
+		   class="memdir-panel__view-btn<?php echo $view_as === '' ? ' is-active' : ''; ?>">Edit</a>
 
-			<a href="<?php echo esc_url( add_query_arg( 'view_as', 'public', $base_url ) ); ?>"
-			   class="button<?php echo $view_as === 'public' ? ' is-active' : ''; ?>">Public</a>
+		<a href="<?php echo esc_url( add_query_arg( 'view_as', 'member', $base_url ) ); ?>"
+		   class="memdir-panel__view-btn<?php echo $view_as === 'member' ? ' is-active' : ''; ?>">Member</a>
 
-		</div>
+		<a href="<?php echo esc_url( add_query_arg( 'view_as', 'public', $base_url ) ); ?>"
+		   class="memdir-panel__view-btn<?php echo $view_as === 'public' ? ' is-active' : ''; ?>">Public</a>
+
+		<p class="memdir-panel__label">GLOBAL DEFAULT</p>
+
+		<button class="memdir-panel__global-btn<?php echo $global_pmp === 'public'  ? ' memdir-panel__global-btn--active' : ''; ?>" data-pmp="public">
+			<span class="memdir-panel__global-icon">🌐</span> Public
+		</button>
+		<button class="memdir-panel__global-btn<?php echo $global_pmp === 'member'  ? ' memdir-panel__global-btn--active' : ''; ?>" data-pmp="member">
+			<span class="memdir-panel__global-icon">👥</span> Members
+		</button>
+		<button class="memdir-panel__global-btn<?php echo $global_pmp === 'private' ? ' memdir-panel__global-btn--active' : ''; ?>" data-pmp="private">
+			<span class="memdir-panel__global-icon">🔒</span> Private
+		</button>
+
 	</div>
-
-	<div class="memdir-panel-block">
-		<h3>Global Visibility</h3>
-		<p>Change in the post editor under <strong>Member Directory &mdash; Global Controls</strong>.</p>
-	</div>
-
 </div><?php
 // No closing PHP tag — intentional. Prevents accidental whitespace output.
