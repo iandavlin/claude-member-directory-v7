@@ -393,16 +393,23 @@
 						saveBtn.textContent = originalBtnText;
 					}, 2000 );
 
-					// Update the page-name header title in place if that field
-					// was included in this section's saved payload.
+					// Update header title in place when a name field was in the saved payload.
+					// Each section targets its own header wrapper so both can live in the DOM.
 					var pageNameField = fieldContent.querySelector( '.acf-field[data-key="field_md_profile_page_name"]' );
 					if ( pageNameField ) {
 						var pageNameInput = pageNameField.querySelector( 'input' );
 						if ( pageNameInput ) {
-							var titleEl = document.querySelector( '.memdir-header__title' );
-							if ( titleEl ) {
-								titleEl.textContent = pageNameInput.value;
-							}
+							var titleEl = document.querySelector( '.memdir-header-wrap[data-header="profile"] .memdir-header__title' );
+							if ( titleEl ) { titleEl.textContent = pageNameInput.value; }
+						}
+					}
+
+					var businessNameField = fieldContent.querySelector( '.acf-field[data-key="field_md_business_name"]' );
+					if ( businessNameField ) {
+						var businessNameInput = businessNameField.querySelector( 'input' );
+						if ( businessNameInput ) {
+							var businessTitleEl = document.querySelector( '.memdir-header-wrap[data-header="business"] .memdir-header__title' );
+							if ( businessTitleEl ) { businessTitleEl.textContent = businessNameInput.value; }
 						}
 					}
 				} else {
