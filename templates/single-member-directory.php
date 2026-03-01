@@ -56,20 +56,20 @@ if ( isset( $_GET['view_as'] ) && $is_privileged ) {
 // Rendering mode — false when ?view_as is active (spoofed viewer fails check).
 $is_edit = AcfFormHelper::is_edit_mode( $post_id, $viewer );
 
-$sections = SectionRegistry::get_sections();
+$sections        = SectionRegistry::get_sections();
+$primary_section = get_field( 'member_directory_primary_section', $post_id ) ?: 'profile';
 
 ?>
 <div class="memdir-profile">
 	<div class="memdir-profile__main">
 
-		<div class="memdir-sticky">
-			<?php
-			$primary_section = get_field( 'member_directory_primary_section', $post_id ) ?: 'profile';
-			$header_partial  = ( $primary_section === 'business' )
-				? 'parts/header-business.php'
-				: 'parts/header-profile.php';
-			include plugin_dir_path( __FILE__ ) . $header_partial;
-			?>
+		<div class="memdir-sticky" data-primary-section="<?php echo esc_attr( $primary_section ); ?>">
+			<div class="memdir-header-wrap" data-header="profile"<?php echo $primary_section !== 'profile' ? ' style="display:none"' : ''; ?>>
+				<?php include plugin_dir_path( __FILE__ ) . 'parts/header-profile.php'; ?>
+			</div>
+			<div class="memdir-header-wrap" data-header="business"<?php echo $primary_section !== 'business' ? ' style="display:none"' : ''; ?>>
+				<?php include plugin_dir_path( __FILE__ ) . 'parts/header-business.php'; ?>
+			</div>
 			<?php include plugin_dir_path( __FILE__ ) . 'parts/pill-nav.php'; ?>
 		</div>
 

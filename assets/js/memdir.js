@@ -4,11 +4,13 @@
  * Front-end interactions for the Member Directory profile page.
  *
  * Sections:
- *   1. Tab navigation  — show/hide ACF fields by tab group within a section
- *   2. Pill navigation — single-section / all-sections view switching
- *   3. Section save    — AJAX save for all fields in a section without reload
- *   4. Right panel     — Primary Section AJAX save + pill DOM update
- *   5. Pill enable/disable — checkbox toggles section on/off + DOM reorder
+ *   1. Tab navigation     — show/hide ACF fields by tab group within a section
+ *   2. Pill navigation    — single-section / all-sections view switching
+ *   3. Header swap        — show correct header variant based on active pill
+ *   4. Section save       — AJAX save for all fields in a section without reload
+ *   5. Right panel        — Primary Section AJAX save + pill DOM update
+ *   6. Pill enable/disable — checkbox toggles section on/off + DOM reorder
+ *   7. State restore      — sessionStorage + URL param restore on page load
  */
 
 ( function () {
@@ -127,10 +129,11 @@
 	}
 
 	/**
-	 * Activate a pill and update section visibility in the DOM.
+	 * Activate a pill: update pill active classes, section visibility, header
+	 * variant, and sessionStorage state.
 	 *
-	 * Called both by pill click handlers and by restoreStateFromUrl() so the
-	 * logic lives in one place.
+	 * Called by pill click handlers, restoreState(), and restoreStateFromUrl()
+	 * so all logic lives in one place.
 	 *
 	 * @param {string} sectionKey  data-section value of the pill to activate,
 	 *                             or 'all' to show every section.
@@ -150,10 +153,72 @@
 					( section.dataset.section === sectionKey ) ? '' : 'none';
 			}
 		} );
+
+		// Swap the header variant to match the active pill.
+		swapHeader( sectionKey );
+
+		// Persist the active pill to sessionStorage keyed by post ID so state
+		// survives navigation within the same browser session.
+		var nav    = document.querySelector( '.memdir-pills' );
+		var postId = nav ? ( nav.dataset.postId || '' ) : '';
+		if ( postId ) {
+			try {
+				sessionStorage.setItem( 'memdir_active_pill_' + postId, sectionKey );
+			} catch ( e ) {
+				// sessionStorage may be unavailable (private browsing, storage full).
+			}
+		}
 	}
 
 	// -----------------------------------------------------------------------
-	// 3. Section save (AJAX)
+	// 3. Header swap
+	//
+	// Two header variants live in the DOM (.memdir-header-wrap[data-header]).
+	// The correct one is shown based on the active pill and the primary section.
+	//
+	// Rule:
+	//   Business primary → show profile header ONLY when Profile pill is active;
+	//                       show business header for all other pills.
+	//   Profile primary  → show business header ONLY when Business pill is active;
+	//                       show profile header for all other pills.
+	//
+	// .memdir-sticky[data-primary-section] is the source of truth for the
+	// primary section key.
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Show the correct header variant for the active pill.
+	 *
+	 * @param {string} sectionKey  The newly activated section key.
+	 */
+	function swapHeader( sectionKey ) {
+		var sticky = document.querySelector( '.memdir-sticky' );
+		if ( ! sticky ) {
+			return;
+		}
+
+		var primarySection = sticky.dataset.primarySection || 'profile';
+		var showBusiness;
+
+		if ( primarySection === 'business' ) {
+			// Business is primary: show the profile header only when the
+			// Profile pill is active; all other pills show the business header.
+			showBusiness = ( sectionKey !== 'profile' );
+		} else {
+			// Profile is primary (default): show the business header only when
+			// the Business pill is active; all other pills show the profile header.
+			showBusiness = ( sectionKey === 'business' );
+		}
+
+		var profileWrap  = sticky.querySelector( '.memdir-header-wrap[data-header="profile"]' );
+		var businessWrap = sticky.querySelector( '.memdir-header-wrap[data-header="business"]' );
+
+		if ( profileWrap )  { profileWrap.style.display  = showBusiness ? 'none' : ''; }
+		if ( businessWrap ) { businessWrap.style.display = showBusiness ? '' : 'none'; }
+	}
+
+	// -----------------------------------------------------------------------
+	// 4. Section save (AJAX)
 	//
 	// Each .memdir-section--edit wraps:
 	//   .memdir-unsaved-banner  — shown when any field in the section changes.
@@ -339,31 +404,133 @@
 	}
 
 	// -----------------------------------------------------------------------
-	// 4. State restoration from URL params
+	// 5. Right panel controls
 	//
-	// After a successful save, the page reloads with:
-	//   ?active_section={section_key}&active_tab={tab_label}
-	//
-	// initTabNav() already restores the correct tab for the saved section
-	// (it reads URLSearchParams before iterating sections). This function
-	// handles the pill side: activate the pill whose data-section matches
-	// active_section so the nav reflects the just-saved section.
+	// PRIMARY SECTION buttons — clicking a .memdir-panel__primary-btn saves
+	// the new primary section via AJAX, then:
+	//   - Updates button active states in the panel.
+	//   - Calls updatePrimarySection() to reorder pills in the nav.
 	// -----------------------------------------------------------------------
 
-	function restoreStateFromUrl() {
-		var params        = new URLSearchParams( window.location.search );
-		var activeSection = params.get( 'active_section' ) || '';
-
-		if ( ! activeSection ) {
+	function initRightPanel() {
+		var panel = document.querySelector( '.memdir-right-panel' );
+		if ( ! panel ) {
 			return;
 		}
 
-		// Reuse activatePill so pill classes and section visibility both update.
-		activatePill( activeSection );
+		panel.querySelectorAll( '.memdir-panel__primary-btn' ).forEach( function ( btn ) {
+			btn.addEventListener( 'click', function () {
+				var sectionKey = btn.dataset.sectionKey || '';
+				var nav        = document.querySelector( '.memdir-pills' );
+				var postId     = nav ? ( nav.dataset.postId || '' ) : '';
+
+				if ( ! sectionKey || ! postId ) {
+					return;
+				}
+
+				var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
+					? window.mdAjax.ajaxurl
+					: '/wp-admin/admin-ajax.php';
+				var nonce = ( window.mdAjax && window.mdAjax.nonce )
+					? window.mdAjax.nonce
+					: '';
+
+				var formData = new FormData();
+				formData.set( 'action',      'memdir_ajax_save_primary_section' );
+				formData.set( 'nonce',       nonce );
+				formData.set( 'post_id',     postId );
+				formData.set( 'section_key', sectionKey );
+
+				fetch( ajaxUrl, {
+					method:      'POST',
+					credentials: 'same-origin',
+					body:        formData,
+				} )
+					.then( function ( response ) { return response.json(); } )
+					.then( function ( data ) {
+						if ( ! data.success ) {
+							console.error( 'MemberDirectory: primary section AJAX returned error', data );
+							return;
+						}
+
+						// Move active state on the primary-section buttons.
+						panel.querySelectorAll( '.memdir-panel__primary-btn' ).forEach( function ( b ) {
+							b.classList.toggle( 'is-active', b.dataset.sectionKey === sectionKey );
+						} );
+
+						// Reorder pills and update checkbox visibility.
+						updatePrimarySection( sectionKey );
+					} )
+					.catch( function ( err ) {
+						console.error( 'MemberDirectory: primary section AJAX failed', err );
+					} );
+			} );
+		} );
+	}
+
+	/**
+	 * Update the pill nav DOM when the primary section changes.
+	 *
+	 * - Moves the new primary pill to immediately after the All Sections pill.
+	 * - Removes the checkbox from the new primary pill (primary cannot be disabled).
+	 * - Restores a checkbox on the old primary pill.
+	 * - Updates data-primary-section on the nav and on .memdir-sticky.
+	 *
+	 * @param {string} newPrimaryKey  Section key of the new primary section.
+	 */
+	function updatePrimarySection( newPrimaryKey ) {
+		var nav        = document.querySelector( '.memdir-pills' );
+		var allPill    = nav ? nav.querySelector( '.memdir-pill--all' ) : null;
+		var oldPrimaryKey = nav ? ( nav.dataset.primarySection || '' ) : '';
+
+		if ( ! nav || ! allPill || oldPrimaryKey === newPrimaryKey ) {
+			return;
+		}
+
+		var newPrimaryPill = nav.querySelector( '.memdir-pill[data-section="' + newPrimaryKey + '"]' );
+		var oldPrimaryPill = oldPrimaryKey
+			? nav.querySelector( '.memdir-pill[data-section="' + oldPrimaryKey + '"]' )
+			: null;
+
+		if ( ! newPrimaryPill ) {
+			return;
+		}
+
+		// Remove checkbox from the new primary pill and mark it primary.
+		var newCheckbox = newPrimaryPill.querySelector( '.memdir-pill__checkbox' );
+		if ( newCheckbox ) {
+			newCheckbox.remove();
+		}
+		newPrimaryPill.classList.add( 'memdir-pill--primary' );
+
+		// Restore checkbox on the old primary pill.
+		if ( oldPrimaryPill && ! oldPrimaryPill.querySelector( '.memdir-pill__checkbox' ) ) {
+			var checkbox             = document.createElement( 'input' );
+			checkbox.type            = 'checkbox';
+			checkbox.className       = 'memdir-pill__checkbox';
+			checkbox.dataset.section = oldPrimaryKey;
+			checkbox.checked         = true; // Enabled by default when demoted.
+			oldPrimaryPill.insertBefore( checkbox, oldPrimaryPill.firstChild );
+			oldPrimaryPill.classList.remove( 'memdir-pill--primary' );
+
+			// Wire the new checkbox into the enable/disable handler.
+			bindCheckbox( checkbox, nav );
+		}
+
+		// Move new primary pill to first position (right after All Sections pill).
+		nav.insertBefore( newPrimaryPill, allPill.nextSibling );
+
+		// Record the new primary on both the nav and the sticky wrapper so
+		// swapHeader() reads the updated value immediately.
+		nav.dataset.primarySection = newPrimaryKey;
+		var sticky = document.querySelector( '.memdir-sticky' );
+		if ( sticky ) {
+			sticky.dataset.primarySection = newPrimaryKey;
+		}
 	}
 
 	// -----------------------------------------------------------------------
-	// 5. Pill enable/disable
+	// 6. Pill enable/disable
 	//
 	// Checkboxes on non-primary pills toggle whether a section is shown.
 	// Unchecking a checkbox:
@@ -526,123 +693,52 @@
 	}
 
 	// -----------------------------------------------------------------------
-	// 4. Right panel controls
+	// 7. State restore
 	//
-	// PRIMARY SECTION buttons — clicking a .memdir-panel__primary-btn saves
-	// the new primary section via AJAX, then:
-	//   - Updates button active states in the panel.
-	//   - Calls updatePrimarySection() to reorder pills in the nav.
+	// Priority order on DOMContentLoaded:
+	//   1. URL param ?active_section={key} — post-save reloads pass this.
+	//   2. sessionStorage keyed to post ID — remembers state within a session.
+	//   3. Primary section key — default active pill (not 'all').
+	//
+	// activatePill() writes to sessionStorage on every activation, so the
+	// stored value stays current as the user navigates between pills.
 	// -----------------------------------------------------------------------
 
-	function initRightPanel() {
-		var panel = document.querySelector( '.memdir-right-panel' );
-		if ( ! panel ) {
-			return;
-		}
-
-		panel.querySelectorAll( '.memdir-panel__primary-btn' ).forEach( function ( btn ) {
-			btn.addEventListener( 'click', function () {
-				var sectionKey = btn.dataset.sectionKey || '';
-				var nav        = document.querySelector( '.memdir-pills' );
-				var postId     = nav ? ( nav.dataset.postId || '' ) : '';
-
-				if ( ! sectionKey || ! postId ) {
-					return;
-				}
-
-				var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
-					? window.mdAjax.ajaxurl
-					: '/wp-admin/admin-ajax.php';
-				var nonce = ( window.mdAjax && window.mdAjax.nonce )
-					? window.mdAjax.nonce
-					: '';
-
-				var formData = new FormData();
-				formData.set( 'action',      'memdir_ajax_save_primary_section' );
-				formData.set( 'nonce',       nonce );
-				formData.set( 'post_id',     postId );
-				formData.set( 'section_key', sectionKey );
-
-				fetch( ajaxUrl, {
-					method:      'POST',
-					credentials: 'same-origin',
-					body:        formData,
-				} )
-					.then( function ( response ) { return response.json(); } )
-					.then( function ( data ) {
-						if ( ! data.success ) {
-							return;
-						}
-
-						// Move active state on the primary-section buttons.
-						panel.querySelectorAll( '.memdir-panel__primary-btn' ).forEach( function ( b ) {
-							b.classList.toggle( 'is-active', b.dataset.sectionKey === sectionKey );
-						} );
-
-						// Reorder pills and update checkbox visibility.
-						updatePrimarySection( sectionKey );
-					} )
-					.catch( function () {
-						// Silently fail — no UX change on network error.
-					} );
-			} );
-		} );
-	}
-
 	/**
-	 * Update the pill nav DOM when the primary section changes.
-	 *
-	 * - Moves the new primary pill to immediately after the All Sections pill.
-	 * - Removes the checkbox from the new primary pill (primary cannot be disabled).
-	 * - Restores a checkbox on the old primary pill.
-	 * - Updates data-primary-section on the nav.
-	 *
-	 * @param {string} newPrimaryKey  Section key of the new primary section.
+	 * Restore active pill state from URL params, sessionStorage, or primary default.
 	 */
-	function updatePrimarySection( newPrimaryKey ) {
-		var nav        = document.querySelector( '.memdir-pills' );
-		var allPill    = nav ? nav.querySelector( '.memdir-pill--all' ) : null;
-		var oldPrimaryKey = nav ? ( nav.dataset.primarySection || '' ) : '';
+	function restoreState() {
+		var nav    = document.querySelector( '.memdir-pills' );
+		var postId = nav ? ( nav.dataset.postId || '' ) : '';
 
-		if ( ! nav || ! allPill || oldPrimaryKey === newPrimaryKey ) {
+		// 1. URL param — post-save page reload passes ?active_section={key}.
+		var params = new URLSearchParams( window.location.search );
+		var urlKey = params.get( 'active_section' ) || '';
+		if ( urlKey ) {
+			activatePill( urlKey );
 			return;
 		}
 
-		var newPrimaryPill = nav.querySelector( '.memdir-pill[data-section="' + newPrimaryKey + '"]' );
-		var oldPrimaryPill = oldPrimaryKey
-			? nav.querySelector( '.memdir-pill[data-section="' + oldPrimaryKey + '"]' )
-			: null;
-
-		if ( ! newPrimaryPill ) {
-			return;
+		// 2. sessionStorage — remembers which pill the user last activated for
+		//    this specific post, persisted across navigations in the same session.
+		if ( postId ) {
+			var stored = '';
+			try {
+				stored = sessionStorage.getItem( 'memdir_active_pill_' + postId ) || '';
+			} catch ( e ) {
+				// sessionStorage unavailable — private browsing or quota exceeded.
+			}
+			if ( stored ) {
+				activatePill( stored );
+				return;
+			}
 		}
 
-		// Remove checkbox from the new primary pill and mark it primary.
-		var newCheckbox = newPrimaryPill.querySelector( '.memdir-pill__checkbox' );
-		if ( newCheckbox ) {
-			newCheckbox.remove();
-		}
-		newPrimaryPill.classList.add( 'memdir-pill--primary' );
-
-		// Restore checkbox on the old primary pill.
-		if ( oldPrimaryPill && ! oldPrimaryPill.querySelector( '.memdir-pill__checkbox' ) ) {
-			var checkbox           = document.createElement( 'input' );
-			checkbox.type          = 'checkbox';
-			checkbox.className     = 'memdir-pill__checkbox';
-			checkbox.dataset.section = oldPrimaryKey;
-			checkbox.checked       = true; // Enabled by default when demoted.
-			oldPrimaryPill.insertBefore( checkbox, oldPrimaryPill.firstChild );
-			oldPrimaryPill.classList.remove( 'memdir-pill--primary' );
-
-			// Wire the new checkbox into the enable/disable handler.
-			bindCheckbox( checkbox, nav );
-		}
-
-		// Move new primary pill to first position (right after All Sections pill).
-		nav.insertBefore( newPrimaryPill, allPill.nextSibling );
-
-		// Record the new primary on the nav element.
-		nav.dataset.primarySection = newPrimaryKey;
+		// 3. Default: activate the primary section pill (not 'all') so the
+		//    header and content are in sync on first load.
+		var sticky         = document.querySelector( '.memdir-sticky' );
+		var primarySection = ( sticky && sticky.dataset.primarySection ) || 'profile';
+		activatePill( primarySection );
 	}
 
 	// -----------------------------------------------------------------------
@@ -655,7 +751,7 @@
 		initPillCheckboxes();
 		initSectionSave();
 		initRightPanel();
-		restoreStateFromUrl();
+		restoreState();
 	} );
 
 }() );
