@@ -14,6 +14,22 @@
  * Font: Jost (assumed loaded by theme)
  */
 
+/* ── BuddyBoss layout overrides ───────────────────────────────────────────── */
+body.single-member-directory .container {
+  max-width: 100% !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+body.single-member-directory .bb-grid.site-content-grid {
+  display: block !important;
+}
+
+body.single-member-directory #primary {
+  max-width: 100% !important;
+  width: 100% !important;
+}
+
 /* ─────────────────────────────────────────────────────────────
    CSS CUSTOM PROPERTIES
 ───────────────────────────────────────────────────────────── */
