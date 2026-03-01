@@ -146,10 +146,12 @@ Follow the full Section Config Builder flow:
        Remind: run Sync after saving.
 
   viii. After outputting the config, ask:
-       "The section config includes the full ACF field group definition -- the plugin
-        registers it automatically and no WP Admin import is needed.
-        Do you also want the enriched ACF JSON to import into WP Admin -> ACF -> Field
-        Groups? (This lets you manage and export fields visually through the ACF UI.)"
+       "The section config's acf_group block is the ACF field group definition. The
+        plugin registers it with ACF automatically on every page load via
+        acf_add_local_field_group() -- so saving the config and running Sync is all
+        that is needed for the plugin to function.
+        Do you also want to import the field group into WP Admin -> ACF -> Field Groups?
+        (Only needed if you want to view or edit fields visually through the ACF UI.)"
        If yes, output the acf_group object from the finished config, labelled:
          ENRICHED ACF JSON -- import via WP Admin -> ACF -> Tools -> Import
        If no, skip it.
