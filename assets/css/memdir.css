@@ -50,7 +50,7 @@ body.single-member-directory #primary {
   --md-border:      #e2e2dc;
   --md-radius:      8px;
   --md-radius-pill: 999px;
-  --md-panel-width: 240px;
+  --md-panel-width: 280px;
   --md-controls-width: 260px;
   --md-font:        'Jost', sans-serif;
 }
@@ -70,7 +70,7 @@ body.single-member-directory #primary {
 
 .memdir-profile__inner {
   width: 85%;
-  max-width: 1100px;
+  max-width: calc(100% - var(--md-panel-width) - 32px);
   margin: 0 auto;
   padding: 0 16px;
 }
