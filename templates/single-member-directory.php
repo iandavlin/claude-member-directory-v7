@@ -86,11 +86,21 @@ $primary_section = get_field( 'member_directory_primary_section', $post_id ) ?: 
 					continue;
 				}
 
-				$partial = $is_edit
-					? plugin_dir_path( __FILE__ ) . 'parts/section-edit.php'
-					: plugin_dir_path( __FILE__ ) . 'parts/section-view.php';
-
-				include $partial;
+				if ( $is_edit ) {
+					include plugin_dir_path( __FILE__ ) . 'parts/section-edit.php';
+				} else {
+					// Buffer the view-mode render. $section_field_count is incremented
+					// by section-view.php only when a field actually produces output.
+					// If it stays 0 (all empty or all PMP-blocked) the section is
+					// silently dropped; JS will hide its pill on load.
+					$section_field_count = 0;
+					ob_start();
+					include plugin_dir_path( __FILE__ ) . 'parts/section-view.php';
+					$section_html = ob_get_clean();
+					if ( $section_field_count > 0 ) {
+						echo $section_html;
+					}
+				}
 				?>
 			<?php endforeach; ?>
 		</div>

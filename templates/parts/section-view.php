@@ -123,7 +123,15 @@ $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 				continue; // Ghost — this field does not exist for this viewer.
 			}
 
+			// Buffer the render: FieldRenderer outputs nothing for empty/unsupported
+			// values. Only count and echo when actual HTML is produced.
+			ob_start();
 			FieldRenderer::render( $field, $post_id );
+			$field_html = ob_get_clean();
+			if ( $field_html !== '' ) {
+				$section_field_count = ( $section_field_count ?? 0 ) + 1;
+				echo $field_html;
+			}
 			?>
 		<?php endforeach; ?>
 

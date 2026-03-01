@@ -765,9 +765,10 @@
 			return;
 		}
 
-		var enabledCount = nav.querySelectorAll(
+		// Count pills that are enabled (no --disabled) AND visible (not display:none).
+		var enabledCount = Array.from( nav.querySelectorAll(
 			'.memdir-pill:not(.memdir-pill--all):not(.memdir-pill--disabled)'
-		).length;
+		) ).filter( function ( p ) { return p.style.display !== 'none'; } ).length;
 
 		countEl.textContent = enabledCount + ' enabled';
 	}
@@ -853,6 +854,35 @@
 	// -----------------------------------------------------------------------
 
 	/**
+	 * Hide pills whose section was not rendered by PHP (empty or PMP-blocked).
+	 *
+	 * In view mode PHP silently skips sections with zero visible fields.
+	 * On load we detect absent sections and hide their pills, then sync the
+	 * badge count so it only reflects actually-visible sections.
+	 */
+	function hideEmptySectionPills() {
+		var nav = document.querySelector( '.memdir-pills' );
+		if ( ! nav ) {
+			return;
+		}
+
+		nav.querySelectorAll( '.memdir-pill[data-section]' ).forEach( function ( pill ) {
+			var key = pill.dataset.section || '';
+			if ( ! key || pill.classList.contains( 'memdir-pill--all' ) ) {
+				return;
+			}
+			// If no matching section element exists in the DOM, PHP dropped it.
+			var section = document.querySelector( '.memdir-section[data-section="' + key + '"]' );
+			if ( ! section ) {
+				pill.style.display = 'none';
+			}
+		} );
+
+		// Re-sync badge now that some pills may be hidden.
+		updateAllSectionsBadge( nav );
+	}
+
+	/**
 	 * Restore active pill state from URL params, sessionStorage, or primary default.
 	 */
 	function restoreState() {
@@ -899,6 +929,7 @@
 		initPillCheckboxes();
 		initSectionSave();
 		initRightPanel();
+		hideEmptySectionPills(); // hide pills for PHP-dropped empty/PMP-blocked sections
 		restoreState();
 	} );
 
