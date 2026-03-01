@@ -64,15 +64,15 @@ body.single-member-directory #primary {
   color: var(--md-text);
   background: var(--md-bg);
   min-height: 60vh;
-  padding-right: calc(var(--md-panel-width) + 24px); /* make room for fixed right panel */
+  padding-left: 24px;
+  padding-right: calc(var(--md-panel-width) + 32px);
   box-sizing: border-box;
 }
 
 .memdir-profile__inner {
-  width: 85%;
-  max-width: calc(100% - var(--md-panel-width) - 32px);
+  width: 100%;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 0 16px;
 }
 
 /* ─────────────────────────────────────────────────────────────
