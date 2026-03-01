@@ -18,7 +18,8 @@
       "Bash(do php -l \"$f\")",
       "Bash(done)",
       "Bash(for f in includes/GlobalFields.php templates/parts/right-panel.php templates/parts/pill-nav.php)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(python3:*)"
     ]
   }
 }
