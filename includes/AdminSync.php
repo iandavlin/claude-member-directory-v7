@@ -81,23 +81,47 @@ class AdminSync {
 
 			<hr>
 			<h2>Claude Skills</h2>
-			<p>Download these skill files and attach them to a Claude conversation to build new sections.</p>
+			<p>Download a skill file and attach it to a Claude conversation. Claude will follow the skill instructions automatically.</p>
 
-			<h3>Step 1 &mdash; ACF Group Preparer</h3>
-			<p>Takes a raw ACF field group export and injects the two required PMP system fields
-			(<em>Enable Section</em> and <em>Visibility</em>) into the <code>fields</code> array.
-			Use this first if you want to re-import the enriched group back into ACF, or skip it
-			and let the Section Config Builder add the fields automatically.</p>
+			<h3>Section Manager <span style="font-weight:normal;font-size:13px;color:#666;">&mdash; add, change, delete, rename, reorder, revert</span></h3>
+			<p>The primary tool for all section work. Handles every operation and automatically backs up the current config before any change (rolling 3-backup archive per section, stored in <code>sections/backups/</code>).</p>
+
+			<table class="widefat striped" style="margin-bottom:12px;">
+				<thead>
+					<tr>
+						<th>To do this&hellip;</th>
+						<th>Say exactly this (or something close)</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr><td>Add a new section</td>       <td><code>Add a new section</code> &nbsp;/&nbsp; <code>Create a [name] section</code></td></tr>
+					<tr><td>Update an existing section</td><td><code>Change [section name]</code> &nbsp;/&nbsp; <code>Update [section name]</code></td></tr>
+					<tr><td>Remove a section</td>        <td><code>Delete [section name]</code> &nbsp;/&nbsp; <code>Remove the [section name] section</code></td></tr>
+					<tr><td>Rename a section</td>        <td><code>Rename [section name] to [new name]</code></td></tr>
+					<tr><td>Change section order</td>    <td><code>Reorder sections</code> &nbsp;/&nbsp; <code>Move [section] before [other]</code></td></tr>
+					<tr><td>Restore from backup</td>     <td><code>Revert [section name] to [filename]</code> &nbsp;/&nbsp; <code>Restore [section name] from backup</code></td></tr>
+				</tbody>
+			</table>
+
+			<p>
+				<a class="button button-primary" href="<?php echo esc_url( plugin_dir_url( dirname( __FILE__ ) ) . 'tools/section-manager.md' ); ?>" download>
+					Download Section Manager
+				</a>
+			</p>
+
+			<h3>Helper Tools</h3>
+			<p>Use these individually if you prefer a step-by-step workflow or want to prep an ACF export before importing it back into ACF.</p>
+
+			<h4>ACF Group Preparer</h4>
+			<p>Injects the two required PMP system fields (<em>Enable Section</em> and <em>Visibility</em>) into a raw ACF field group export. Run the output through ACF &rarr; Tools &rarr; Import, or feed it straight into the Section Config Builder.</p>
 			<p>
 				<a class="button button-secondary" href="<?php echo esc_url( plugin_dir_url( dirname( __FILE__ ) ) . 'tools/acf-pmp-prep.md' ); ?>" download>
 					Download ACF Group Preparer
 				</a>
 			</p>
 
-			<h3>Step 2 &mdash; Section Config Builder</h3>
-			<p>Converts an ACF field group export (pre-prepped or raw) into a finished
-			<code>sections/*.json</code> config file. Drop the output into the
-			<code>sections/</code> folder and run Sync.</p>
+			<h4>Section Config Builder</h4>
+			<p>Converts an ACF field group export (pre-prepped or raw) into a finished <code>sections/*.json</code> config file. New sections only &mdash; no merge, no backup.</p>
 			<p>
 				<a class="button button-secondary" href="<?php echo esc_url( plugin_dir_url( dirname( __FILE__ ) ) . 'tools/acf-to-config.md' ); ?>" download>
 					Download Section Config Builder
