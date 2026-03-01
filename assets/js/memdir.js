@@ -123,6 +123,11 @@
 					return;
 				}
 
+				// Disabled pills are not navigable — only the checkbox can re-enable.
+				if ( pill.classList.contains( 'memdir-pill--disabled' ) ) {
+					return;
+				}
+
 				activatePill( pill.dataset.section || 'all' );
 			} );
 		} );
@@ -603,24 +608,25 @@
 			// Toggle disabled class on the pill.
 			pill.classList.toggle( 'memdir-pill--disabled', ! enabled );
 
-			// Show/hide the matching section, but respect the current view mode.
-			// In single-section view, enabling a different section must not
-			// override activatePill()'s visibility — only hiding is safe there.
-			var sectionEl = document.querySelector(
-				'.memdir-section[data-section="' + sectionKey + '"]'
-			);
-			if ( sectionEl ) {
-				var activePill = document.querySelector( '.memdir-pill--active' );
-				var activeKey  = activePill ? ( activePill.dataset.section || 'all' ) : 'all';
+			if ( ! enabled ) {
+				// Capture the closest enabled neighbour BEFORE reordering so the
+				// DOM order still reflects position relative to the disabled pill.
+				var closestKey = findClosestEnabledPill( pill, nav );
 
-				if ( activeKey === 'all' || activeKey === sectionKey ) {
-					// "All sections" view, or the active section's own checkbox:
-					// apply the enabled/disabled state immediately.
-					sectionEl.style.display = enabled ? '' : 'none';
-				} else if ( ! enabled ) {
-					// Single-section view for a different section: safe to hide,
-					// but never force-show — activatePill() owns that.
-					sectionEl.style.display = 'none';
+				// Navigate to the closest still-enabled pill (reorder+badge run below).
+				activatePill( closestKey );
+			} else {
+				// Enabling: show the section only when in "all" view or its own
+				// single-section view. activatePill() owns visibility otherwise.
+				var sectionEl = document.querySelector(
+					'.memdir-section[data-section="' + sectionKey + '"]'
+				);
+				if ( sectionEl ) {
+					var activePillEl = document.querySelector( '.memdir-pill--active' );
+					var activeKeyEl  = activePillEl ? ( activePillEl.dataset.section || 'all' ) : 'all';
+					if ( activeKeyEl === 'all' || activeKeyEl === sectionKey ) {
+						sectionEl.style.display = '';
+					}
 				}
 			}
 
@@ -686,6 +692,41 @@
 		).length;
 
 		countEl.textContent = enabledCount + ' enabled';
+	}
+
+	/**
+	 * Find the pill closest (by DOM order) to a just-disabled pill that is
+	 * still enabled. Searches backwards first, then forwards. Returns the
+	 * section key, or "all" if no enabled non-all pill remains.
+	 *
+	 * @param {Element} disabledPill  The pill that was just disabled.
+	 * @param {Element} nav           The .memdir-pills nav element.
+	 * @returns {string}
+	 */
+	function findClosestEnabledPill( disabledPill, nav ) {
+		var allPills    = Array.from( nav.querySelectorAll( '.memdir-pill' ) );
+		var disabledIdx = allPills.indexOf( disabledPill );
+
+		// Search backwards (towards the first pill) for an enabled non-all pill.
+		for ( var i = disabledIdx - 1; i >= 0; i-- ) {
+			var p = allPills[ i ];
+			if ( ! p.classList.contains( 'memdir-pill--disabled' ) &&
+			     ! p.classList.contains( 'memdir-pill--all' ) ) {
+				return p.dataset.section || 'all';
+			}
+		}
+
+		// Search forwards.
+		for ( var j = disabledIdx + 1; j < allPills.length; j++ ) {
+			var q = allPills[ j ];
+			if ( ! q.classList.contains( 'memdir-pill--disabled' ) &&
+			     ! q.classList.contains( 'memdir-pill--all' ) ) {
+				return q.dataset.section || 'all';
+			}
+		}
+
+		// No enabled section pill found — fall back to All Sections view.
+		return 'all';
 	}
 
 	/**

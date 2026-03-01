@@ -207,9 +207,11 @@ body.single-member-directory #primary {
 }
 
 .memdir-pill--all.memdir-pill--active {
-  background: var(--md-green-sage);
-  border-color: var(--md-green-dark);
+  background: var(--md-green-dark);
+  border-color: #6d7d56;
   color: var(--md-white);
+  font-weight: 700;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.15);
 }
 
 .memdir-pill--active {
@@ -221,6 +223,13 @@ body.single-member-directory #primary {
 .memdir-pill--disabled {
   opacity: 0.5;
   color: var(--md-text-muted);
+  cursor: default;
+}
+
+/* Suppress hover highlight on disabled pills — only the checkbox is interactive. */
+.memdir-pill--disabled:hover {
+  background: var(--md-white);
+  border-color: var(--md-border);
 }
 
 .memdir-pill__checkbox {
