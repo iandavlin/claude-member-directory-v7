@@ -494,6 +494,54 @@
 					} );
 			} );
 		} );
+
+		// GLOBAL PMP buttons — clicking a .memdir-panel__global-btn saves the
+		// profile-wide default visibility level via AJAX and toggles the active
+		// highlight to the clicked button.
+		panel.querySelectorAll( '.memdir-panel__global-btn' ).forEach( function ( btn ) {
+			btn.addEventListener( 'click', function () {
+				var pmp    = btn.dataset.pmp || '';
+				var nav    = document.querySelector( '.memdir-pills' );
+				var postId = nav ? ( nav.dataset.postId || '' ) : '';
+
+				if ( ! pmp || ! postId ) {
+					return;
+				}
+
+				var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
+					? window.mdAjax.ajaxurl
+					: '/wp-admin/admin-ajax.php';
+				var nonce = ( window.mdAjax && window.mdAjax.nonce )
+					? window.mdAjax.nonce
+					: '';
+
+				var formData = new FormData();
+				formData.set( 'action',  'memdir_ajax_save_global_pmp' );
+				formData.set( 'nonce',   nonce );
+				formData.set( 'post_id', postId );
+				formData.set( 'pmp',     pmp );
+
+				fetch( ajaxUrl, {
+					method:      'POST',
+					credentials: 'same-origin',
+					body:        formData,
+				} )
+					.then( function ( response ) { return response.json(); } )
+					.then( function ( data ) {
+						if ( ! data.success ) {
+							console.error( 'MemberDirectory: global PMP AJAX returned error', data );
+							return;
+						}
+						// Move active highlight to the clicked button.
+						panel.querySelectorAll( '.memdir-panel__global-btn' ).forEach( function ( b ) {
+							b.classList.toggle( 'memdir-panel__global-btn--active', b.dataset.pmp === pmp );
+						} );
+					} )
+					.catch( function ( err ) {
+						console.error( 'MemberDirectory: global PMP AJAX failed', err );
+					} );
+			} );
+		} );
 	}
 
 	/**

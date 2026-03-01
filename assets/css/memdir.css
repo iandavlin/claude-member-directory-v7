@@ -701,6 +701,7 @@ a.memdir-field-value:hover {
   border: 1px solid var(--md-border);
   border-radius: var(--md-radius);
   background: var(--md-white);
+  color: var(--md-text);
   text-align: left;
   cursor: pointer;
   font-family: var(--md-font);
@@ -729,6 +730,7 @@ a.memdir-field-value:hover {
   border: 1px solid var(--md-border);
   border-radius: var(--md-radius);
   background: var(--md-white);
+  color: var(--md-text);
   text-align: left;
   cursor: pointer;
   font-family: var(--md-font);

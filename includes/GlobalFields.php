@@ -48,8 +48,9 @@ class GlobalFields {
 
 		self::debug_filters();
 
-		// AJAX handler — logged-in users only (authors/admins saving primary section).
+		// AJAX handlers — logged-in users only.
 		add_action( 'wp_ajax_memdir_ajax_save_primary_section', [ self::class, 'handle_save_primary_section' ] );
+		add_action( 'wp_ajax_memdir_ajax_save_global_pmp',      [ self::class, 'handle_save_global_pmp' ] );
 	}
 
 	/**
@@ -206,6 +207,38 @@ class GlobalFields {
 
 		update_field( 'field_md_primary_section', $section_key, $post_id );
 		wp_send_json_success( [ 'primary_section' => $section_key ] );
+	}
+
+	/**
+	 * Handle AJAX save for the Global PMP field.
+	 *
+	 * Validates nonce, post type, capabilities, and that the submitted
+	 * value is one of the three explicit PMP levels before saving.
+	 *
+	 * Action: wp_ajax_memdir_ajax_save_global_pmp
+	 */
+	public static function handle_save_global_pmp(): void {
+		if ( ! check_ajax_referer( 'md_save_nonce', 'nonce', false ) ) {
+			wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+		}
+
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] )                                : 0;
+		$pmp     = isset( $_POST['pmp'] )     ? sanitize_text_field( wp_unslash( $_POST['pmp'] ) ) : '';
+
+		if ( ! $post_id || get_post_type( $post_id ) !== 'member-directory' ) {
+			wp_send_json_error( [ 'message' => 'Invalid post.' ], 400 );
+		}
+
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( [ 'message' => 'Insufficient permissions.' ], 403 );
+		}
+
+		if ( ! in_array( $pmp, [ 'public', 'member', 'private' ], true ) ) {
+			wp_send_json_error( [ 'message' => 'Invalid PMP value.' ], 400 );
+		}
+
+		update_field( 'field_md_global_pmp', $pmp, $post_id );
+		wp_send_json_success( [ 'global_pmp' => $pmp ] );
 	}
 
 }
