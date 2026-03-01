@@ -47,6 +47,9 @@ class GlobalFields {
 		}
 
 		self::debug_filters();
+
+		// AJAX handler — logged-in users only (authors/admins saving primary section).
+		add_action( 'wp_ajax_memdir_ajax_save_primary_section', [ self::class, 'handle_save_primary_section' ] );
 	}
 
 	/**
@@ -160,5 +163,49 @@ class GlobalFields {
 			'ui'            => 0,
 		];
 	}
-	
+
+	// -----------------------------------------------------------------------
+	// AJAX handlers
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Handle AJAX save for the Primary Section field.
+	 *
+	 * Validates nonce, post type, capabilities, and that the submitted key
+	 * belongs to a primary-capable section before calling update_field().
+	 *
+	 * Action: wp_ajax_memdir_ajax_save_primary_section
+	 */
+	public static function handle_save_primary_section(): void {
+		if ( ! check_ajax_referer( 'md_save_nonce', 'nonce', false ) ) {
+			wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+		}
+
+		$post_id     = isset( $_POST['post_id'] )     ? absint( $_POST['post_id'] )                                   : 0;
+		$section_key = isset( $_POST['section_key'] ) ? sanitize_text_field( wp_unslash( $_POST['section_key'] ) ) : '';
+
+		if ( ! $post_id || get_post_type( $post_id ) !== 'member-directory' ) {
+			wp_send_json_error( [ 'message' => 'Invalid post.' ], 400 );
+		}
+
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( [ 'message' => 'Insufficient permissions.' ], 403 );
+		}
+
+		// Allow only keys that belong to primary-capable sections.
+		$valid_keys = [];
+		foreach ( SectionRegistry::get_sections() as $section ) {
+			if ( ! empty( $section['can_be_primary'] ) ) {
+				$valid_keys[] = $section['key'];
+			}
+		}
+
+		if ( ! in_array( $section_key, $valid_keys, true ) ) {
+			wp_send_json_error( [ 'message' => 'Invalid section key.' ], 400 );
+		}
+
+		update_field( 'field_md_primary_section', $section_key, $post_id );
+		wp_send_json_success( [ 'primary_section' => $section_key ] );
+	}
+
 }

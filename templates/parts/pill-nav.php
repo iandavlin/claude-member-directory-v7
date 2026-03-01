@@ -48,8 +48,14 @@ foreach ( $sections as $section ) {
 // Normalise active_section — fall back to 'all' if the caller didn't set it.
 $active_section = isset( $active_section ) ? (string) $active_section : 'all';
 
+// Primary section — drives pill order and checkbox suppression.
+$primary_section = get_field( 'member_directory_primary_section', $post_id ) ?: 'profile';
+
 ?>
-<nav class="memdir-pills">
+<nav class="memdir-pills"
+     data-primary-section="<?php echo esc_attr( $primary_section ); ?>"
+     data-post-id="<?php echo esc_attr( (string) $post_id ); ?>"
+>
 
 	<?php
 	// -----------------------------------------------------------------------
@@ -72,10 +78,41 @@ $active_section = isset( $active_section ) ? (string) $active_section : 'all';
 
 	<?php
 	// -----------------------------------------------------------------------
-	// One pill per registered section (in SectionRegistry order).
+	// Primary section pill — rendered first, no checkbox, cannot be disabled.
 	// -----------------------------------------------------------------------
 	foreach ( $sections as $section ) :
+		if ( ( $section['key'] ?? '' ) !== $primary_section ) {
+			continue;
+		}
 		$key   = $section['key']   ?? '';
+		$label = $section['label'] ?? '';
+
+		$pill_classes = 'memdir-pill memdir-pill--primary';
+		if ( $active_section === $key ) {
+			$pill_classes .= ' memdir-pill--active';
+		}
+	?>
+	<button
+		class="<?php echo esc_attr( $pill_classes ); ?>"
+		data-section="<?php echo esc_attr( $key ); ?>"
+		type="button"
+	>
+		<span class="memdir-pill__label"><?php echo esc_html( $label ); ?></span>
+	</button>
+	<?php endforeach; ?>
+
+	<?php
+	// -----------------------------------------------------------------------
+	// Non-primary section pills — in SectionRegistry order, with checkboxes.
+	// -----------------------------------------------------------------------
+	foreach ( $sections as $section ) :
+		$key = $section['key'] ?? '';
+
+		// Primary is already rendered above.
+		if ( $key === $primary_section ) {
+			continue;
+		}
+
 		$label = $section['label'] ?? '';
 		$is_on = $section_enabled_map[ $key ] ?? true;
 
