@@ -153,6 +153,8 @@ class Plugin {
 			return;
 		}
 
+		error_log( 'Plugin URL: ' . $this->plugin_url );
+
 		// Dequeue scripts with beforeunload handlers on member-directory pages.
 		if ( get_post_type() === 'member-directory' ) {
 			wp_dequeue_script( 'elementor-common' );
