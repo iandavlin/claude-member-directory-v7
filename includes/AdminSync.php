@@ -135,12 +135,6 @@ class AdminSync {
 					<input type="file" name="section_config_file" accept=".json" style="margin-right:8px;">
 					<?php submit_button( 'Upload &amp; Sync', 'secondary', 'upload_submit', false ); ?>
 				</p>
-				<p>
-					<label>
-						<input type="checkbox" name="allow_key_removal" value="1">
-						Allow field key removal &mdash; <span style="color:#b94a00;">check this only if you intentionally deleted fields. Member data stored under removed keys will become inaccessible.</span>
-					</label>
-				</p>
 			</form>
 
 			<hr>
@@ -251,12 +245,14 @@ class AdminSync {
 			return;
 		}
 
-		$allow_key_removal = isset( $_POST['allow_key_removal'] ) && $_POST['allow_key_removal'] === '1';
-		$error             = SectionRegistry::validate_for_upload( $data, $allow_key_removal );
+		$error = SectionRegistry::validate_for_upload( $data );
 		if ( $error !== null ) {
 			self::render_upload_result( false, $error );
 			return;
 		}
+
+		// Compute removed keys before writing (advisory warning only).
+		$removed_keys = SectionRegistry::removed_content_keys( $data );
 
 		$backup_note = self::backup_section_file( $section_key );
 		$pretty_raw  = (string) json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
@@ -276,6 +272,12 @@ class AdminSync {
 		$sync_result   = SectionRegistry::sync();
 		$skipped_count = count( $sync_result['skipped'] ?? [] );
 		$detail        = $backup_note;
+
+		if ( ! empty( $removed_keys ) ) {
+			$detail .= ( $detail ? ' ' : '' )
+				. '<strong style="color:#b94a00;">Warning:</strong> the following field key(s) were removed &mdash; member data stored under them is now inaccessible: '
+				. '<code>' . esc_html( implode( '</code>, <code>', $removed_keys ) ) . '</code>.';
+		}
 
 		if ( $skipped_count > 0 ) {
 			$detail .= ( $detail ? ' ' : '' )
@@ -422,8 +424,7 @@ class AdminSync {
 			return;
 		}
 
-		$allow_key_removal = isset( $_POST['allow_key_removal'] ) && $_POST['allow_key_removal'] === '1';
-		$error             = SectionRegistry::validate_for_upload( $data, $allow_key_removal );
+		$error = SectionRegistry::validate_for_upload( $data );
 		if ( $error !== null ) {
 			self::render_upload_result( false, $error );
 			return;
@@ -432,6 +433,9 @@ class AdminSync {
 		$section_key  = $data['key'];
 		$sections_dir = SectionRegistry::sections_dir();
 		$target_file  = $sections_dir . $section_key . '.json';
+
+		// Compute removed keys before writing (advisory warning only).
+		$removed_keys = SectionRegistry::removed_content_keys( $data );
 		$backup_note  = self::backup_section_file( $section_key );
 
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
@@ -446,6 +450,12 @@ class AdminSync {
 		$sync_result   = SectionRegistry::sync();
 		$skipped_count = count( $sync_result['skipped'] ?? [] );
 		$detail        = $backup_note;
+
+		if ( ! empty( $removed_keys ) ) {
+			$detail .= ( $detail ? ' ' : '' )
+				. '<strong style="color:#b94a00;">Warning:</strong> the following field key(s) were removed &mdash; member data stored under them is now inaccessible: '
+				. '<code>' . esc_html( implode( '</code>, <code>', $removed_keys ) ) . '</code>.';
+		}
 
 		if ( $skipped_count > 0 ) {
 			$detail .= ( $detail ? ' ' : '' )
@@ -539,13 +549,6 @@ class AdminSync {
 			echo '<textarea name="section_json" rows="28" style="width:100%;font-family:monospace;font-size:12px;white-space:pre;">'
 				. esc_textarea( $pretty_json )
 				. '</textarea>';
-
-			echo '<p style="margin:8px 0 4px;">';
-			echo '<label>';
-			echo '<input type="checkbox" name="allow_key_removal" value="1"> ';
-			echo 'Allow field key removal &mdash; <span style="color:#b94a00;">check only if you intentionally deleted fields.</span>';
-			echo '</label>';
-			echo '</p>';
 
 			submit_button( 'Save &amp; Sync', 'secondary', 'edit_submit_' . esc_attr( $key ), false );
 

@@ -49,16 +49,15 @@ class SectionRegistry {
 	 * Required top-level keys in every section config file.
 	 * A file that is missing any of these is skipped with a warning.
 	 *
-	 * Note: field_groups is intentionally absent. Content field groups are
-	 * derived at runtime from acf_group.fields. Configs that still include
-	 * field_groups are accepted; the key is ignored.
+	 * Note: field_groups is intentionally absent — derived at runtime.
+	 * order is optional — sections without it sort to the end; use the
+	 * Section Editor arrows to position them after upload.
+	 * pmp_default is optional — fields without it default to 'member'.
 	 */
 	const REQUIRED_KEYS = [
 		'key',
 		'label',
-		'order',
 		'can_be_primary',
-		'pmp_default',
 		'acf_group',
 	];
 
@@ -238,8 +237,8 @@ class SectionRegistry {
 			$loaded[]      = $filename;
 		}
 
-		// Sort by 'order' ascending.
-		uasort( $valid, fn( $a, $b ) => $a['order'] <=> $b['order'] );
+		// Sort by 'order' ascending. Sections without an order value sort last.
+		uasort( $valid, fn( $a, $b ) => ( $a['order'] ?? PHP_INT_MAX ) <=> ( $b['order'] ?? PHP_INT_MAX ) );
 
 		// Persist to the database.
 		update_option( self::OPTION_KEY, $valid, false /* not autoloaded */ );
@@ -300,43 +299,20 @@ class SectionRegistry {
 	 * public call suitable for use outside this class (e.g. the upload
 	 * handler in AdminSync).
 	 *
-	 * For the cross-section collision check, the currently-loaded sections
-	 * are used as the baseline — the section being uploaded is excluded so
-	 * a valid overwrite does not trigger a false positive.
+	 * Uploads always proceed if the config is structurally valid. If content
+	 * field keys are being removed, the caller should surface a warning via
+	 * removed_content_keys() — but that is advisory only, not a hard block.
 	 *
-	 * For existing sections, a diff check is also run: if the incoming config
-	 * removes any content field keys that exist in the current stored config,
-	 * the upload is blocked unless $allow_key_removal is true. Pass true only
-	 * when the admin has explicitly confirmed they intend to delete fields.
-	 *
-	 * @param  array  $data               Decoded section config.
-	 * @param  bool   $allow_key_removal  Skip the removed-keys diff check.
-	 * @return string|null                First error message found, or null if clean.
+	 * @param  array  $data  Decoded section config.
+	 * @return string|null   First error message found, or null if clean.
 	 */
-	public static function validate_for_upload( array $data, bool $allow_key_removal = false ): ?string {
+	public static function validate_for_upload( array $data ): ?string {
 		$missing = self::missing_required_keys( $data );
 		if ( ! empty( $missing ) ) {
 			return 'Missing required keys: ' . implode( ', ', $missing ) . '.';
 		}
 
 		$uploading_key = $data['key'];
-
-		// --- Diff check: block removal of content field keys -----------------
-		// Removing a field key from an existing section orphans any member data
-		// stored under that key in wp_postmeta. Block unless the admin has
-		// explicitly confirmed the removal via $allow_key_removal.
-		$current = self::get_section( $uploading_key );
-		if ( ! $allow_key_removal && $current !== null ) {
-			$current_keys  = self::content_field_keys( $current );
-			$incoming_keys = self::content_field_keys( $data );
-			$removed       = array_diff( $current_keys, $incoming_keys );
-
-			if ( ! empty( $removed ) ) {
-				return 'Upload would remove field key(s) that may have live member data: '
-					. implode( ', ', array_values( $removed ) )
-					. '. Retain or explicitly rename these keys to avoid data loss.';
-			}
-		}
 
 		// --- Collision check: build seen_keys from all other live sections ----
 		$seen_keys = [];
@@ -353,6 +329,33 @@ class SectionRegistry {
 		}
 
 		return self::validate_section_integrity( $data, $seen_keys );
+	}
+
+	/**
+	 * Return any content field keys that the incoming config removes relative
+	 * to the currently stored version of the same section.
+	 *
+	 * Returns an empty array when the section is new (no stored version) or
+	 * when no content keys were removed.
+	 *
+	 * Call this after validate_for_upload() passes (and before writing the
+	 * file) to generate an advisory warning for the admin UI.
+	 *
+	 * @param  array    $incoming  Decoded incoming section config.
+	 * @return string[]            Removed content field keys, if any.
+	 */
+	public static function removed_content_keys( array $incoming ): array {
+		$key     = $incoming['key'] ?? '';
+		$current = self::get_section( $key );
+
+		if ( $current === null ) {
+			return [];
+		}
+
+		$current_keys  = self::content_field_keys( $current );
+		$incoming_keys = self::content_field_keys( $incoming );
+
+		return array_values( array_diff( $current_keys, $incoming_keys ) );
 	}
 
 	/**
