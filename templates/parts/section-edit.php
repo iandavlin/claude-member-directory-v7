@@ -55,6 +55,52 @@ if ( ! empty( $current_keys ) ) {
 }
 
 // ---------------------------------------------------------------------------
+// Build per-field PMP data for JS injection of custom PMP controls.
+//
+// For each content field, derive the companion ACF field key and read the
+// currently stored PMP value. Passed to JS via data-field-pmp on the wrapper
+// so initFieldPmp() can inject icon-button controls after each ACF field.
+// ---------------------------------------------------------------------------
+
+$field_name_to_key = [];
+foreach ( $raw_fields as $f ) {
+	if ( ! empty( $f['name'] ) && ! empty( $f['key'] ) ) {
+		$field_name_to_key[ $f['name'] ] = $f['key'];
+	}
+}
+
+$field_pmp_data = [];
+foreach ( $raw_fields as $f ) {
+	$fkey  = $f['key']  ?? '';
+	$fname = $f['name'] ?? '';
+	$ftype = $f['type'] ?? '';
+
+	// Skip non-content fields.
+	if ( $ftype === 'tab' || $ftype === 'button_group' ) {
+		continue;
+	}
+	if ( preg_match( '/_(enabled|privacy_mode)$/', $fkey ) ) {
+		continue;
+	}
+	if ( str_contains( $fkey, '_pmp_' ) ) {
+		continue;
+	}
+
+	// Derive the companion ACF field name and key.
+	$suffix         = preg_replace( '/^member_directory_/', '', $fname );
+	$companion_name = 'member_directory_field_pmp_' . $suffix;
+	$companion_key  = $field_name_to_key[ $companion_name ] ?? '';
+
+	// Read the field's currently stored PMP.
+	$stored_pmp = (string) ( get_field( $companion_name, $post_id ) ?: 'inherit' );
+
+	$field_pmp_data[ $fkey ] = [
+		'companionKey' => $companion_key,
+		'storedPmp'    => $stored_pmp,
+	];
+}
+
+// ---------------------------------------------------------------------------
 // Resolve section PMP for initial active-button state and eyebrow text.
 //
 // 4-state field: public | member | private | inherit (missing/null → inherit).
@@ -73,7 +119,7 @@ $pmp_status_text = ( $section_pmp === 'inherit' )
 $pmp_mode_attr = ( $section_pmp === 'inherit' ) ? 'inherit' : 'override';
 
 ?>
-<div class="memdir-section memdir-section--edit" data-section="<?php echo esc_attr( $section_key ); ?>" data-post-id="<?php echo esc_attr( (string) $post_id ); ?>">
+<div class="memdir-section memdir-section--edit" data-section="<?php echo esc_attr( $section_key ); ?>" data-post-id="<?php echo esc_attr( (string) $post_id ); ?>" data-field-pmp="<?php echo esc_attr( wp_json_encode( $field_pmp_data ) ?: '{}' ); ?>">
 
 	<div class="memdir-section-controls">
 

@@ -61,6 +61,7 @@ class AcfFormHelper {
 		add_action( 'wp_ajax_md_save_section',                    [ self::class, 'handle_ajax_save' ] );
 		add_action( 'wp_ajax_memdir_ajax_save_section_enabled',   [ self::class, 'handle_save_section_enabled' ] );
 		add_action( 'wp_ajax_memdir_ajax_save_section_pmp',       [ self::class, 'handle_save_section_pmp' ] );
+		add_action( 'wp_ajax_memdir_ajax_save_field_pmp',         [ self::class, 'handle_save_field_pmp' ] );
 	}
 
 	// -----------------------------------------------------------------------
@@ -172,6 +173,9 @@ class AcfFormHelper {
 			}
 			if ( preg_match( '/_(enabled|privacy_mode)$/', $f['key'] ?? '' ) ) {
 				continue; // Managed by left-panel sidebar controls.
+			}
+			if ( str_contains( $f['key'] ?? '', '_pmp_' ) ) {
+				continue; // Per-field PMP companions — rendered by custom JS controls, not ACF.
 			}
 			$field_keys[] = $f['key'];
 		}
@@ -361,5 +365,53 @@ class AcfFormHelper {
 		update_field( 'field_md_' . $section_key . '_privacy_mode', $pmp, $post_id );
 
 		wp_send_json_success( [ 'section_key' => $section_key, 'pmp' => $pmp ] );
+	}
+
+	/**
+	 * AJAX handler: save the PMP (visibility) level for a single field.
+	 *
+	 * Writes to the per-field 4-state PMP companion field:
+	 *   'inherit'  — field defers to section PMP.
+	 *   'public'   — explicit override: everyone sees the field.
+	 *   'member'   — explicit override: logged-in users only.
+	 *   'private'  — explicit override: author and admin only.
+	 *
+	 * Expects $_POST:
+	 *   nonce         — wp_create_nonce( 'md_save_nonce' )
+	 *   post_id       — int, the member-directory post being edited
+	 *   companion_key — string, e.g. 'field_md_business_pmp_name'
+	 *   pmp           — 'inherit' | 'public' | 'member' | 'private'
+	 *
+	 * Action: wp_ajax_memdir_ajax_save_field_pmp
+	 */
+	public static function handle_save_field_pmp(): void {
+		if ( ! check_ajax_referer( 'md_save_nonce', 'nonce', false ) ) {
+			wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+		}
+
+		$post_id       = isset( $_POST['post_id'] )       ? absint( $_POST['post_id'] )                                        : 0;
+		$companion_key = isset( $_POST['companion_key'] ) ? sanitize_text_field( wp_unslash( $_POST['companion_key'] ) ) : '';
+		$pmp           = isset( $_POST['pmp'] )           ? sanitize_text_field( wp_unslash( $_POST['pmp'] ) )           : '';
+
+		if ( ! $post_id || get_post_type( $post_id ) !== 'member-directory' ) {
+			wp_send_json_error( [ 'message' => 'Invalid post.' ], 400 );
+		}
+
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+		}
+
+		if ( ! in_array( $pmp, [ 'inherit', 'public', 'member', 'private' ], true ) ) {
+			wp_send_json_error( [ 'message' => 'Invalid PMP value.' ], 400 );
+		}
+
+		// Companion key must start with 'field_' and contain '_pmp_' to be a valid per-field companion.
+		if ( strpos( $companion_key, 'field_' ) !== 0 || ! str_contains( $companion_key, '_pmp_' ) ) {
+			wp_send_json_error( [ 'message' => 'Invalid companion key.' ], 400 );
+		}
+
+		update_field( $companion_key, $pmp, $post_id );
+
+		wp_send_json_success( [ 'companion_key' => $companion_key, 'pmp' => $pmp ] );
 	}
 }

@@ -811,6 +811,71 @@ a.memdir-field-value:hover {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   PER-FIELD PMP CONTROLS (injected by JS after each ACF field)
+───────────────────────────────────────────────────────────── */
+
+.memdir-field-pmp {
+  margin-top: 6px;
+  padding: 5px 8px;
+  background: rgba(151, 169, 124, 0.06);
+  border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
+}
+
+.memdir-field-pmp__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.memdir-field-pmp__btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid var(--md-border);
+  background: var(--md-white);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.memdir-field-pmp__btn:hover {
+  border-color: var(--md-green-sage);
+  background: rgba(151, 169, 124, 0.1);
+}
+
+.memdir-field-pmp__btn.is-active {
+  background: var(--md-green-sage);
+  border-color: var(--md-green-dark);
+}
+
+/* Icons via CSS ::before — match section PMP button style */
+.memdir-field-pmp__btn::before {
+  font-style: normal;
+  font-size: 12px;
+  line-height: 1;
+  display: block;
+  pointer-events: none;
+}
+.memdir-field-pmp__btn--inherit::before { content: '🔗'; }
+.memdir-field-pmp__btn--public::before  { content: '🌐'; }
+.memdir-field-pmp__btn--member::before  { content: '👥'; }
+.memdir-field-pmp__btn--private::before { content: '🔒'; }
+
+.memdir-field-pmp__status {
+  font-family: var(--md-font);
+  font-size: 11px;
+  font-style: italic;
+  color: var(--md-text-muted);
+  margin-left: 6px;
+  line-height: 1.3;
+}
+
+/* ─────────────────────────────────────────────────────────────
    RESPONSIVE
 ───────────────────────────────────────────────────────────── */
 

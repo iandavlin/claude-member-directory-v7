@@ -12,6 +12,7 @@
  *   6. Pill enable/disable -- checkbox toggles section on/off + DOM reorder
  *   7. State restore      -- sessionStorage + URL param restore on page load
  *   8. Section PMP        -- 4-button inherit/public/member/private + eyebrow cascade
+ *   9. Field PMP          -- per-field icon-button PMP controls injected after each ACF field
  */
 
 ( function () {
@@ -998,10 +999,15 @@
 						b.classList.toggle( 'is-active', b === btn );
 					} );
 
-					// Update eyebrow text immediately.
+					// Update section eyebrow text immediately.
 					if ( status ) {
 						updateSectionPmpStatus( status, pmp );
 					}
+
+					// Cascade new section PMP to all per-field PMP eyebrows
+					// in this section (fields in inherit mode now show the new
+					// section value as their winning state).
+					refreshSectionFieldPmpEyebrows( section );
 
 					// AJAX save.
 					var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
@@ -1034,6 +1040,7 @@
 								if ( status ) {
 									updateSectionPmpStatus( status, prevPmp );
 								}
+								refreshSectionFieldPmpEyebrows( section );
 							}
 						} )
 						.catch( function ( err ) {
@@ -1074,6 +1081,7 @@
 
 	/**
 	 * Update the eyebrow text of all inherit-mode sections when global PMP changes.
+	 * Also cascades to all per-field PMP eyebrows across all sections.
 	 *
 	 * Called after the global PMP button is clicked (optimistically) and on revert.
 	 *
@@ -1093,6 +1101,205 @@
 
 			status.textContent = 'Global default: ' + ( PMP_LABELS[ newGlobalPmp ] || 'Public' );
 		} );
+
+		// Cascade to per-field PMP eyebrows across all sections.
+		// computeFieldPmpStatus reads the current DOM state (including the freshly
+		// updated global button), so this correctly reflects the new global value.
+		document.querySelectorAll( '.memdir-section--edit .memdir-field-pmp' ).forEach( function ( fp ) {
+			var statusEl = fp.querySelector( '.memdir-field-pmp__status' );
+			if ( statusEl ) {
+				statusEl.textContent = computeFieldPmpStatus( fp );
+			}
+		} );
+	}
+
+	// -----------------------------------------------------------------------
+	// 9. Field PMP
+	//
+	// Per-field PMP companions (button_group fields named *_pmp_*) are excluded
+	// from acf_form() rendering by PHP. Instead, JS injects custom icon-button
+	// controls matching the section-level PMP style directly inside each
+	// .acf-field wrapper — so they hide/show with their parent field when tabs
+	// switch, and no separate show/hide logic is needed.
+	//
+	// PHP passes the initial field PMP data via data-field-pmp on the section
+	// wrapper (JSON map: fieldKey -> { companionKey, storedPmp }).
+	//
+	// Each control shows a status eyebrow resolved via the waterfall:
+	//   stored_pmp -> section_pmp -> global_pmp
+	//
+	// Clicking a button:
+	//   - Moves is-active to the clicked button (optimistic).
+	//   - Updates data-stored-pmp on the control wrapper.
+	//   - Recomputes and updates the status eyebrow.
+	//   - POSTs to memdir_ajax_save_field_pmp.
+	//   - On error: reverts button and eyebrow.
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Compute the eyebrow text for a field PMP control by reading current DOM state.
+	 *
+	 * Resolution order: field -> section -> global.
+	 * Reads the active section PMP button and the active global PMP button live
+	 * from the DOM so cascade changes are reflected without extra data tracking.
+	 *
+	 * @param {Element} fieldPmpEl  The .memdir-field-pmp wrapper element.
+	 * @returns {string}
+	 */
+	function computeFieldPmpStatus( fieldPmpEl ) {
+		var storedPmp = fieldPmpEl.dataset.storedPmp || 'inherit';
+
+		if ( storedPmp !== 'inherit' ) {
+			return 'Field: ' + ( PMP_LABELS[ storedPmp ] || storedPmp );
+		}
+
+		// Inherit from section -- read the currently active section PMP button.
+		var section          = fieldPmpEl.closest( '.memdir-section--edit' );
+		var activeSectionBtn = section
+			? section.querySelector( '.memdir-section-controls__pmp-btn.is-active' )
+			: null;
+		var sectionPmp = activeSectionBtn ? ( activeSectionBtn.dataset.pmp || 'inherit' ) : 'inherit';
+
+		if ( sectionPmp !== 'inherit' ) {
+			return 'Section: ' + ( PMP_LABELS[ sectionPmp ] || sectionPmp );
+		}
+
+		// Inherit from global.
+		return 'Global: ' + ( PMP_LABELS[ getGlobalPmp() ] || 'Public' );
+	}
+
+	/**
+	 * Refresh the eyebrow text of all field PMP controls within a section.
+	 * Called after the section-level PMP changes so inherit-mode fields update.
+	 *
+	 * @param {Element} section  The .memdir-section--edit element.
+	 */
+	function refreshSectionFieldPmpEyebrows( section ) {
+		section.querySelectorAll( '.memdir-field-pmp' ).forEach( function ( fp ) {
+			var statusEl = fp.querySelector( '.memdir-field-pmp__status' );
+			if ( statusEl ) {
+				statusEl.textContent = computeFieldPmpStatus( fp );
+			}
+		} );
+	}
+
+	/**
+	 * Inject per-field PMP controls into each .acf-field wrapper and wire
+	 * click handlers and AJAX save for all edit-mode sections.
+	 */
+	function initFieldPmp() {
+		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
+			var fieldPmpData = {};
+			try {
+				fieldPmpData = JSON.parse( section.dataset.fieldPmp || '{}' );
+			} catch ( e ) {
+				fieldPmpData = {};
+			}
+
+			Object.keys( fieldPmpData ).forEach( function ( fieldKey ) {
+				var data         = fieldPmpData[ fieldKey ];
+				var storedPmp    = data.storedPmp    || 'inherit';
+				var companionKey = data.companionKey || '';
+
+				var fieldEl = section.querySelector( '.acf-field[data-key="' + fieldKey + '"]' );
+				if ( ! fieldEl ) {
+					return;
+				}
+
+				// Build the control wrapper.
+				var wrap = document.createElement( 'div' );
+				wrap.className            = 'memdir-field-pmp';
+				wrap.dataset.fieldKey     = fieldKey;
+				wrap.dataset.companionKey = companionKey;
+				wrap.dataset.storedPmp    = storedPmp;
+
+				var row = document.createElement( 'div' );
+				row.className = 'memdir-field-pmp__row';
+
+				var pmpValues = [ 'inherit', 'public', 'member', 'private' ];
+
+				pmpValues.forEach( function ( pmpVal ) {
+					var btn = document.createElement( 'button' );
+					btn.type        = 'button';
+					btn.className   = 'memdir-field-pmp__btn memdir-field-pmp__btn--' + pmpVal +
+					                  ( storedPmp === pmpVal ? ' is-active' : '' );
+					btn.dataset.pmp = pmpVal;
+					btn.setAttribute( 'aria-label', {
+						inherit: 'Inherit section setting',
+						public:  'Public',
+						member:  'Members only',
+						private: 'Private',
+					}[ pmpVal ] || pmpVal );
+					row.appendChild( btn );
+				} );
+
+				var statusSpan = document.createElement( 'span' );
+				statusSpan.className   = 'memdir-field-pmp__status';
+				statusSpan.textContent = computeFieldPmpStatus( wrap );
+				row.appendChild( statusSpan );
+
+				wrap.appendChild( row );
+				fieldEl.appendChild( wrap );
+
+				// Wire click handlers on the 4 icon buttons.
+				row.querySelectorAll( '.memdir-field-pmp__btn' ).forEach( function ( btn ) {
+					btn.addEventListener( 'click', function () {
+						var pmp    = btn.dataset.pmp || '';
+						var postId = section.dataset.postId || '';
+
+						if ( ! pmp || ! postId || ! companionKey ) {
+							return;
+						}
+
+						// Optimistic: update stored PMP and button active state.
+						var prevPmp = wrap.dataset.storedPmp || 'inherit';
+						wrap.dataset.storedPmp = pmp;
+
+						row.querySelectorAll( '.memdir-field-pmp__btn' ).forEach( function ( b ) {
+							b.classList.toggle( 'is-active', b === btn );
+						} );
+
+						statusSpan.textContent = computeFieldPmpStatus( wrap );
+
+						// AJAX save.
+						var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
+							? window.mdAjax.ajaxurl
+							: '/wp-admin/admin-ajax.php';
+						var nonce = ( window.mdAjax && window.mdAjax.nonce )
+							? window.mdAjax.nonce
+							: '';
+
+						var formData = new FormData();
+						formData.set( 'action',        'memdir_ajax_save_field_pmp' );
+						formData.set( 'nonce',         nonce );
+						formData.set( 'post_id',       postId );
+						formData.set( 'companion_key', companionKey );
+						formData.set( 'pmp',           pmp );
+
+						fetch( ajaxUrl, {
+							method:      'POST',
+							credentials: 'same-origin',
+							body:        formData,
+						} )
+							.then( function ( response ) { return response.json(); } )
+							.then( function ( data ) {
+								if ( ! data.success ) {
+									console.error( 'MemberDirectory: field PMP AJAX error', data );
+									// Revert optimistic change.
+									wrap.dataset.storedPmp = prevPmp;
+									row.querySelectorAll( '.memdir-field-pmp__btn' ).forEach( function ( b ) {
+										b.classList.toggle( 'is-active', b.dataset.pmp === prevPmp );
+									} );
+									statusSpan.textContent = computeFieldPmpStatus( wrap );
+								}
+							} )
+							.catch( function ( err ) {
+								console.error( 'MemberDirectory: field PMP AJAX failed', err );
+							} );
+					} );
+				} );
+			} );
+		} );
 	}
 
 	// -----------------------------------------------------------------------
@@ -1106,7 +1313,8 @@
 		initSectionSave();
 		initRightPanel();
 		initSectionPmp();
-		hideEmptySectionPills(); // hide pills for PHP-dropped empty/PMP-blocked sections
+		initFieldPmp();           // inject field PMP controls after section PMP is wired
+		hideEmptySectionPills();  // hide pills for PHP-dropped empty/PMP-blocked sections
 		restoreState();
 	} );
 
