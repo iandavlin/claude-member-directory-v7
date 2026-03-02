@@ -4,195 +4,6 @@
   "order": 5,
   "can_be_primary": true,
   "pmp_default": "member",
-  "field_groups": [
-    {
-      "tab": "Identity",
-      "fields": [
-        {
-          "key": "field_md_business_name",
-          "label": "Business Name",
-          "type": "text",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        },
-        {
-          "key": "field_md_business_logo",
-          "label": "Business Logo",
-          "type": "image",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        },
-        {
-          "key": "field_md_business_hero",
-          "label": "Business Hero Image",
-          "type": "image",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        },
-        {
-          "key": "field_md_business_description",
-          "label": "Business Description",
-          "type": "textarea",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        }
-      ]
-    },
-    {
-      "tab": "Contact",
-      "fields": [
-        {
-          "key": "field_md_business_phone",
-          "label": "Phone",
-          "type": "text",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        },
-        {
-          "key": "field_md_business_email",
-          "label": "Email",
-          "type": "email",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        },
-        {
-          "key": "field_md_business_contact_notes",
-          "label": "Contact Notes",
-          "type": "textarea",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        }
-      ]
-    },
-    {
-      "tab": "Services",
-      "fields": [
-        {
-          "key": "field_md_business_services",
-          "label": "Services Offered",
-          "type": "taxonomy",
-          "pmp_default": "inherit",
-          "filterable": true,
-          "taxonomy": "mp2t_services",
-          "required": false
-        },
-        {
-          "key": "field_md_business_featured_services",
-          "label": "Featured Services",
-          "type": "taxonomy",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": "mp2t_services",
-          "required": false
-        },
-        {
-          "key": "field_md_business_instruments",
-          "label": "Instruments Serviced",
-          "type": "taxonomy",
-          "pmp_default": "inherit",
-          "filterable": true,
-          "taxonomy": "mp2t_instruments",
-          "required": false
-        },
-        {
-          "key": "field_md_business_warranty",
-          "label": "Warranty",
-          "type": "textarea",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        }
-      ]
-    },
-    {
-      "tab": "Location & Hours",
-      "fields": [
-        {
-          "key": "field_md_business_location",
-          "label": "Business Location",
-          "type": "google_map",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        },
-        {
-          "key": "field_md_business_location_precision",
-          "label": "Location Precision",
-          "type": "select",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        },
-        {
-          "key": "field_md_business_parking",
-          "label": "Parking",
-          "type": "text",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        },
-        {
-          "key": "field_md_business_accessibility",
-          "label": "Accessibility",
-          "type": "textarea",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        },
-        {
-          "key": "field_md_business_hours",
-          "label": "Business Hours",
-          "type": "textarea",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        }
-      ]
-    },
-    {
-      "tab": "Booking",
-      "fields": [
-        {
-          "key": "field_md_business_booking_url",
-          "label": "Booking URL",
-          "type": "url",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        },
-        {
-          "key": "field_md_business_languages",
-          "label": "Languages",
-          "type": "repeater",
-          "pmp_default": "inherit",
-          "filterable": false,
-          "taxonomy": null,
-          "required": false
-        }
-      ]
-    }
-  ],
   "acf_group": {
     "key": "group_md_05_business",
     "title": "MD: Business",
@@ -208,52 +19,20 @@
         "ui_off_text": "Disabled"
       },
       {
-        "key": "field_md_tab_business_privacy",
-        "label": "Privacy",
-        "name": "",
-        "type": "tab",
-        "placement": "top",
-        "endpoint": 0
-      },
-      {
         "key": "field_md_business_privacy_mode",
-        "label": "Privacy Mode",
+        "label": "Visibility",
         "name": "member_directory_business_privacy_mode",
         "type": "button_group",
         "choices": {
-          "inherit": "Inherit Global",
-          "custom": "Custom"
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
         },
         "default_value": "inherit",
         "return_format": "value",
         "allow_null": 0,
         "layout": "horizontal"
-      },
-      {
-        "key": "field_md_business_privacy_level",
-        "label": "Privacy Level",
-        "name": "member_directory_business_privacy_level",
-        "type": "select",
-        "choices": {
-          "public": "Public",
-          "members": "Members Only",
-          "private": "Private"
-        },
-        "default_value": "members",
-        "return_format": "value",
-        "multiple": 0,
-        "allow_null": 0,
-        "ui": 0,
-        "ajax": 0,
-        "conditional_logic": [
-          [
-            {
-              "field": "field_md_business_privacy_mode",
-              "operator": "==",
-              "value": "custom"
-            }
-          ]
-        ]
       },
       {
         "key": "field_md_tab_business_identity",
@@ -268,7 +47,26 @@
         "label": "Business Name",
         "name": "member_directory_business_name",
         "type": "text",
-        "default_value": ""
+        "default_value": "",
+        "pmp_default": "inherit",
+        "filterable": false,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_name",
+        "label": "Business Name Visibility",
+        "name": "member_directory_field_pmp_business_name",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_business_logo",
@@ -277,7 +75,26 @@
         "type": "image",
         "return_format": "array",
         "library": "all",
-        "preview_size": "medium"
+        "preview_size": "medium",
+        "pmp_default": "inherit",
+        "filterable": false,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_logo",
+        "label": "Business Logo Visibility",
+        "name": "member_directory_field_pmp_business_logo",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_business_hero",
@@ -287,7 +104,26 @@
         "instructions": "Banner image for the business header (e.g. storefront photo).",
         "return_format": "array",
         "library": "all",
-        "preview_size": "large"
+        "preview_size": "large",
+        "pmp_default": "inherit",
+        "filterable": false,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_hero",
+        "label": "Business Hero Image Visibility",
+        "name": "member_directory_field_pmp_business_hero",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_business_description",
@@ -295,7 +131,26 @@
         "name": "member_directory_business_description",
         "type": "textarea",
         "instructions": "Brief mission statement or elevator pitch.",
-        "rows": 4
+        "rows": 4,
+        "pmp_default": "inherit",
+        "filterable": false,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_description",
+        "label": "Business Description Visibility",
+        "name": "member_directory_field_pmp_business_description",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_tab_business_contact",
@@ -309,13 +164,51 @@
         "key": "field_md_business_phone",
         "label": "Phone",
         "name": "member_directory_business_phone",
-        "type": "text"
+        "type": "text",
+        "pmp_default": "inherit",
+        "filterable": false,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_phone",
+        "label": "Phone Visibility",
+        "name": "member_directory_field_pmp_business_phone",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_business_email",
         "label": "Email",
         "name": "member_directory_business_email",
-        "type": "email"
+        "type": "email",
+        "pmp_default": "inherit",
+        "filterable": false,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_email",
+        "label": "Email Visibility",
+        "name": "member_directory_field_pmp_business_email",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_business_contact_notes",
@@ -323,7 +216,26 @@
         "name": "member_directory_business_contact_notes",
         "type": "textarea",
         "instructions": "Best way to reach you, preferred contact method, etc.",
-        "rows": 3
+        "rows": 3,
+        "pmp_default": "inherit",
+        "filterable": false,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_contact_notes",
+        "label": "Contact Notes Visibility",
+        "name": "member_directory_field_pmp_business_contact_notes",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_tab_business_services",
@@ -344,7 +256,26 @@
         "load_terms": 1,
         "return_format": "id",
         "field_type": "multi_select",
-        "allow_null": 1
+        "allow_null": 1,
+        "pmp_default": "inherit",
+        "filterable": true,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_services",
+        "label": "Services Offered Visibility",
+        "name": "member_directory_field_pmp_business_services",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_business_featured_services",
@@ -358,7 +289,26 @@
         "load_terms": 0,
         "return_format": "id",
         "field_type": "multi_select",
-        "allow_null": 1
+        "allow_null": 1,
+        "pmp_default": "inherit",
+        "filterable": false,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_featured_services",
+        "label": "Featured Services Visibility",
+        "name": "member_directory_field_pmp_business_featured_services",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_business_instruments",
@@ -372,14 +322,52 @@
         "load_terms": 0,
         "return_format": "id",
         "field_type": "multi_select",
-        "allow_null": 1
+        "allow_null": 1,
+        "pmp_default": "inherit",
+        "filterable": true,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_instruments",
+        "label": "Instruments Serviced Visibility",
+        "name": "member_directory_field_pmp_business_instruments",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_business_warranty",
         "label": "Warranty",
         "name": "member_directory_business_warranty",
         "type": "textarea",
-        "rows": 3
+        "rows": 3,
+        "pmp_default": "inherit",
+        "filterable": false,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_warranty",
+        "label": "Warranty Visibility",
+        "name": "member_directory_field_pmp_business_warranty",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_tab_business_location",
@@ -396,7 +384,26 @@
         "type": "google_map",
         "center_lat": "39.7392",
         "center_lng": "-104.9903",
-        "zoom": 10
+        "zoom": 10,
+        "pmp_default": "inherit",
+        "filterable": false,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_location",
+        "label": "Business Location Visibility",
+        "name": "member_directory_field_pmp_business_location",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_business_location_precision",
@@ -409,21 +416,80 @@
           "city": "City Only",
           "hide": "Hide Location"
         },
-        "default_value": "exact"
+        "default_value": "exact",
+        "return_format": "value",
+        "allow_null": 0,
+        "pmp_default": "inherit",
+        "filterable": false,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_location_precision",
+        "label": "Location Precision Visibility",
+        "name": "member_directory_field_pmp_business_location_precision",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_business_parking",
         "label": "Parking",
         "name": "member_directory_business_parking",
         "type": "text",
-        "placeholder": "Street parking available, lot in rear, etc."
+        "placeholder": "Street parking available, lot in rear, etc.",
+        "pmp_default": "inherit",
+        "filterable": false,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_parking",
+        "label": "Parking Visibility",
+        "name": "member_directory_field_pmp_business_parking",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_business_accessibility",
         "label": "Accessibility",
         "name": "member_directory_business_accessibility",
         "type": "textarea",
-        "rows": 3
+        "rows": 3,
+        "pmp_default": "inherit",
+        "filterable": false,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_accessibility",
+        "label": "Accessibility Visibility",
+        "name": "member_directory_field_pmp_business_accessibility",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_business_hours",
@@ -431,7 +497,26 @@
         "name": "member_directory_business_hours",
         "type": "textarea",
         "instructions": "Free-form hours (flexible for \"by appointment only\", seasonal hours, etc.)",
-        "rows": 4
+        "rows": 4,
+        "pmp_default": "inherit",
+        "filterable": false,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_hours",
+        "label": "Business Hours Visibility",
+        "name": "member_directory_field_pmp_business_hours",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_tab_business_booking",
@@ -447,7 +532,26 @@
         "name": "member_directory_business_booking_url",
         "type": "url",
         "instructions": "Link to your scheduling system (Calendly, Square, etc.)",
-        "placeholder": "https://calendly.com/..."
+        "placeholder": "https://calendly.com/...",
+        "pmp_default": "inherit",
+        "filterable": false,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_booking_url",
+        "label": "Booking URL Visibility",
+        "name": "member_directory_field_pmp_business_booking_url",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       },
       {
         "key": "field_md_business_languages",
@@ -466,7 +570,26 @@
             "name": "language",
             "type": "text"
           }
-        ]
+        ],
+        "pmp_default": "inherit",
+        "filterable": false,
+        "required": false
+      },
+      {
+        "key": "field_md_business_pmp_languages",
+        "label": "Languages Visibility",
+        "name": "member_directory_field_pmp_business_languages",
+        "type": "button_group",
+        "choices": {
+          "inherit": "Inherit",
+          "public": "Public",
+          "member": "Member",
+          "private": "Private"
+        },
+        "default_value": "inherit",
+        "return_format": "value",
+        "allow_null": 0,
+        "layout": "horizontal"
       }
     ],
     "location": [

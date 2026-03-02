@@ -57,6 +57,12 @@ class AdminSync {
 	/** Nonce field name in can_be_primary toggle forms. */
 	const TOGGLE_PRIMARY_NONCE_FIELD = 'member_directory_toggle_primary_nonce';
 
+	/** Nonce action used to validate section label rename submissions. */
+	const RENAME_NONCE_ACTION = 'member_directory_rename_section';
+
+	/** Nonce field name in rename forms. */
+	const RENAME_NONCE_FIELD = 'member_directory_rename_nonce';
+
 	/** Admin page slug registered with WordPress. */
 	const PAGE_SLUG = 'member-directory-sync';
 
@@ -130,6 +136,7 @@ class AdminSync {
 			self::maybe_handle_reorder();
 			self::maybe_handle_section_delete();
 			self::maybe_handle_toggle_primary();
+			self::maybe_handle_rename();
 			self::render_section_editor();
 			?>
 
@@ -330,61 +337,37 @@ class AdminSync {
 		$key = sanitize_key( $_POST['reorder_key'] ?? '' );
 		$dir = ( ( $_POST['reorder_direction'] ?? '' ) === 'up' ) ? 'up' : 'down';
 
-		$sections = SectionRegistry::get_sections(); // sorted by order ascending
+		// Reorder directly in the DB option — no JSON file writes needed.
+		// The DB option is the authoritative order source; JSON files carry no order.
+		$stored = get_option( SectionRegistry::OPTION_KEY, [] );
+		$keys   = array_keys( $stored );
 
-		// Find the position of the target section.
-		$pos = -1;
-		foreach ( $sections as $i => $s ) {
-			if ( $s['key'] === $key ) {
-				$pos = $i;
-				break;
-			}
-		}
+		$pos = array_search( $key, $keys, true );
 
-		if ( $pos < 0 ) {
+		if ( $pos === false ) {
 			return;
 		}
 
 		$swap_pos = ( $dir === 'up' ) ? $pos - 1 : $pos + 1;
 
-		if ( $swap_pos < 0 || $swap_pos >= count( $sections ) ) {
+		if ( $swap_pos < 0 || $swap_pos >= count( $keys ) ) {
 			// Already at the boundary — nothing to do.
 			return;
 		}
 
-		$a = $sections[ $pos ];
-		$b = $sections[ $swap_pos ];
+		// Swap the two keys in the ordered list.
+		[ $keys[ $pos ], $keys[ $swap_pos ] ] = [ $keys[ $swap_pos ], $keys[ $pos ] ];
 
-		// If both sections share the same order value, derive distinct values
-		// from their current array positions before swapping.
-		$a_order = (int) $a['order'];
-		$b_order = (int) $b['order'];
-
-		if ( $a_order === $b_order ) {
-			$a_order = $pos * 2 + 1;
-			$b_order = $swap_pos * 2 + 1;
+		// Rebuild the ordered sections array.
+		$reordered = [];
+		foreach ( $keys as $k ) {
+			$reordered[ $k ] = $stored[ $k ];
 		}
 
-		$sections_dir = SectionRegistry::sections_dir();
+		update_option( SectionRegistry::OPTION_KEY, $reordered, false );
 
-		// Write section A with B's order value.
-		$a['order'] = $b_order;
-		$a_file     = $sections_dir . $a['key'] . '.json';
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-		file_put_contents(
-			$a_file,
-			(string) json_encode( $a, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
-		);
-
-		// Write section B with A's order value.
-		$b['order'] = $a_order;
-		$b_file     = $sections_dir . $b['key'] . '.json';
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-		file_put_contents(
-			$b_file,
-			(string) json_encode( $b, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
-		);
-
+		// Sync refreshes the in-memory cache so render_section_editor() reflects
+		// the new order within this same request.
 		SectionRegistry::sync();
 
 		self::$last_edited_key = $key;
@@ -610,6 +593,75 @@ class AdminSync {
 		self::render_upload_result( true, '"Can be primary" ' . $state . ' for <strong>' . esc_html( $section_key ) . '</strong>.' );
 	}
 
+	/**
+	 * If this is a valid rename POST, update the label in the JSON file and re-sync.
+	 * Only the display label (and acf_group.title) is changed — the section key
+	 * and all field keys remain untouched.
+	 */
+	private static function maybe_handle_rename(): void {
+		if ( ! isset( $_POST[ self::RENAME_NONCE_FIELD ] ) ) {
+			return;
+		}
+
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST[ self::RENAME_NONCE_FIELD ] ) ), self::RENAME_NONCE_ACTION ) ) {
+			wp_die( esc_html__( 'Security check failed. Please go back and try again.' ) );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to run this action.' ) );
+		}
+
+		$section_key = sanitize_key( $_POST['rename_section_key'] ?? '' );
+		$new_label   = sanitize_text_field( wp_unslash( $_POST['new_label'] ?? '' ) );
+
+		if ( empty( $section_key ) || empty( $new_label ) ) {
+			self::render_upload_result( false, 'Section key and new label are both required.' );
+			return;
+		}
+
+		$sections_dir = SectionRegistry::sections_dir();
+		$target_file  = $sections_dir . $section_key . '.json';
+
+		if ( ! file_exists( $target_file ) ) {
+			self::render_upload_result( false, 'Section file <code>sections/' . esc_html( $section_key ) . '.json</code> not found.' );
+			return;
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$raw  = file_get_contents( $target_file );
+		$data = json_decode( $raw !== false ? $raw : '', true );
+
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			self::render_upload_result( false, 'Could not parse section JSON.' );
+			return;
+		}
+
+		$old_label = $data['label'] ?? $section_key;
+
+		$data['label'] = $new_label;
+
+		// Update acf_group.title — convention is "MD: {Label}".
+		if ( isset( $data['acf_group']['title'] ) ) {
+			$data['acf_group']['title'] = 'MD: ' . $new_label;
+		}
+
+		$pretty = (string) json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+		if ( file_put_contents( $target_file, $pretty ) === false ) {
+			self::render_upload_result( false, 'Could not write <code>sections/' . esc_html( $section_key ) . '.json</code>.' );
+			return;
+		}
+
+		SectionRegistry::sync();
+		self::$last_edited_key = $section_key;
+
+		self::render_upload_result(
+			true,
+			'Section renamed from <strong>' . esc_html( $old_label ) . '</strong> to <strong>' . esc_html( $new_label ) . '</strong>.'
+		);
+	}
+
 	// -----------------------------------------------------------------------
 	// Import helpers
 	// -----------------------------------------------------------------------
@@ -758,9 +810,8 @@ class AdminSync {
 		$count = count( $sections );
 
 		foreach ( $sections as $i => $section ) {
-			$key            = $section['key']           ?? '';
-			$label          = $section['label']         ?? $key;
-			$order          = $section['order']         ?? 0;
+			$key            = $section['key']   ?? '';
+			$label          = $section['label'] ?? $key;
 			$can_be_primary = ! empty( $section['can_be_primary'] );
 			$is_first       = ( $i === 0 );
 			$is_last        = ( $i === $count - 1 );
@@ -815,13 +866,22 @@ class AdminSync {
 			echo '</label>';
 			echo '</form>';
 
-			// Order badge.
-			echo '<span style="font-size:11px;color:#888;">order:&nbsp;' . esc_html( (string) $order ) . '</span>';
-
 			echo '</summary>';
 
 			// --- Edit form --------------------------------------------------
 			echo '<div style="padding:14px;">';
+
+			// Rename form — updates label and acf_group.title only; key is unchanged.
+			echo '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eee;">';
+			echo '<label style="font-weight:600;white-space:nowrap;font-size:13px;">Section Label:</label>';
+			echo '<form method="post" action="" style="display:flex;gap:6px;flex:1;" onclick="event.stopPropagation();">';
+			wp_nonce_field( self::RENAME_NONCE_ACTION, self::RENAME_NONCE_FIELD );
+			echo '<input type="hidden" name="rename_section_key" value="' . esc_attr( $key ) . '">';
+			echo '<input type="text" name="new_label" value="' . esc_attr( $label ) . '" style="flex:1;max-width:320px;">';
+			submit_button( 'Rename', 'small', 'rename_submit_' . esc_attr( $key ), false );
+			echo '</form>';
+			echo '</div>';
+
 			echo '<form method="post" action="">';
 			wp_nonce_field( self::EDIT_NONCE_ACTION, self::EDIT_NONCE_FIELD );
 			echo '<input type="hidden" name="edit_section_key" value="' . esc_attr( $key ) . '">';

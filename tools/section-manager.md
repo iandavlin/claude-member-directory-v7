@@ -21,13 +21,24 @@ A section config has this shape. There is no separate field_groups array.
         { "key": "field_md_workspace_privacy_mode", ... },     <- system field
         { "key": "field_md_tab_workspace_overview", "type": "tab", ... },
         {
-          "key": "field_md_workspace_description",
+          "key": "field_md_workspace_description",             <- content field
           "name": "member_directory_workspace_description",
           "type": "textarea",
           "pmp_default": "member",     <- plugin property, injected by this tool
           "filterable": false,          <- plugin property, injected by this tool
           "required": false,            <- plugin property, injected by this tool
           ...all original ACF field properties preserved...
+        },
+        {
+          "key": "field_md_workspace_pmp_description",         <- per-field PMP companion (injected by this tool)
+          "name": "member_directory_field_pmp_workspace_description",
+          "label": "Description Visibility",
+          "type": "button_group",
+          "choices": { "inherit": "Inherit", "public": "Public", "member": "Member", "private": "Private" },
+          "default_value": "inherit",
+          "return_format": "value",
+          "allow_null": 0,
+          "layout": "horizontal"
         }
       ],
       "location": [ [ { "param": "post_type", "operator": "==", "value": "member-directory" } ] ],
@@ -35,10 +46,24 @@ A section config has this shape. There is no separate field_groups array.
     }
   }
 
-Plugin properties (pmp_default, filterable, required) live directly on each content
-field object inside acf_group.fields. ACF ignores these extra properties. The plugin
-reads them at runtime to control visibility and filtering. System fields (enabled toggle,
-privacy_mode button) and tab markers are never given these properties.
+Every content field is immediately followed by its per-field PMP companion button_group.
+Plugin properties (pmp_default, filterable, required) live directly on each content field
+object. PMP companions are full ACF fields that the plugin reads per-post to override
+section and global PMP. System fields, tab markers, and PMP companions themselves are
+never given plugin properties and never get their own companions.
+
+
+Naming Reference
+
+  Section key:         {key}                                  e.g.  workspace
+  ACF group key:       group_md_{nn}_{key}                    e.g.  group_md_06_workspace
+  Content field key:   field_md_{key}_{suffix}                e.g.  field_md_workspace_description
+  Content field name:  member_directory_{key}_{suffix}        e.g.  member_directory_workspace_description
+  PMP companion key:   field_md_{key}_pmp_{suffix}            e.g.  field_md_workspace_pmp_description
+  PMP companion name:  member_directory_field_pmp_{key}_{suffix}
+                                                              e.g.  member_directory_field_pmp_workspace_description
+
+{suffix} is the portion of the content field key after "field_md_{key}_".
 
 
 Reliable Trigger Phrases
@@ -62,8 +87,10 @@ If the user attaches or pastes a raw JSON file alongside a short command, skip t
   "add pmp" (or "inject pmp", "prep this")
       -- Treat as a standalone ACF Group Preparer run.
       -- Ask for the section key (needed to name the fields).
-      -- Inject the two PMP system fields (enabled toggle + 4-state visibility button)
-         into the provided JSON.
+      -- Inject the two section-level PMP system fields (enabled toggle + 4-state visibility button)
+         into the provided JSON if not already present (same logic as Step 4a step iv).
+      -- Inject a per-field PMP companion button_group immediately after each content field
+         (same logic as Step 4a step v). Skip any field already containing "_pmp_" in its key.
       -- Output labelled: ENRICHED ACF JSON -- import via WP Admin -> ACF -> Tools -> Import
       -- Do NOT build a section config. Stop after outputting the enriched JSON.
 
@@ -143,8 +170,8 @@ No existing config exists, so no backup step.
 
   iii. Ask about required fields beyond any already marked required in the ACF export.
 
-  iv.  PMP system fields -- scan the ACF export for field_md_{key}_enabled and
-       field_md_{key}_privacy_mode.
+  iv.  Section-level PMP system fields -- scan the ACF export for field_md_{key}_enabled
+       and field_md_{key}_privacy_mode.
 
        Both present: copy them verbatim to the top of acf_group.fields. Continue.
 
@@ -167,28 +194,59 @@ No existing config exists, so no backup step.
        Only one present: stop and warn -- partial injection is invalid. Ask the user
        to remove the lone field and let this step regenerate both cleanly.
 
-  v.   Inject plugin properties onto each content field in acf_group.fields.
+  v.   Per-field PMP companion injection.
 
-       Content fields are all fields that are NOT: tab markers, the enabled toggle,
-       the privacy_mode button_group, or any field whose key contains _enabled,
-       _privacy_mode, or _privacy_level.
+       For each content field in acf_group.fields (see skip list below), immediately
+       after the content field insert a button_group companion:
+
+         {
+           "key":          "field_md_{key}_pmp_{suffix}",
+           "name":         "member_directory_field_pmp_{key}_{suffix}",
+           "label":        "{Field Label} Visibility",
+           "type":         "button_group",
+           "choices":      { "inherit": "Inherit", "public": "Public",
+                             "member": "Member", "private": "Private" },
+           "default_value": "inherit",
+           "return_format": "value",
+           "allow_null":   0,
+           "layout":       "horizontal"
+         }
+
+       Where {suffix} = the portion of the content field's key after "field_md_{key}_".
+       e.g. field_md_workspace_description → suffix = "description"
+
+       Skip list (do NOT inject a companion for these):
+         -- tab fields (type == "tab")
+         -- the enabled toggle (key ends with _enabled)
+         -- the section privacy_mode field (key ends with _privacy_mode)
+         -- any field whose key already contains "_pmp_"
+         -- any field whose key contains _privacy_level
+
+  vi.  Plugin properties -- inject onto each content field in acf_group.fields.
+
+       Content fields are all fields that are NOT in the skip list from step v AND
+       are not PMP companion fields (key contains "_pmp_").
 
        For each content field, add these three properties directly on the field object:
-         "pmp_default": "inherit"          (use the section's pmp_default if user said all fields share it)
-         "filterable": false               (true only for taxonomy fields the user said yes to in step ii)
-         "required": false                 (true only for fields the user identified in step iii)
+         "pmp_default": "inherit"     (use the section's pmp_default if user said all fields share it)
+         "filterable": false          (true only for taxonomy fields the user said yes to in step ii)
+         "required": false            (true only for fields the user identified in step iii)
 
        All other ACF field properties are preserved exactly as exported.
+       PMP companion fields (injected in step v) do NOT receive these properties.
 
-  vi.  Validate: warn if no required fields; warn if can_be_primary is true and key is not
-       profile or business. State field count and wait for confirmation.
+  vii. Validate: warn if no required fields; warn if can_be_primary is true and key is not
+       profile or business. State content field count and PMP companion count (should match).
+       Wait for confirmation.
 
-  vii. Output the finished config labelled: NEW -- save to: sections/{key}.json
-       The config has exactly five top-level keys: key, label, order, can_be_primary,
-       pmp_default, acf_group. There is no field_groups key.
+  viii. Output the finished config labelled: NEW -- save to: sections/{key}.json
+
+       Required top-level keys:  key, label, acf_group
+       Optional top-level keys:  order, can_be_primary, pmp_default
+       There is no field_groups key.
        Remind: run Sync after saving.
 
-  viii. After outputting the config, ask:
+  ix.  After outputting the config, ask:
        "The section config's acf_group block is the ACF field group definition. The
         plugin registers it with ACF automatically on every page load via
         acf_add_local_field_group() -- so saving the config and running Sync is all
@@ -205,18 +263,23 @@ No existing config exists, so no backup step.
   i.   Pull section metadata from the existing config (key, label, order, can_be_primary,
        pmp_default). Do not ask for these again unless the user says they want to change one.
 
-  ii.  Re-run the PMP detection step (same as 4a step iv) on the updated ACF export.
+  ii.  Re-run the section-level PMP detection step (same as 4a step iv) on the updated
+       ACF export.
 
-  iii. Walk the updated ACF export fields. For each content field (apply same skip list
-       as 4a step v):
+  iii. Walk the updated ACF export fields. For each content field (apply the skip list
+       from 4a step v -- including any field whose key contains "_pmp_"):
 
          -- Field key exists in current config's acf_group.fields:
             Carry forward its pmp_default, filterable, required, and taxonomy values
             from the current config onto the new field object. Preserve all other
             ACF properties from the new export.
+            Check whether a PMP companion (key = field_md_{key}_pmp_{suffix}) exists in
+            the current config. If it does, carry it forward verbatim immediately after
+            the content field. If it doesn't, inject a fresh one (same as 4a step v).
 
          -- Field key is new (not in current config):
             Add with defaults: pmp_default: "inherit", filterable: false, required: false.
+            Inject a fresh PMP companion immediately after it (same as 4a step v).
             List new fields and ask the user to confirm or adjust the defaults
             before outputting.
 
@@ -226,11 +289,13 @@ No existing config exists, so no backup step.
              export. Remove it?"
             IMPORTANT: Warn that removing a field key will make any data already saved
             under that key inaccessible. Wait for a yes/no answer per flagged field.
-            If yes: omit the field from the output.
-            If no: carry the field forward from the current config unchanged.
+            If yes: omit the field and its PMP companion from the output.
+            If no: carry the field and its PMP companion forward from the current config
+            unchanged.
 
-  iv.  Assemble the merged config. The output has exactly five top-level keys:
-       key, label, order, can_be_primary, pmp_default, acf_group.
+  iv.  Assemble the merged config.
+       Required top-level keys:  key, label, acf_group
+       Optional top-level keys:  order, can_be_primary, pmp_default
        There is no field_groups key.
        Output labelled: UPDATED -- save to: sections/{key}.json
        Remind: run Sync after saving.
@@ -269,6 +334,8 @@ Apply these substitutions throughout the config:
   -- acf_group.title
   -- All field keys: field_md_{old_key}_ -> field_md_{new_key}_
   -- All field names: member_directory_{old_key}_ -> member_directory_{new_key}_
+  -- All PMP companion field names: member_directory_field_pmp_{old_key}_ ->
+     member_directory_field_pmp_{new_key}_
   -- Any conditional_logic field references pointing to old keys
 
 After the backup step, output the renamed config:
@@ -309,10 +376,17 @@ Label every output block on its own line before the JSON:
   RENAMED  -- save to: sections/{new_key}.json
   RESTORED -- save to: sections/{key}.json
 
-Every output config has exactly these top-level keys (in this order):
+Every output config must have these required top-level keys (key, label, acf_group) and
+may include optional keys (order, can_be_primary, pmp_default), in this order when present:
   key, label, order, can_be_primary, pmp_default, acf_group
 There is no field_groups key. If the user's existing config contains field_groups,
 silently omit it from the output -- it is no longer used.
+
+Within acf_group.fields, fields are ordered as:
+  1. Enabled system field (field_md_{key}_enabled)
+  2. Privacy mode system field (field_md_{key}_privacy_mode)
+  3. Tab markers and content fields interleaved as they appeared in the ACF export,
+     each content field immediately followed by its PMP companion button_group.
 
 After every operation that writes a file, add:
   "Run WP Admin -> Member Directory -> Sync after saving."

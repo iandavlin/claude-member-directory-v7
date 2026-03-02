@@ -83,7 +83,7 @@ class SectionRegistry {
 	 * Substrings that, if present in a field key, mark it as a system field.
 	 * Used by is_system_field() to filter acf_group.fields at runtime.
 	 */
-	const SKIP_KEY_PATTERNS = [ '_enabled', '_privacy_mode', '_privacy_level' ];
+	const SKIP_KEY_PATTERNS = [ '_enabled', '_privacy_mode', '_privacy_level', '_pmp_' ];
 
 	/**
 	 * In-memory cache of the loaded sections for the current request.
@@ -237,14 +237,29 @@ class SectionRegistry {
 			$loaded[]      = $filename;
 		}
 
-		// Sort by 'order' ascending. Sections without an order value sort last.
-		uasort( $valid, fn( $a, $b ) => ( $a['order'] ?? PHP_INT_MAX ) <=> ( $b['order'] ?? PHP_INT_MAX ) );
+		// Preserve existing DB order; append any newly discovered sections at the end.
+		// Ordering is managed exclusively via the drag-and-drop UI in the Section Editor
+		// — 'order' keys in JSON files are ignored.
+		$existing_db = get_option( self::OPTION_KEY, [] );
+		$ordered     = [];
+
+		foreach ( array_keys( $existing_db ) as $existing_key ) {
+			if ( isset( $valid[ $existing_key ] ) ) {
+				$ordered[ $existing_key ] = $valid[ $existing_key ];
+				unset( $valid[ $existing_key ] );
+			}
+		}
+
+		// Append any sections not yet in the DB (newly added JSON files).
+		foreach ( $valid as $new_key => $new_section ) {
+			$ordered[ $new_key ] = $new_section;
+		}
 
 		// Persist to the database.
-		update_option( self::OPTION_KEY, $valid, false /* not autoloaded */ );
+		update_option( self::OPTION_KEY, $ordered, false /* not autoloaded */ );
 
 		// Refresh the in-memory cache for the remainder of this request.
-		self::$sections = $valid;
+		self::$sections = $ordered;
 
 		return [
 			'loaded'  => $loaded,
@@ -437,6 +452,12 @@ class SectionRegistry {
 		foreach ( $acf_fields as $field ) {
 			// Tabs have an empty name by convention — skip them.
 			if ( empty( $field['name'] ) || ( $field['type'] ?? '' ) === 'tab' ) {
+				continue;
+			}
+			// Skip system fields (button_group PMP controls, enabled toggles,
+			// per-field PMP companions, etc.) — their names use different prefixes
+			// by design (e.g. member_directory_field_pmp_{key}_{suffix}).
+			if ( self::is_system_field( $field ) ) {
 				continue;
 			}
 			if ( ! str_starts_with( $field['name'], $prefix ) ) {
