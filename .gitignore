@@ -1,0 +1,14 @@
+# Section data files — managed per-server via the AdminSync UI.
+# Not tracked in git; the DB is the runtime source of truth after Sync.
+sections/*.json
+
+# Backups created by AdminSync
+sections/backups/
+
+# WordPress / PHP
+*.log
+.DS_Store
+Thumbs.db
+
+# Node (if ever used for tooling)
+node_modules/
