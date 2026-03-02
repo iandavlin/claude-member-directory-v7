@@ -391,6 +391,7 @@
 					setTimeout( function () {
 						var reloadUrl = new URL( window.location.href );
 						reloadUrl.searchParams.set( 'active_section', reloadSectionKey );
+						reloadUrl.searchParams.set( '_t', Date.now().toString() );
 						if ( reloadTabLabel ) {
 							reloadUrl.searchParams.set( 'active_tab', reloadTabLabel );
 						}
@@ -703,8 +704,13 @@
 				return;
 			}
 
-			// Toggle disabled class on the pill.
+			// Toggle disabled class and tooltip on the pill.
 			pill.classList.toggle( 'memdir-pill--disabled', ! enabled );
+			if ( ! enabled ) {
+				pill.setAttribute( 'title', 'Activate Check Box' );
+			} else {
+				pill.removeAttribute( 'title' );
+			}
 
 			if ( ! enabled ) {
 				// Capture the closest enabled neighbour BEFORE reordering so the
@@ -872,11 +878,7 @@
 	//
 	// Priority order on DOMContentLoaded:
 	//   1. URL param ?active_section={key} -- post-save reloads pass this.
-	//   2. sessionStorage keyed to post ID -- remembers state within a session.
-	//   3. Primary section key -- default active pill (not 'all').
-	//
-	// activatePill() writes to sessionStorage on every activation, so the
-	// stored value stays current as the user navigates between pills.
+	//   2. Primary section key -- default active pill (not 'all').
 	// -----------------------------------------------------------------------
 
 	/**
