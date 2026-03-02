@@ -112,11 +112,9 @@ class AdminSync {
 
 		?>
 		<div class="wrap">
-			<h1>Member Directory &mdash; Section Sync</h1>
-			<p>Click <strong>Run Sync</strong> to read all JSON files from the
-			<code>sections/</code> folder and register them with the plugin.</p>
-			<p>You must run a sync after adding or editing any section JSON file.
-			Changes to JSON files have no effect until sync is run.</p>
+			<h1>Member Directory</h1>
+			<p>Run Sync any time a <code>sections/</code> JSON file changes.
+			ACF field group changes do <em>not</em> require a sync &mdash; they take effect immediately on the next page load.</p>
 
 			<?php self::maybe_handle_submission(); ?>
 
@@ -127,9 +125,7 @@ class AdminSync {
 
 			<hr>
 			<h2>Section Editor</h2>
-			<p>Edit section configs directly. Each save validates the JSON, backs up
-			the current file, writes the new version, and syncs immediately. Use the
-			arrows to reorder sections.</p>
+			<p>Rename, reorder, toggle primary eligibility, or delete sections. Each save validates, backs up, and syncs immediately.</p>
 
 			<?php
 			self::maybe_handle_section_edit();
@@ -157,6 +153,46 @@ class AdminSync {
 					<?php submit_button( 'Upload &amp; Sync', 'secondary', 'upload_submit', false ); ?>
 				</p>
 			</form>
+
+			<hr>
+			<h2>Section Headers</h2>
+			<p>Headers are rendered automatically &mdash; no PHP changes needed. To give a section a header, open its field group in <strong>Custom Fields &rarr; Field Groups</strong> and add a <strong>Tab</strong> field whose label contains the word <code>header</code> (e.g. <em>Profile Header</em>, <em>Business Header</em>). Fields placed <em>inside</em> that tab are mapped to header slots by type:</p>
+
+			<table class="widefat striped" style="margin-bottom:16px;">
+				<thead>
+					<tr>
+						<th style="width:140px;">Field type</th>
+						<th>Header slot</th>
+						<th>Notes</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr><td><code>text</code></td>    <td>Name / title (h1)</td>         <td>First <code>text</code> field only</td></tr>
+					<tr><td><code>image</code></td>   <td>Avatar (72&times;72 circle)</td><td>First <code>image</code> field only</td></tr>
+					<tr><td><code>taxonomy</code></td><td>Category badge pills</td>       <td>All <code>taxonomy</code> fields, all terms</td></tr>
+					<tr><td><code>url</code></td>     <td>Social icon link</td>           <td>Field name must end with a platform suffix (see below)</td></tr>
+				</tbody>
+			</table>
+
+			<p><strong>Social platform name suffixes</strong> &mdash; name your <code>url</code> field so it ends with one of these (e.g. <code>member_directory_profile_linkedin</code>):</p>
+
+			<table class="widefat striped" style="margin-bottom:16px;max-width:380px;">
+				<thead>
+					<tr><th>Suffix</th><th>Icon shown</th></tr>
+				</thead>
+				<tbody>
+					<tr><td><code>_website</code></td>  <td>Globe (generic link)</td></tr>
+					<tr><td><code>_linkedin</code></td> <td>LinkedIn</td></tr>
+					<tr><td><code>_instagram</code></td><td>Instagram</td></tr>
+					<tr><td><code>_twitter</code></td>  <td>Twitter&nbsp;/&nbsp;X</td></tr>
+					<tr><td><code>_facebook</code></td> <td>Facebook</td></tr>
+					<tr><td><code>_youtube</code></td>  <td>YouTube</td></tr>
+					<tr><td><code>_tiktok</code></td>   <td>TikTok</td></tr>
+					<tr><td><code>_vimeo</code></td>    <td>Vimeo</td></tr>
+				</tbody>
+			</table>
+
+			<p>Save the field group in ACF &mdash; the header appears on the next page load. No sync required.</p>
 
 			<hr>
 			<h2>Claude Skills</h2>

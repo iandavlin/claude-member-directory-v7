@@ -64,12 +64,37 @@ $primary_section = get_field( 'member_directory_primary_section', $post_id ) ?: 
 	<div class="memdir-profile__main">
 
 		<div class="memdir-sticky" data-primary-section="<?php echo esc_attr( $primary_section ); ?>">
-			<div class="memdir-header-wrap" data-header="profile"<?php echo $primary_section !== 'profile' ? ' style="display:none"' : ''; ?>>
-				<?php include plugin_dir_path( __FILE__ ) . 'parts/header-profile.php'; ?>
-			</div>
-			<div class="memdir-header-wrap" data-header="business"<?php echo $primary_section !== 'business' ? ' style="display:none"' : ''; ?>>
-				<?php include plugin_dir_path( __FILE__ ) . 'parts/header-business.php'; ?>
-			</div>
+			<?php
+			// Render one header-wrap per section that declares a "header" tab in its ACF group.
+			// JS shows the one matching the active pill; all others are hidden.
+			foreach ( $sections as $section ) {
+				$_hdr_group = $section['acf_group_key'] ?? '';
+				if ( empty( $_hdr_group ) ) {
+					continue;
+				}
+				$_hdr_fields = acf_get_fields( $_hdr_group );
+				if ( empty( $_hdr_fields ) || ! is_array( $_hdr_fields ) ) {
+					continue;
+				}
+				$_has_header_tab = false;
+				foreach ( $_hdr_fields as $_hf ) {
+					if ( ( $_hf['type'] ?? '' ) === 'tab' && stripos( $_hf['label'] ?? '', 'header' ) !== false ) {
+						$_has_header_tab = true;
+						break;
+					}
+				}
+				if ( ! $_has_header_tab ) {
+					continue;
+				}
+				$_hdr_key = $section['key'] ?? '';
+				?>
+				<div class="memdir-header-wrap" data-header="<?php echo esc_attr( $_hdr_key ); ?>"<?php echo $_hdr_key === $primary_section ? '' : ' style="display:none"'; ?>>
+					<?php include plugin_dir_path( __FILE__ ) . 'parts/header-section.php'; ?>
+				</div>
+				<?php
+			}
+			unset( $_hdr_group, $_hdr_fields, $_has_header_tab, $_hf, $_hdr_key );
+			?>
 			<?php include plugin_dir_path( __FILE__ ) . 'parts/pill-nav.php'; ?>
 		</div>
 

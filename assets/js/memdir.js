@@ -197,50 +197,44 @@
 	// -----------------------------------------------------------------------
 	// 3. Header swap
 	//
-	// Two header variants live in the DOM (.memdir-header-wrap[data-header]).
-	// The correct one is shown based on the active pill and the primary section.
-	//
-	// Rule:
-	//   Business primary -> show profile header ONLY when Profile pill is active;
-	//                       show business header for all other pills.
-	//   Profile primary  -> show business header ONLY when Business pill is active;
-	//                       show profile header for all other pills.
+	// All header variants live in the DOM as .memdir-header-wrap[data-header].
+	// JS shows one at a time: the header matching the active pill key, or falls
+	// back to the primary section when no matching header block exists.
 	//
 	// .memdir-sticky[data-primary-section] is the source of truth for the
 	// primary section key.
 	// -----------------------------------------------------------------------
 
 	/**
-	 * Show the correct header variant for the active pill.
+	 * Show the header block matching the active pill key.
+	 * Falls back to primary section when no matching header block exists.
 	 *
 	 * @param {string} sectionKey  The newly activated section key.
 	 */
 	function swapHeader( sectionKey ) {
 		var sticky = document.querySelector( '.memdir-sticky' );
-		if ( ! sticky ) {
-			return;
-		}
-
+		if ( ! sticky ) { return; }
 		var primarySection = sticky.dataset.primarySection || 'profile';
-		var showBusiness;
-
-		if ( primarySection === 'business' ) {
-			// Business is primary: show the profile header only when the
-			// Profile pill is active; all other pills show the business header.
-			showBusiness = ( sectionKey !== 'profile' );
-		} else {
-			// Profile is primary (default): show the business header only when
-			// the Business pill is active; all other pills show the profile header.
-			showBusiness = ( sectionKey === 'business' );
+		var targetKey = ( sectionKey === 'all' ) ? primarySection : sectionKey;
+		var sel = '.memdir-header-wrap[data-header="' + targetKey + '"]';
+		var targetWrap = sticky.querySelector( sel );
+		if ( ! targetWrap ) {
+			// Fall back to primary section.
+			targetKey  = primarySection;
+			sel        = '.memdir-header-wrap[data-header="' + targetKey + '"]';
+			targetWrap = sticky.querySelector( sel );
 		}
-
-		var profileWrap  = sticky.querySelector( '.memdir-header-wrap[data-header="profile"]' );
-		var businessWrap = sticky.querySelector( '.memdir-header-wrap[data-header="business"]' );
-
-		if ( profileWrap )  { profileWrap.style.display  = showBusiness ? 'none' : ''; }
-		if ( businessWrap ) { businessWrap.style.display = showBusiness ? '' : 'none'; }
+		if ( ! targetWrap ) {
+			// No header block for this key — show the first available one.
+			targetWrap = sticky.querySelector( '.memdir-header-wrap[data-header]' );
+			if ( targetWrap ) { targetKey = targetWrap.dataset.header || targetKey; }
+		}
+		sticky.querySelectorAll( '.memdir-header-wrap[data-header]' ).forEach( function ( wrap ) {
+			wrap.style.display = ( wrap.dataset.header === targetKey ) ? '' : 'none';
+		} );
 	}
 
+	
 	// -----------------------------------------------------------------------
 	// 4. Section save (AJAX)
 	//
