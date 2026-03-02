@@ -8,14 +8,8 @@
  *
  * 1. RUNTIME (every page load)
  *    SectionRegistry::load_from_db() reads the member_directory_sections option
- *    and populates the in-memory section cache. ACF field groups are loaded
- *    natively by ACF from the plugin's acf-json/ folder (registered via
- *    acf/settings/load_json in Plugin.php) — no acf_add_local_field_group()
- *    call is needed for current-format sections.
- *
- *    Backward compat: sections still stored in the old format (with a full
- *    acf_group definition rather than a pointer key) are registered locally
- *    via acf_add_local_field_group() so they continue to work during migration.
+ *    and populates the in-memory section cache. ACF owns all field groups in its
+ *    own database — the plugin never registers or overrides them.
  *
  * 2. SYNC (admin-triggered only)
  *    SectionRegistry::sync() reads all JSON files from the sections/ folder,
@@ -198,13 +192,9 @@ class SectionRegistry {
 	/**
 	 * RUNTIME — read section metadata from the database.
 	 *
-	 * Current-format sections (lean pointer format with acf_group_key) rely on
-	 * ACF's native JSON sync to load their field groups — no registration call
-	 * is needed here.
-	 *
-	 * Backward compat: old-format sections that still carry a full acf_group
-	 * definition are registered locally so they continue to work while the server
-	 * is being migrated to the lean format.
+	 * Populates the in-memory section cache from the member_directory_sections
+	 * option. ACF owns all field groups — the plugin never registers them.
+	 * Templates call acf_get_fields( $section['acf_group_key'] ) directly.
 	 */
 	public static function load_from_db(): void {
 		$stored = get_option( self::OPTION_KEY, [] );
@@ -214,15 +204,6 @@ class SectionRegistry {
 		}
 
 		self::$sections = $stored;
-
-		// Backward compat: register old-format sections that carry a full
-		// acf_group definition. Remove this block once all servers have been
-		// migrated (i.e. all sections in the DB use acf_group_key only).
-		foreach ( self::$sections as $section ) {
-			if ( ! empty( $section['acf_group'] ) && is_array( $section['acf_group'] ) ) {
-				acf_add_local_field_group( $section['acf_group'] );
-			}
-		}
 	}
 
 	// -----------------------------------------------------------------------

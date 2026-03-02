@@ -4,8 +4,7 @@
  *
  * Responsibilities:
  *   - Register the member-directory CPT.
- *   - Initialise SectionRegistry (loads sections from the DB and registers
- *     ACF field groups on every page load).
+ *   - Initialise SectionRegistry (loads section metadata from the DB).
  *   - Hook TemplateLoader into the single_template filter.
  *   - Enqueue front-end assets on member-directory CPT pages only.
  *
@@ -55,13 +54,6 @@ class Plugin {
 	public function init(): void {
 		add_action( 'init', [ $this, 'register_cpt' ] );
 
-		// Register the plugin's acf-json/ folder as the ACF JSON save and load
-		// path. ACF will auto-save field group JSON here when groups are edited in
-		// the admin, and auto-load those files on every page load — so field changes
-		// are live immediately without any plugin sync step.
-		add_filter( 'acf/settings/save_json', [ $this, 'acf_json_save_path' ] );
-		add_filter( 'acf/settings/load_json', [ $this, 'acf_json_load_path' ] );
-
 		// ACF fires acf/init inside its own plugins_loaded callback. Because ACF
 		// is loaded alphabetically before this plugin, its plugins_loaded callback
 		// is registered (and fires) before ours — both at default priority 10.
@@ -84,30 +76,6 @@ class Plugin {
 		AdminSync::init();
 		GlobalFields::init();
 		AcfFormHelper::init();
-	}
-
-	// -----------------------------------------------------------------------
-	// ACF JSON path callbacks
-	// -----------------------------------------------------------------------
-
-	/**
-	 * Tell ACF to save field group JSON files to the plugin's acf-json/ folder.
-	 * Fires on acf/settings/save_json.
-	 */
-	public function acf_json_save_path(): string {
-		return $this->plugin_dir . 'acf-json';
-	}
-
-	/**
-	 * Tell ACF to also load field group JSON files from the plugin's acf-json/ folder.
-	 * Fires on acf/settings/load_json.
-	 *
-	 * @param string[] $paths  Existing load paths registered by ACF or other plugins.
-	 * @return string[]
-	 */
-	public function acf_json_load_path( array $paths ): array {
-		$paths[] = $this->plugin_dir . 'acf-json';
-		return $paths;
 	}
 
 	// -----------------------------------------------------------------------
@@ -149,8 +117,7 @@ class Plugin {
 	// -----------------------------------------------------------------------
 
 	/**
-	 * Tell SectionRegistry to load section data from the database and register
-	 * each section's ACF field group with ACF.
+	 * Tell SectionRegistry to load section metadata from the database.
 	 *
 	 * Called either:
 	 *   a) directly from Plugin::init() when did_action('acf/init') is already
@@ -159,8 +126,8 @@ class Plugin {
 	 *      at priority 10 — when acf/init has not yet fired.
 	 *
 	 * This runs on every page load. It reads from the member_directory_sections
-	 * option — never directly from the filesystem. The filesystem is only read
-	 * during an explicit admin sync (SectionRegistry::sync()).
+	 * option — never directly from the filesystem. ACF owns all field groups
+	 * in its own database; the plugin never registers or overrides them.
 	 */
 	public function init_section_registry(): void {
 		SectionRegistry::load_from_db();
