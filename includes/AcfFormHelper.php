@@ -159,11 +159,19 @@ class AcfFormHelper {
 			return;
 		}
 
-		// Scope form to content fields only — excludes PMP system fields,
-		// tab dividers, and any test fields present in the acf_group but
-		// not listed in the section's field_groups config.
-		$content_fields = SectionRegistry::get_all_fields( $section );
-		$field_keys     = array_column( $content_fields, 'key' );
+		// Derive field keys directly from ACF — any field in the registered group
+		// (content fields, tab dividers, per-field PMP companions) appears in the
+		// form automatically after a sync. Only the two section-level system fields
+		// managed by the left-panel sidebar controls are excluded.
+		$raw_fields = acf_get_fields( $field_group_key ) ?: [];
+		$field_keys = [];
+
+		foreach ( $raw_fields as $f ) {
+			if ( preg_match( '/_(enabled|privacy_mode)$/', $f['key'] ?? '' ) ) {
+				continue; // Managed by left-panel sidebar controls.
+			}
+			$field_keys[] = $f['key'];
+		}
 
 		if ( empty( $field_keys ) ) {
 			return;
@@ -303,11 +311,14 @@ class AcfFormHelper {
 	/**
 	 * AJAX handler: save the PMP (visibility) level for one section.
 	 *
-	 * Accepts four values for pmp:
-	 *   'inherit'  — section defers to global PMP; privacy_mode set to 'inherit'.
-	 *   'public'   — explicit override; privacy_mode = 'custom', privacy_level = 'public'.
-	 *   'member'   — explicit override; privacy_mode = 'custom', privacy_level = 'member'.
-	 *   'private'  — explicit override; privacy_mode = 'custom', privacy_level = 'private'.
+	 * Writes directly to the 4-state privacy_mode field:
+	 *   'inherit'  — section defers to global PMP.
+	 *   'public'   — explicit override: everyone sees the section.
+	 *   'member'   — explicit override: logged-in users only.
+	 *   'private'  — explicit override: author and admin only.
+	 *
+	 * ACF field written: member_directory_{section_key}_privacy_mode
+	 * ACF field key:     field_md_{section_key}_privacy_mode
 	 *
 	 * Expects $_POST:
 	 *   nonce       — wp_create_nonce( 'md_save_nonce' )
@@ -339,14 +350,12 @@ class AcfFormHelper {
 			wp_send_json_error( [ 'message' => 'Invalid section key.' ], 400 );
 		}
 
-		if ( $pmp === 'inherit' ) {
-			update_field( 'field_md_' . $section_key . '_privacy_mode', 'inherit', $post_id );
-		} elseif ( in_array( $pmp, [ 'public', 'member', 'private' ], true ) ) {
-			update_field( 'field_md_' . $section_key . '_privacy_mode', 'custom', $post_id );
-			update_field( 'field_md_' . $section_key . '_privacy_level', $pmp, $post_id );
-		} else {
+		if ( ! in_array( $pmp, [ 'inherit', 'public', 'member', 'private' ], true ) ) {
 			wp_send_json_error( [ 'message' => 'Invalid PMP value.' ], 400 );
 		}
+
+		// Single 4-state field — one write, no legacy privacy_level companion.
+		update_field( 'field_md_' . $section_key . '_privacy_mode', $pmp, $post_id );
 
 		wp_send_json_success( [ 'section_key' => $section_key, 'pmp' => $pmp ] );
 	}

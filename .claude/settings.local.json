@@ -19,7 +19,13 @@
       "Bash(done)",
       "Bash(for f in includes/GlobalFields.php templates/parts/right-panel.php templates/parts/pill-nav.php)",
       "Bash(cat:*)",
-      "Bash(python3:*)"
+      "Bash(python3:*)",
+      "Bash(git rm:*)",
+      "Bash(a config\" / \"make a config\" skips the JSON paste step and goes straight:*)",
+      "Bash(ls:*)",
+      "Bash(git -C \"C:\\\\Users\\\\ianda\\\\git-repos\\\\claude-member-directory-v7\" log --oneline)",
+      "WebFetch(domain:www.advancedcustomfields.com)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

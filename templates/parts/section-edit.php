@@ -18,26 +18,50 @@
  */
 
 use MemberDirectory\AcfFormHelper;
-use MemberDirectory\SectionRegistry;
 
 defined( 'ABSPATH' ) || exit;
 
 $section_key    = $section['key']   ?? '';
 $section_label  = $section['label'] ?? '';
-$field_groups   = SectionRegistry::get_field_groups( $section );
+
+// Derive tab groups directly from ACF — any field added to the group and synced
+// is reflected in the tab list automatically. Section-level system fields are
+// excluded. Content fields and their per-field PMP companions are both included
+// so the JS tab filter controls them together.
+$group_key     = $section['acf_group']['key'] ?? '';
+$raw_fields    = $group_key ? ( acf_get_fields( $group_key ) ?: [] ) : [];
+$field_groups  = [];
+$current_tab   = 'General';
+$current_keys  = [];
+
+foreach ( $raw_fields as $f ) {
+	$fkey  = $f['key']  ?? '';
+	$ftype = $f['type'] ?? '';
+	if ( preg_match( '/_(enabled|privacy_mode)$/', $fkey ) ) {
+		continue; // Section-level system fields — managed by sidebar controls.
+	}
+	if ( $ftype === 'tab' ) {
+		if ( ! empty( $current_keys ) ) {
+			$field_groups[] = [ 'tab' => $current_tab, 'field_keys' => $current_keys ];
+		}
+		$current_tab  = $f['label'] ?? 'Tab';
+		$current_keys = [];
+	} else {
+		$current_keys[] = $fkey;
+	}
+}
+if ( ! empty( $current_keys ) ) {
+	$field_groups[] = [ 'tab' => $current_tab, 'field_keys' => $current_keys ];
+}
 
 // ---------------------------------------------------------------------------
 // Resolve section PMP for initial active-button state and eyebrow text.
 //
-// $section_pmp is 'inherit', 'public', 'member', or 'private'.
+// 4-state field: public | member | private | inherit (missing/null → inherit).
 // JS takes over active state and eyebrow text when the author clicks a button.
 // ---------------------------------------------------------------------------
 
-$section_privacy_mode  = get_field( 'member_directory_' . $section_key . '_privacy_mode',  $post_id );
-$section_privacy_level = get_field( 'member_directory_' . $section_key . '_privacy_level', $post_id );
-$section_pmp           = ( $section_privacy_mode === 'custom' )
-	? (string) $section_privacy_level
-	: 'inherit';
+$section_pmp = (string) ( get_field( 'member_directory_' . $section_key . '_privacy_mode', $post_id ) ?: 'inherit' );
 
 $global_pmp  = get_field( 'member_directory_global_pmp', $post_id ) ?: 'public';
 $pmp_labels  = [ 'public' => 'Public', 'member' => 'Members only', 'private' => 'Private' ];
@@ -74,7 +98,7 @@ $pmp_mode_attr = ( $section_pmp === 'inherit' ) ? 'inherit' : 'override';
 				type="button"
 				class="memdir-section-controls__tab-item"
 				data-tab="<?php echo esc_attr( $group['tab'] ?? '' ); ?>"
-				data-field-keys="<?php echo esc_attr( json_encode( array_column( $group['fields'] ?? [], 'key' ) ) ); ?>"
+				data-field-keys="<?php echo esc_attr( wp_json_encode( $group['field_keys'] ?? [] ) ); ?>"
 			>
 				<?php echo esc_html( $group['tab'] ?? '' ); ?>
 			</button>

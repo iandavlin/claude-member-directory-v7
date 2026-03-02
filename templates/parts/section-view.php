@@ -16,13 +16,25 @@
 
 use MemberDirectory\FieldRenderer;
 use MemberDirectory\PmpResolver;
-use MemberDirectory\SectionRegistry;
 
 defined( 'ABSPATH' ) || exit;
 
 $section_key    = $section['key']   ?? '';
 $section_label  = $section['label'] ?? '';
-$all_fields     = SectionRegistry::get_all_fields( $section );
+
+// Derive content fields directly from ACF — any field added to the group and
+// synced appears here automatically. Tab dividers, button_group fields (PMP
+// companions and system selectors), and section-level system fields are excluded.
+$group_key  = $section['acf_group']['key'] ?? '';
+$raw_fields = $group_key ? ( acf_get_fields( $group_key ) ?: [] ) : [];
+$all_fields = array_values( array_filter( $raw_fields, static function ( array $f ): bool {
+	$type = $f['type'] ?? '';
+	$key  = $f['key']  ?? '';
+	if ( $type === 'tab' )          return false; // Structural divider — no value.
+	if ( $type === 'button_group' ) return false; // PMP companions and system selectors.
+	if ( preg_match( '/_(enabled|privacy_mode|privacy_level)$/', $key ) ) return false;
+	return true;
+} ) );
 
 // ---------------------------------------------------------------------------
 // Resolve section PMP.
@@ -32,12 +44,8 @@ $all_fields     = SectionRegistry::get_all_fields( $section );
 //   privacy_level 'public' | 'member' | 'private' (only meaningful when custom)
 // ---------------------------------------------------------------------------
 
-$section_privacy_mode  = get_field( 'member_directory_' . $section_key . '_privacy_mode',  $post_id );
-$section_privacy_level = get_field( 'member_directory_' . $section_key . '_privacy_level', $post_id );
-
-$section_pmp = ( $section_privacy_mode === 'custom' )
-	? (string) $section_privacy_level  // Explicit override — use the stored level.
-	: 'inherit';                        // Defer to global.
+// 4-state field: public | member | private | inherit (missing/null → inherit).
+$section_pmp = (string) ( get_field( 'member_directory_' . $section_key . '_privacy_mode', $post_id ) ?: 'inherit' );
 
 // ---------------------------------------------------------------------------
 // Resolve global PMP.
@@ -61,12 +69,16 @@ $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 			// Resolve field-level PMP.
 			//
 			// Each content field has its own stored PMP override. ACF field
-			// name: member_directory_field_pmp_{field_key}
+			// name: member_directory_field_pmp_{field_name_suffix}
 			// Valid values: public, member, private, inherit.
 			// Missing/null → treat as inherit so waterfall resolves naturally.
 			// -----------------------------------------------------------------
 
-			$field_pmp = get_field( 'member_directory_field_pmp_' . ( $field['key'] ?? '' ), $post_id );
+			// Derive the companion ACF name from the content field's name, not its key.
+			// Field name:  member_directory_business_name
+			// Companion:   member_directory_field_pmp_business_name
+			$field_name_suffix = preg_replace( '/^member_directory_/', '', $field['name'] ?? '' );
+			$field_pmp = get_field( 'member_directory_field_pmp_' . $field_name_suffix, $post_id );
 
 			if ( empty( $field_pmp ) ) {
 				$field_pmp = 'inherit';

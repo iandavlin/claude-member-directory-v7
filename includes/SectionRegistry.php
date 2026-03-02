@@ -515,6 +515,7 @@ class SectionRegistry {
 
 			$current_fields[] = [
 				'key'         => $field['key']         ?? '',
+				'name'        => $field['name']        ?? '',   // Required by section-view.php for PMP companion lookup.
 				'label'       => $field['label']       ?? '',
 				'type'        => $field['type']        ?? 'text',
 				'pmp_default' => $field['pmp_default'] ?? $section_pmp_default,
