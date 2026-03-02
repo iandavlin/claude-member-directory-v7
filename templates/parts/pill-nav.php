@@ -25,30 +25,21 @@ defined( 'ABSPATH' ) || exit;
 // Convention: member_directory_{key}_enabled
 //   false          → author explicitly disabled this section
 //   null / missing → show (default for a freshly created profile)
-//
-// We loop once up front so we can count enabled sections for the All Sections
-// badge before rendering any pills.
 // ---------------------------------------------------------------------------
 
 // Primary section — resolved early so the enabled-map loop can reference it.
 $primary_section = get_field( 'member_directory_primary_section', $post_id ) ?: 'profile';
 
 $section_enabled_map = [];
-$enabled_count       = 0;
 
 foreach ( $sections as $section ) {
 	$key   = $section['key'] ?? '';
 	$value = get_field( 'member_directory_' . $key . '_enabled', $post_id );
 
-	// Primary section is always on — it can't be hidden, so treat any saved
-	// false value as enabled for both the badge count and the enabled map.
+	// Primary section is always on — treat any saved false value as enabled.
 	$is_on = ( $key === $primary_section ) ? true : ( $value !== false );
 
 	$section_enabled_map[ $key ] = $is_on;
-
-	if ( $is_on ) {
-		$enabled_count++;
-	}
 }
 
 // Normalise active_section — fall back to 'all' if the caller didn't set it.
@@ -76,7 +67,6 @@ $active_section = isset( $active_section ) ? (string) $active_section : 'all';
 	>
 		<span class="memdir-pill__icon" aria-hidden="true">&#9776;</span>
 		<span class="memdir-pill__label">All sections</span>
-		<span class="memdir-pill__count"><?php echo esc_html( $enabled_count . ' enabled' ); ?></span>
 	</button>
 
 	<?php
