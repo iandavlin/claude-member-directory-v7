@@ -1,0 +1,7 @@
+{
+    "key": "discovery",
+    "label": "Discovery",
+    "order": 3,
+    "can_be_primary": false,
+    "acf_group_key": "group_md_03_discovery"
+}

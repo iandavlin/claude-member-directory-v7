@@ -1,7 +1,3 @@
-# Section data files — managed per-server via the AdminSync UI.
-# Not tracked in git; the DB is the runtime source of truth after Sync.
-sections/*.json
-
 # Backups created by AdminSync
 sections/backups/
 

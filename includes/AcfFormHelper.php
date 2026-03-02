@@ -153,7 +153,7 @@ class AcfFormHelper {
 	 * @param int   $post_id  The member-directory post ID.
 	 */
 	public static function render_edit_form( array $section, int $post_id ): void {
-		$field_group_key = $section['acf_group']['key'] ?? '';
+		$field_group_key = $section['acf_group_key'] ?? '';
 
 		if ( empty( $field_group_key ) ) {
 			return;

@@ -25,7 +25,7 @@ $section_label  = $section['label'] ?? '';
 // Derive content fields directly from ACF — any field added to the group and
 // synced appears here automatically. Tab dividers, button_group fields (PMP
 // companions and system selectors), and section-level system fields are excluded.
-$group_key  = $section['acf_group']['key'] ?? '';
+$group_key  = $section['acf_group_key'] ?? '';
 $raw_fields = $group_key ? ( acf_get_fields( $group_key ) ?: [] ) : [];
 $all_fields = array_values( array_filter( $raw_fields, static function ( array $f ): bool {
 	$type = $f['type'] ?? '';

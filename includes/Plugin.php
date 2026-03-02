@@ -55,6 +55,13 @@ class Plugin {
 	public function init(): void {
 		add_action( 'init', [ $this, 'register_cpt' ] );
 
+		// Register the plugin's acf-json/ folder as the ACF JSON save and load
+		// path. ACF will auto-save field group JSON here when groups are edited in
+		// the admin, and auto-load those files on every page load — so field changes
+		// are live immediately without any plugin sync step.
+		add_filter( 'acf/settings/save_json', [ $this, 'acf_json_save_path' ] );
+		add_filter( 'acf/settings/load_json', [ $this, 'acf_json_load_path' ] );
+
 		// ACF fires acf/init inside its own plugins_loaded callback. Because ACF
 		// is loaded alphabetically before this plugin, its plugins_loaded callback
 		// is registered (and fires) before ours — both at default priority 10.
@@ -77,6 +84,30 @@ class Plugin {
 		AdminSync::init();
 		GlobalFields::init();
 		AcfFormHelper::init();
+	}
+
+	// -----------------------------------------------------------------------
+	// ACF JSON path callbacks
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Tell ACF to save field group JSON files to the plugin's acf-json/ folder.
+	 * Fires on acf/settings/save_json.
+	 */
+	public function acf_json_save_path(): string {
+		return $this->plugin_dir . 'acf-json';
+	}
+
+	/**
+	 * Tell ACF to also load field group JSON files from the plugin's acf-json/ folder.
+	 * Fires on acf/settings/load_json.
+	 *
+	 * @param string[] $paths  Existing load paths registered by ACF or other plugins.
+	 * @return string[]
+	 */
+	public function acf_json_load_path( array $paths ): array {
+		$paths[] = $this->plugin_dir . 'acf-json';
+		return $paths;
 	}
 
 	// -----------------------------------------------------------------------

@@ -1,0 +1,7 @@
+{
+    "key": "profile",
+    "label": "Profile",
+    "order": 1,
+    "can_be_primary": true,
+    "acf_group_key": "group_md_02_profile"
+}

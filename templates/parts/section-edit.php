@@ -28,7 +28,7 @@ $section_label  = $section['label'] ?? '';
 // is reflected in the tab list automatically. Section-level system fields are
 // excluded. Content fields and their per-field PMP companions are both included
 // so the JS tab filter controls them together.
-$group_key     = $section['acf_group']['key'] ?? '';
+$group_key     = $section['acf_group_key'] ?? '';
 $raw_fields    = $group_key ? ( acf_get_fields( $group_key ) ?: [] ) : [];
 $field_groups  = [];
 $current_tab   = 'General';

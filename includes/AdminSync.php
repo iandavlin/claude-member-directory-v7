@@ -595,8 +595,8 @@ class AdminSync {
 
 	/**
 	 * If this is a valid rename POST, update the label in the JSON file and re-sync.
-	 * Only the display label (and acf_group.title) is changed — the section key
-	 * and all field keys remain untouched.
+	 * Only the display label is changed — the section key and acf_group_key remain
+	 * untouched. The ACF group title lives in acf-json/ and is managed via ACF admin.
 	 */
 	private static function maybe_handle_rename(): void {
 		if ( ! isset( $_POST[ self::RENAME_NONCE_FIELD ] ) ) {
@@ -640,11 +640,6 @@ class AdminSync {
 
 		$data['label'] = $new_label;
 
-		// Update acf_group.title — convention is "MD: {Label}".
-		if ( isset( $data['acf_group']['title'] ) ) {
-			$data['acf_group']['title'] = 'MD: ' . $new_label;
-		}
-
 		$pretty = (string) json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
@@ -667,20 +662,15 @@ class AdminSync {
 	// -----------------------------------------------------------------------
 
 	/**
-	 * Convert a raw ACF export into a minimal section config, or return the
-	 * input unchanged if it already looks like a section config.
+	 * Convert a raw ACF export into a lean section config pointer, or return
+	 * the input unchanged if it already looks like a section config.
 	 *
 	 * ACF exports are top-level JSON arrays: [ { "key": "group_...", ... } ].
-	 * This method detects that shape and:
-	 *   - Derives section key + label from the group title.
-	 *   - Forces the location rule to post_type == member-directory.
-	 *   - Injects the two required system fields (_enabled, _privacy_mode)
-	 *     if they are not already present.
-	 *   - Prefixes every content field name with member_directory_{key}_
-	 *     if not already prefixed.
+	 * This method detects that shape and extracts only the metadata needed for
+	 * a lean section config (key, label, acf_group_key). The field group itself
+	 * belongs in acf-json/ and is managed by ACF — it is NOT embedded here.
 	 *
-	 * If the export contains multiple groups only the first is used; a note
-	 * is added to $note when additional groups are ignored.
+	 * If the export contains multiple groups only the first is used.
 	 *
 	 * @param  mixed  $raw   Decoded JSON value (array or other).
 	 * @param  string &$note Human-readable description of changes made.
@@ -689,8 +679,8 @@ class AdminSync {
 	private static function coerce_acf_export( mixed $raw, string &$note ): array {
 		$note = '';
 
-		// Already a section config — nothing to do.
-		if ( is_array( $raw ) && array_key_exists( 'acf_group', $raw ) ) {
+		// Already a lean section config (or old-format with acf_group) — pass through.
+		if ( is_array( $raw ) && ( array_key_exists( 'acf_group_key', $raw ) || array_key_exists( 'acf_group', $raw ) ) ) {
 			return $raw;
 		}
 
@@ -700,91 +690,24 @@ class AdminSync {
 		}
 
 		$group       = $raw[0];
+		$group_key   = $group['key']   ?? '';
 		$title       = $group['title'] ?? 'Section';
 		$section_key = str_replace( '-', '_', sanitize_key( $title ) );
-		$prefix      = 'member_directory_' . $section_key . '_';
-
-		// Force the correct location rule.
-		$group['location'] = [ [ [ 'param' => 'post_type', 'operator' => '==', 'value' => 'member-directory' ] ] ];
-
-		// Collect existing field keys to avoid duplicate injection.
-		$existing_keys = array_column( $group['fields'] ?? [], 'key' );
-		$system_fields = [];
-
-		if ( ! in_array( 'field_md_' . $section_key . '_enabled', $existing_keys, true ) ) {
-			$system_fields[] = [
-				'key'           => 'field_md_' . $section_key . '_enabled',
-				'label'         => 'Enable Section',
-				'name'          => $prefix . 'enabled',
-				'type'          => 'true_false',
-				'instructions'  => '',
-				'required'      => 0,
-				'default_value' => 1,
-				'message'       => '',
-				'ui'            => 1,
-			];
-		}
-
-		if ( ! in_array( 'field_md_' . $section_key . '_privacy_mode', $existing_keys, true ) ) {
-			$system_fields[] = [
-				'key'           => 'field_md_' . $section_key . '_privacy_mode',
-				'label'         => 'Visibility',
-				'name'          => $prefix . 'privacy_mode',
-				'type'          => 'button_group',
-				'instructions'  => '',
-				'required'      => 0,
-				'choices'       => [
-					'inherit' => 'Inherit',
-					'public'  => 'Public',
-					'member'  => 'Member',
-					'private' => 'Private',
-				],
-				'default_value' => 'inherit',
-				'allow_null'    => 0,
-				'return_format' => 'value',
-				'layout'        => 'horizontal',
-			];
-		}
-
-		// Auto-prefix content field names.
-		$renamed = 0;
-		$fields  = $group['fields'] ?? [];
-
-		foreach ( $fields as &$field ) {
-			if ( empty( $field['name'] ) || ( $field['type'] ?? '' ) === 'tab' ) {
-				continue;
-			}
-			if ( ! str_starts_with( $field['name'], $prefix ) ) {
-				$field['name'] = $prefix . $field['name'];
-				$renamed++;
-			}
-		}
-		unset( $field );
-
-		$group['fields'] = array_merge( $system_fields, $fields );
 
 		$config = [
-			'key'       => $section_key,
-			'label'     => $title,
-			'acf_group' => $group,
+			'key'          => $section_key,
+			'label'        => $title,
+			'acf_group_key' => $group_key,
 		];
 
-		// Build the conversion note.
-		$parts = [ 'Auto-converted from ACF export.' ];
-
-		if ( ! empty( $system_fields ) ) {
-			$parts[] = 'Injected ' . count( $system_fields ) . ' system field(s).';
-		}
-
-		if ( $renamed > 0 ) {
-			$parts[] = esc_html( (string) $renamed ) . ' field name(s) prefixed with <code>' . esc_html( $prefix ) . '</code>.';
-		}
+		$parts = [ 'Auto-converted from ACF export to lean section pointer.' ];
 
 		if ( count( $raw ) > 1 ) {
-			$parts[] = 'Note: export contained ' . count( $raw ) . ' groups &mdash; only the first (<em>' . esc_html( $title ) . '</em>) was imported.';
+			$parts[] = 'Export contained ' . count( $raw ) . ' groups &mdash; only the first (<em>' . esc_html( $title ) . '</em>) was used.';
 		}
 
-		$parts[] = 'Review the section key (<code>' . esc_html( $section_key ) . '</code>) and field names in the Section Editor before going live.';
+		$parts[] = 'The field group (<code>' . esc_html( $group_key ) . '</code>) must be present in <code>acf-json/</code> for fields to load at runtime.';
+		$parts[] = 'Review the section key (<code>' . esc_html( $section_key ) . '</code>) in the Section Editor before going live.';
 
 		$note = implode( ' ', $parts );
 
