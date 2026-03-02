@@ -167,6 +167,9 @@ class AcfFormHelper {
 		$field_keys = [];
 
 		foreach ( $raw_fields as $f ) {
+			if ( ( $f['type'] ?? '' ) === 'tab' ) {
+				continue; // Left-panel tab buttons control field visibility — no ACF tab UI.
+			}
 			if ( preg_match( '/_(enabled|privacy_mode)$/', $f['key'] ?? '' ) ) {
 				continue; // Managed by left-panel sidebar controls.
 			}
