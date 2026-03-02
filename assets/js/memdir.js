@@ -130,6 +130,7 @@
 				}
 
 				activatePill( pill.dataset.section || 'all' );
+				pill.blur();
 			} );
 		} );
 	}
