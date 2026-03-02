@@ -45,6 +45,12 @@ class AdminSync {
 	/** Nonce field name in reorder forms. */
 	const REORDER_NONCE_FIELD = 'member_directory_reorder_nonce';
 
+	/** Nonce action used to validate section delete submissions. */
+	const DELETE_NONCE_ACTION = 'member_directory_delete_section';
+
+	/** Nonce field name in delete forms. */
+	const DELETE_NONCE_FIELD = 'member_directory_delete_nonce';
+
 	/** Admin page slug registered with WordPress. */
 	const PAGE_SLUG = 'member-directory-sync';
 
@@ -116,6 +122,7 @@ class AdminSync {
 			<?php
 			self::maybe_handle_section_edit();
 			self::maybe_handle_reorder();
+			self::maybe_handle_section_delete();
 			self::render_section_editor();
 			?>
 
@@ -378,6 +385,60 @@ class AdminSync {
 	}
 
 	/**
+	 * If this is a valid section delete POST, back up the file, delete it, and re-sync.
+	 */
+	private static function maybe_handle_section_delete(): void {
+		if ( ! isset( $_POST[ self::DELETE_NONCE_FIELD ] ) ) {
+			return;
+		}
+
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST[ self::DELETE_NONCE_FIELD ] ) ), self::DELETE_NONCE_ACTION ) ) {
+			wp_die( esc_html__( 'Security check failed. Please go back and try again.' ) );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to run this action.' ) );
+		}
+
+		$section_key = sanitize_key( $_POST['delete_section_key'] ?? '' );
+
+		if ( empty( $section_key ) ) {
+			self::render_upload_result( false, 'No section key provided.' );
+			return;
+		}
+
+		$sections_dir = SectionRegistry::sections_dir();
+		$target_file  = $sections_dir . $section_key . '.json';
+
+		if ( ! file_exists( $target_file ) ) {
+			self::render_upload_result(
+				false,
+				'Section file <code>sections/' . esc_html( $section_key ) . '.json</code> not found.'
+			);
+			return;
+		}
+
+		$backup_note = self::backup_section_file( $section_key );
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.unlink_unlink
+		if ( ! unlink( $target_file ) ) {
+			self::render_upload_result(
+				false,
+				'Could not delete <code>sections/' . esc_html( $section_key ) . '.json</code>. Check server file permissions.'
+			);
+			return;
+		}
+
+		SectionRegistry::sync();
+
+		self::render_upload_result(
+			true,
+			'Section <strong>' . esc_html( $section_key ) . '</strong> deleted.',
+			$backup_note
+		);
+	}
+
+	/**
 	 * If this is a valid upload form POST, validate, back up, save, and sync.
 	 * Does nothing on a GET request or when another form was submitted.
 	 */
@@ -553,6 +614,18 @@ class AdminSync {
 			submit_button( 'Save &amp; Sync', 'secondary', 'edit_submit_' . esc_attr( $key ), false );
 
 			echo '</form>';
+
+			// --- Delete form ------------------------------------------------
+			echo '<div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;">';
+			echo '<form method="post" action="" style="display:inline;">';
+			wp_nonce_field( self::DELETE_NONCE_ACTION, self::DELETE_NONCE_FIELD );
+			echo '<input type="hidden" name="delete_section_key" value="' . esc_attr( $key ) . '">';
+			echo '<button type="submit" class="button" style="color:#b94a00;border-color:#b94a00;" '
+				. 'onclick="return confirm(' . esc_attr( json_encode( 'Delete the ' . $label . ' section? The file will be backed up before deletion.' ) ) . ')">'
+				. 'Delete Section</button>';
+			echo '</form>';
+			echo '</div>';
+
 			echo '</div>';
 
 			echo '</details>';
