@@ -6,9 +6,10 @@
  * SectionRegistry::sync() — reading all JSON files from sections/ and
  * writing the results to the WordPress database.
  *
- * Also provides a JSON uploader that validates a section config before
- * saving it to sections/, backs up any existing file it would overwrite,
- * and auto-runs sync so the section is live immediately.
+ * Also provides:
+ *   - A section editor: inline JSON textarea per section with up/down
+ *     reordering. Save validates, backs up, writes the file, and syncs.
+ *   - A JSON uploader for adding new sections from a file.
  *
  * Usage (from Plugin.php):
  *   AdminSync::init();
@@ -32,11 +33,29 @@ class AdminSync {
 	/** Nonce field name in the upload form. */
 	const UPLOAD_NONCE_FIELD = 'member_directory_upload_nonce';
 
+	/** Nonce action used to validate section edit form submissions. */
+	const EDIT_NONCE_ACTION = 'member_directory_edit_section';
+
+	/** Nonce field name in section edit forms. */
+	const EDIT_NONCE_FIELD = 'member_directory_edit_nonce';
+
+	/** Nonce action used to validate section reorder submissions. */
+	const REORDER_NONCE_ACTION = 'member_directory_reorder';
+
+	/** Nonce field name in reorder forms. */
+	const REORDER_NONCE_FIELD = 'member_directory_reorder_nonce';
+
 	/** Admin page slug registered with WordPress. */
 	const PAGE_SLUG = 'member-directory-sync';
 
 	/** Maximum allowed upload size in bytes (256 KB). */
 	const MAX_UPLOAD_BYTES = 262144;
+
+	/**
+	 * Section key of the most recently saved or reordered section this
+	 * request. Used to auto-open that section's <details> after a save.
+	 */
+	private static string $last_edited_key = '';
 
 	/**
 	 * Register the admin_menu hook.
@@ -87,6 +106,18 @@ class AdminSync {
 				<?php wp_nonce_field( self::NONCE_ACTION, self::NONCE_FIELD ); ?>
 				<?php submit_button( 'Run Sync', 'primary', 'submit', false ); ?>
 			</form>
+
+			<hr>
+			<h2>Section Editor</h2>
+			<p>Edit section configs directly. Each save validates the JSON, backs up
+			the current file, writes the new version, and syncs immediately. Use the
+			arrows to reorder sections.</p>
+
+			<?php
+			self::maybe_handle_section_edit();
+			self::maybe_handle_reorder();
+			self::render_section_editor();
+			?>
 
 			<hr>
 			<h2>Upload Section Config</h2>
@@ -155,17 +186,19 @@ class AdminSync {
 		<?php
 	}
 
+	// -----------------------------------------------------------------------
+	// POST handlers
+	// -----------------------------------------------------------------------
+
 	/**
 	 * If this is a valid sync form POST, run the sync and display results.
-	 * Does nothing on a GET request or when the upload form was submitted.
+	 * Does nothing on a GET request or when another form was submitted.
 	 */
 	private static function maybe_handle_submission(): void {
 		if ( $_SERVER['REQUEST_METHOD'] !== 'POST' ) {
 			return;
 		}
 
-		// If the sync nonce field is absent this is not a sync submission
-		// (e.g. the upload form was submitted instead). Bail silently.
 		if ( ! isset( $_POST[ self::NONCE_FIELD ] ) ) {
 			return;
 		}
@@ -174,7 +207,6 @@ class AdminSync {
 			wp_die( esc_html__( 'Security check failed. Please go back and try again.' ) );
 		}
 
-		// Capability check (belt-and-suspenders: also enforced by WP before render() runs).
 		if ( ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'You do not have permission to run this action.' ) );
 		}
@@ -185,8 +217,167 @@ class AdminSync {
 	}
 
 	/**
+	 * If this is a valid section edit form POST, validate, back up, save, and sync.
+	 * The result is stored in $last_edited_key so render_section_editor() can
+	 * auto-open the affected section's <details> element.
+	 */
+	private static function maybe_handle_section_edit(): void {
+		if ( ! isset( $_POST[ self::EDIT_NONCE_FIELD ] ) ) {
+			return;
+		}
+
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST[ self::EDIT_NONCE_FIELD ] ) ), self::EDIT_NONCE_ACTION ) ) {
+			wp_die( esc_html__( 'Security check failed. Please go back and try again.' ) );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to run this action.' ) );
+		}
+
+		$section_key = sanitize_key( $_POST['edit_section_key'] ?? '' );
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+		$raw         = wp_unslash( $_POST['section_json'] ?? '' );
+
+		self::$last_edited_key = $section_key;
+
+		if ( empty( $raw ) ) {
+			self::render_upload_result( false, 'No JSON content received.' );
+			return;
+		}
+
+		$data = json_decode( $raw, true );
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			self::render_upload_result( false, 'Invalid JSON: ' . json_last_error_msg() . '.' );
+			return;
+		}
+
+		$allow_key_removal = isset( $_POST['allow_key_removal'] ) && $_POST['allow_key_removal'] === '1';
+		$error             = SectionRegistry::validate_for_upload( $data, $allow_key_removal );
+		if ( $error !== null ) {
+			self::render_upload_result( false, $error );
+			return;
+		}
+
+		$backup_note = self::backup_section_file( $section_key );
+		$pretty_raw  = (string) json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+
+		$sections_dir = SectionRegistry::sections_dir();
+		$target_file  = $sections_dir . $section_key . '.json';
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+		if ( file_put_contents( $target_file, $pretty_raw ) === false ) {
+			self::render_upload_result(
+				false,
+				'Could not write to <code>sections/' . esc_html( $section_key ) . '.json</code>. Check server file permissions.'
+			);
+			return;
+		}
+
+		$sync_result   = SectionRegistry::sync();
+		$skipped_count = count( $sync_result['skipped'] ?? [] );
+		$detail        = $backup_note;
+
+		if ( $skipped_count > 0 ) {
+			$detail .= ( $detail ? ' ' : '' )
+				. 'Note: ' . esc_html( (string) $skipped_count )
+				. ' other section(s) failed validation during sync &mdash; see results below.';
+		}
+
+		self::render_upload_result(
+			true,
+			'Section <strong>' . esc_html( $section_key ) . '</strong> saved and synced successfully.',
+			$detail
+		);
+
+		if ( $skipped_count > 0 ) {
+			self::render_results( $sync_result );
+		}
+	}
+
+	/**
+	 * If this is a valid reorder POST, swap the order values of two adjacent
+	 * sections, write both files, and re-sync.
+	 */
+	private static function maybe_handle_reorder(): void {
+		if ( ! isset( $_POST[ self::REORDER_NONCE_FIELD ] ) ) {
+			return;
+		}
+
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST[ self::REORDER_NONCE_FIELD ] ) ), self::REORDER_NONCE_ACTION ) ) {
+			wp_die( esc_html__( 'Security check failed. Please go back and try again.' ) );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to run this action.' ) );
+		}
+
+		$key = sanitize_key( $_POST['reorder_key'] ?? '' );
+		$dir = ( ( $_POST['reorder_direction'] ?? '' ) === 'up' ) ? 'up' : 'down';
+
+		$sections = SectionRegistry::get_sections(); // sorted by order ascending
+
+		// Find the position of the target section.
+		$pos = -1;
+		foreach ( $sections as $i => $s ) {
+			if ( $s['key'] === $key ) {
+				$pos = $i;
+				break;
+			}
+		}
+
+		if ( $pos < 0 ) {
+			return;
+		}
+
+		$swap_pos = ( $dir === 'up' ) ? $pos - 1 : $pos + 1;
+
+		if ( $swap_pos < 0 || $swap_pos >= count( $sections ) ) {
+			// Already at the boundary — nothing to do.
+			return;
+		}
+
+		$a = $sections[ $pos ];
+		$b = $sections[ $swap_pos ];
+
+		// If both sections share the same order value, derive distinct values
+		// from their current array positions before swapping.
+		$a_order = (int) $a['order'];
+		$b_order = (int) $b['order'];
+
+		if ( $a_order === $b_order ) {
+			$a_order = $pos * 2 + 1;
+			$b_order = $swap_pos * 2 + 1;
+		}
+
+		$sections_dir = SectionRegistry::sections_dir();
+
+		// Write section A with B's order value.
+		$a['order'] = $b_order;
+		$a_file     = $sections_dir . $a['key'] . '.json';
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+		file_put_contents(
+			$a_file,
+			(string) json_encode( $a, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
+		);
+
+		// Write section B with A's order value.
+		$b['order'] = $a_order;
+		$b_file     = $sections_dir . $b['key'] . '.json';
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+		file_put_contents(
+			$b_file,
+			(string) json_encode( $b, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE )
+		);
+
+		SectionRegistry::sync();
+
+		self::$last_edited_key = $key;
+		self::render_upload_result( true, 'Section order updated.' );
+	}
+
+	/**
 	 * If this is a valid upload form POST, validate, back up, save, and sync.
-	 * Does nothing on a GET request or when the sync form was submitted.
+	 * Does nothing on a GET request or when another form was submitted.
 	 */
 	private static function maybe_handle_upload(): void {
 		if ( ! isset( $_FILES['section_config_file'] ) ) {
@@ -207,20 +398,17 @@ class AdminSync {
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput
 		$file = $_FILES['section_config_file'];
 
-		// PHP upload error.
 		$upload_error = isset( $file['error'] ) ? (int) $file['error'] : -1;
 		if ( $upload_error !== UPLOAD_ERR_OK ) {
 			self::render_upload_result( false, "Upload failed (PHP error code {$upload_error})." );
 			return;
 		}
 
-		// File size.
 		if ( (int) $file['size'] > self::MAX_UPLOAD_BYTES ) {
 			self::render_upload_result( false, 'File exceeds the 256 KB size limit.' );
 			return;
 		}
 
-		// Read temp file.
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
 		$raw = file_get_contents( $file['tmp_name'] );
 		if ( $raw === false ) {
@@ -228,14 +416,12 @@ class AdminSync {
 			return;
 		}
 
-		// JSON decode.
 		$data = json_decode( $raw, true );
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
 			self::render_upload_result( false, 'Invalid JSON: ' . json_last_error_msg() . '.' );
 			return;
 		}
 
-		// Structural + integrity validation (reuses the same checks as sync()).
 		$allow_key_removal = isset( $_POST['allow_key_removal'] ) && $_POST['allow_key_removal'] === '1';
 		$error             = SectionRegistry::validate_for_upload( $data, $allow_key_removal );
 		if ( $error !== null ) {
@@ -246,39 +432,8 @@ class AdminSync {
 		$section_key  = $data['key'];
 		$sections_dir = SectionRegistry::sections_dir();
 		$target_file  = $sections_dir . $section_key . '.json';
-		$backup_note  = '';
+		$backup_note  = self::backup_section_file( $section_key );
 
-		// Back up any existing file before overwriting.
-		if ( file_exists( $target_file ) ) {
-			$backups_dir = $sections_dir . 'backups/';
-			wp_mkdir_p( $backups_dir );
-
-			$date        = gmdate( 'Y-m-d' );
-			$backup_name = $section_key . '_' . $date . '.json';
-			$backup_path = $backups_dir . $backup_name;
-			$suffix      = 2;
-
-			while ( file_exists( $backup_path ) ) {
-				$backup_name = $section_key . '_' . $date . '_' . $suffix . '.json';
-				$backup_path = $backups_dir . $backup_name;
-				$suffix++;
-			}
-
-			copy( $target_file, $backup_path );
-
-			$all_backups  = glob( $backups_dir . $section_key . '_*.json' );
-			$backup_count = $all_backups ? count( $all_backups ) : 0;
-			$backup_note  = 'Previous config backed up to <code>sections/backups/'
-				. esc_html( $backup_name ) . '</code>.';
-
-			if ( $backup_count > 3 ) {
-				$backup_note .= ' You now have ' . esc_html( (string) $backup_count )
-					. " backups for '" . esc_html( $section_key )
-					. "' &mdash; consider deleting the oldest to stay within the 3-file limit.";
-			}
-		}
-
-		// Write the new file.
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
 		if ( file_put_contents( $target_file, $raw ) === false ) {
 			self::render_upload_result(
@@ -288,7 +443,6 @@ class AdminSync {
 			return;
 		}
 
-		// Auto-sync so the section is live immediately.
 		$sync_result   = SectionRegistry::sync();
 		$skipped_count = count( $sync_result['skipped'] ?? [] );
 		$detail        = $backup_note;
@@ -305,14 +459,150 @@ class AdminSync {
 			$detail
 		);
 
-		// Show full sync results if anything else was skipped.
 		if ( $skipped_count > 0 ) {
 			self::render_results( $sync_result );
 		}
 	}
 
+	// -----------------------------------------------------------------------
+	// Render helpers
+	// -----------------------------------------------------------------------
+
 	/**
-	 * Render a single upload operation result.
+	 * Render the section editor: a sorted list of <details> elements, one per
+	 * section, each containing a JSON textarea and save/reorder controls.
+	 */
+	private static function render_section_editor(): void {
+		$sections = SectionRegistry::get_sections();
+
+		if ( empty( $sections ) ) {
+			echo '<p>No sections are currently synced. Upload a section config or run Sync to load sections from the <code>sections/</code> folder.</p>';
+			return;
+		}
+
+		$count = count( $sections );
+
+		foreach ( $sections as $i => $section ) {
+			$key        = $section['key']   ?? '';
+			$label      = $section['label'] ?? $key;
+			$order      = $section['order'] ?? 0;
+			$is_first   = ( $i === 0 );
+			$is_last    = ( $i === $count - 1 );
+			$open_attr  = ( $key === self::$last_edited_key ) ? ' open' : '';
+			$pretty_json = (string) json_encode( $section, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+
+			echo '<details' . esc_attr( $open_attr ) . ' style="margin-bottom:8px;border:1px solid #ddd;border-radius:3px;">';
+
+			// --- Summary row ------------------------------------------------
+			echo '<summary style="padding:10px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;background:#f6f7f7;list-style:none;">';
+
+			// Up/Down reorder buttons.
+			echo '<span style="display:flex;flex-direction:column;gap:2px;">';
+
+			if ( ! $is_first ) {
+				echo '<form method="post" action="" style="margin:0;">';
+				wp_nonce_field( self::REORDER_NONCE_ACTION, self::REORDER_NONCE_FIELD );
+				echo '<input type="hidden" name="reorder_key" value="' . esc_attr( $key ) . '">';
+				echo '<input type="hidden" name="reorder_direction" value="up">';
+				echo '<button type="submit" style="padding:0 4px;line-height:1.4;cursor:pointer;" title="Move up">&#9650;</button>';
+				echo '</form>';
+			} else {
+				echo '<span style="padding:0 4px;opacity:0.2;">&#9650;</span>';
+			}
+
+			if ( ! $is_last ) {
+				echo '<form method="post" action="" style="margin:0;">';
+				wp_nonce_field( self::REORDER_NONCE_ACTION, self::REORDER_NONCE_FIELD );
+				echo '<input type="hidden" name="reorder_key" value="' . esc_attr( $key ) . '">';
+				echo '<input type="hidden" name="reorder_direction" value="down">';
+				echo '<button type="submit" style="padding:0 4px;line-height:1.4;cursor:pointer;" title="Move down">&#9660;</button>';
+				echo '</form>';
+			} else {
+				echo '<span style="padding:0 4px;opacity:0.2;">&#9660;</span>';
+			}
+
+			echo '</span>';
+
+			// Section label + key + order badge.
+			echo '<strong>' . esc_html( $label ) . '</strong>';
+			echo '<code style="font-size:12px;">' . esc_html( $key ) . '</code>';
+			echo '<span style="margin-left:auto;font-size:11px;color:#888;">order: ' . esc_html( (string) $order ) . '</span>';
+
+			echo '</summary>';
+
+			// --- Edit form --------------------------------------------------
+			echo '<div style="padding:14px;">';
+			echo '<form method="post" action="">';
+			wp_nonce_field( self::EDIT_NONCE_ACTION, self::EDIT_NONCE_FIELD );
+			echo '<input type="hidden" name="edit_section_key" value="' . esc_attr( $key ) . '">';
+
+			echo '<textarea name="section_json" rows="28" style="width:100%;font-family:monospace;font-size:12px;white-space:pre;">'
+				. esc_textarea( $pretty_json )
+				. '</textarea>';
+
+			echo '<p style="margin:8px 0 4px;">';
+			echo '<label>';
+			echo '<input type="checkbox" name="allow_key_removal" value="1"> ';
+			echo 'Allow field key removal &mdash; <span style="color:#b94a00;">check only if you intentionally deleted fields.</span>';
+			echo '</label>';
+			echo '</p>';
+
+			submit_button( 'Save &amp; Sync', 'secondary', 'edit_submit_' . esc_attr( $key ), false );
+
+			echo '</form>';
+			echo '</div>';
+
+			echo '</details>';
+		}
+	}
+
+	/**
+	 * Back up the existing section file (if it exists) to sections/backups/.
+	 * Returns a human-readable note string describing what was backed up,
+	 * including a warning if the backup count exceeds three.
+	 *
+	 * @param  string $section_key  The section key (also the filename stem).
+	 * @return string  Backup note, or empty string if no existing file was found.
+	 */
+	private static function backup_section_file( string $section_key ): string {
+		$sections_dir = SectionRegistry::sections_dir();
+		$target_file  = $sections_dir . $section_key . '.json';
+
+		if ( ! file_exists( $target_file ) ) {
+			return '';
+		}
+
+		$backups_dir = $sections_dir . 'backups/';
+		wp_mkdir_p( $backups_dir );
+
+		$date        = gmdate( 'Y-m-d' );
+		$backup_name = $section_key . '_' . $date . '.json';
+		$backup_path = $backups_dir . $backup_name;
+		$suffix      = 2;
+
+		while ( file_exists( $backup_path ) ) {
+			$backup_name = $section_key . '_' . $date . '_' . $suffix . '.json';
+			$backup_path = $backups_dir . $backup_name;
+			$suffix++;
+		}
+
+		copy( $target_file, $backup_path );
+
+		$all_backups  = glob( $backups_dir . $section_key . '_*.json' );
+		$backup_count = $all_backups ? count( $all_backups ) : 0;
+		$note         = 'Previous config backed up to <code>sections/backups/' . esc_html( $backup_name ) . '</code>.';
+
+		if ( $backup_count > 3 ) {
+			$note .= ' You now have ' . esc_html( (string) $backup_count )
+				. " backups for '" . esc_html( $section_key )
+				. "' &mdash; consider deleting the oldest to stay within the 3-file limit.";
+		}
+
+		return $note;
+	}
+
+	/**
+	 * Render a single operation result banner.
 	 *
 	 * @param bool   $success  True for success (green), false for failure (red).
 	 * @param string $message  Primary message — may contain safe HTML.
@@ -336,11 +626,7 @@ class AdminSync {
 	/**
 	 * Render the sync result summary.
 	 *
-	 * Loaded files are shown in green.
-	 * Skipped files are shown in red with their skip reason.
-	 *
 	 * @param array{loaded: string[], skipped: array<string, string>} $result
-	 *   The array returned by SectionRegistry::sync().
 	 */
 	private static function render_results( array $result ): void {
 		$loaded  = $result['loaded']  ?? [];
@@ -359,10 +645,7 @@ class AdminSync {
 			echo '<p><strong>Loaded successfully:</strong></p>';
 			echo '<ul>';
 			foreach ( $loaded as $filename ) {
-				echo '<li style="color:#1a7a1a;">'
-					. '&#10003; '
-					. esc_html( $filename )
-					. '</li>';
+				echo '<li style="color:#1a7a1a;">&#10003; ' . esc_html( $filename ) . '</li>';
 			}
 			echo '</ul>';
 		}
@@ -371,8 +654,7 @@ class AdminSync {
 			echo '<p><strong>Skipped (errors):</strong></p>';
 			echo '<ul>';
 			foreach ( $skipped as $filename => $reason ) {
-				echo '<li style="color:#b94a00;">'
-					. '&#10007; '
+				echo '<li style="color:#b94a00;">&#10007; '
 					. esc_html( $filename )
 					. ' &mdash; '
 					. esc_html( $reason )
