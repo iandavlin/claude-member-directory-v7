@@ -382,13 +382,20 @@
 						banner.style.display = 'none';
 					}
 
-					// Show 'Saved checkmark' on button for 2 s, then restore original label.
+					// Show 'Saved checkmark' then reload with section/tab params preserved.
 					saveBtn.textContent = 'Saved \u2713';
 					saveBtn.classList.add( 'memdir-section-save--saved' );
+					var reloadSectionKey = section.dataset.section || 'all';
+					var reloadTabBtn = section.querySelector( '.memdir-section-controls__tab-item.is-active' );
+					var reloadTabLabel = reloadTabBtn ? reloadTabBtn.textContent.trim() : '';
 					setTimeout( function () {
-						saveBtn.classList.remove( 'memdir-section-save--saved' );
-						saveBtn.textContent = originalBtnText;
-					}, 2000 );
+						var reloadUrl = new URL( window.location.href );
+						reloadUrl.searchParams.set( 'active_section', reloadSectionKey );
+						if ( reloadTabLabel ) {
+							reloadUrl.searchParams.set( 'active_tab', reloadTabLabel );
+						}
+						window.location.href = reloadUrl.toString();
+					}, 1500 );
 
 					// Update header title in place when a name field was in the saved payload.
 					// Each section targets its own header wrapper so both can live in the DOM.
@@ -762,8 +769,14 @@
 		} );
 
 		allPill.concat( primary ).concat( enabled ).concat( disabled ).forEach( function ( p ) {
+			p.style.marginLeft = '';
 			nav.appendChild( p );
 		} );
+
+		// Push first disabled pill to far right via auto left margin.
+		if ( disabled.length ) {
+			disabled[ 0 ].style.marginLeft = 'auto';
+		}
 	}
 
 	/**
@@ -917,23 +930,8 @@
 			return;
 		}
 
-		// 2. sessionStorage -- remembers which pill the user last activated for
-		//    this specific post, persisted across navigations in the same session.
-		if ( postId ) {
-			var stored = '';
-			try {
-				stored = sessionStorage.getItem( 'memdir_active_pill_' + postId ) || '';
-			} catch ( e ) {
-				// sessionStorage unavailable -- private browsing or quota exceeded.
-			}
-			if ( stored ) {
-				activatePill( stored );
-				return;
-			}
-		}
-
-		// 3. Default: activate the primary section pill (not 'all') so the
-		//    header and content are in sync on first load.
+		// 2. Default: activate the primary section pill (not 'all') so the
+		//    header and content are in sync on every page load.
 		var sticky         = document.querySelector( '.memdir-sticky' );
 		var primarySection = ( sticky && sticky.dataset.primarySection ) || 'profile';
 		activatePill( primarySection );

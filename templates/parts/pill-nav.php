@@ -121,6 +121,7 @@ $active_section = isset( $active_section ) ? (string) $active_section : 'all';
 		class="<?php echo esc_attr( $pill_classes ); ?>"
 		data-section="<?php echo esc_attr( $key ); ?>"
 		type="button"
+		<?php if ( ! $is_on ) : ?>title="Activate Check Box"<?php endif; ?>
 	>
 		<?php if ( ! empty( $is_edit ) ) : ?>
 		<input

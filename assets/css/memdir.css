@@ -295,8 +295,8 @@ body.single-member-directory #primary {
 }
 
 .memdir-pill__checkbox {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   accent-color: var(--md-green-sage);
   cursor: pointer;
   flex-shrink: 0;
