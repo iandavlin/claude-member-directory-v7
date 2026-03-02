@@ -44,6 +44,7 @@ $social_platforms = [
 	'youtube'   => [ 'label' => 'YouTube',   'fa_prefix' => 'fab', 'fa_icon' => 'youtube' ],
 	'tiktok'    => [ 'label' => 'TikTok',    'fa_prefix' => 'fab', 'fa_icon' => 'tiktok' ],
 	'vimeo'     => [ 'label' => 'Vimeo',     'fa_prefix' => 'fab', 'fa_icon' => 'vimeo' ],
+	'linktree'  => [ 'label' => 'Linktree',  'fa_prefix' => 'fab', 'fa_icon' => 'linktree' ],
 ];
 
 // Fetch all raw fields for this section's ACF group.
