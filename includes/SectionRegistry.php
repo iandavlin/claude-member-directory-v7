@@ -2,14 +2,15 @@
 /**
  * Section Registry.
  *
- * The single source of truth for section data at runtime.
+ * Bootloader and metadata store for member directory sections.
  *
  * Two distinct modes of operation:
  *
  * 1. RUNTIME (every page load)
  *    SectionRegistry::load_from_db() reads the member_directory_sections option
  *    and registers each section's ACF field group with ACF via
- *    acf_add_local_field_group(). No filesystem access.
+ *    acf_add_local_field_group(). ACF is then the runtime source of truth for
+ *    field definitions — templates call acf_get_fields( $group_key ) directly.
  *
  * 2. SYNC (admin-triggered only)
  *    SectionRegistry::sync() reads all JSON files from the sections/ folder,
@@ -18,22 +19,12 @@
  *    new data automatically via load_from_db().
  *
  * Public API (all static):
- *   SectionRegistry::get_sections()       — all sections, sorted by order
+ *   SectionRegistry::get_sections()       — all sections as an ordered array
  *   SectionRegistry::get_section( $key )  — one section by key, or null
  *   SectionRegistry::sync()               — read filesystem → save to option
  *   SectionRegistry::load_from_db()       — read option → register with ACF
- *
- * Section config format (sections/*.json):
- *
- *   field_groups is no longer required. The plugin derives content field
- *   groups at runtime by parsing acf_group.fields directly, grouping by
- *   tab markers and skipping system fields. Plugin-specific field metadata
- *   (pmp_default, filterable, required) is stored as custom properties on
- *   each field object inside acf_group.fields — ACF ignores unknown
- *   properties, so this is safe.
- *
- *   Configs that still carry a field_groups key are accepted without error;
- *   the key is simply ignored in favour of the derived data.
+ *   SectionRegistry::validate_for_upload() — validate a config before saving
+ *   SectionRegistry::removed_content_keys() — diff incoming vs stored field keys
  */
 
 namespace MemberDirectory;
@@ -49,11 +40,8 @@ class SectionRegistry {
 	 * Required top-level keys in every section config file.
 	 * A file that is missing any of these is skipped with a warning.
 	 *
-	 * Note: field_groups is intentionally absent — derived at runtime.
-	 * order is optional — sections without it sort to the end.
-	 * pmp_default is optional — fields without it default to 'member'.
-	 * can_be_primary is optional — controlled via the Section Editor
-	 *   checkbox; absent means false.
+	 * order        — optional; sections without it sort to the end.
+	 * can_be_primary — optional; absent means false.
 	 */
 	const REQUIRED_KEYS = [
 		'key',
@@ -118,53 +106,6 @@ class SectionRegistry {
 	 */
 	public static function get_section( string $key ): ?array {
 		return self::$sections[ $key ] ?? null;
-	}
-
-	/**
-	 * Return content field groups derived from a section's acf_group.fields.
-	 *
-	 * Parses acf_group.fields in order, opening a new group each time a tab
-	 * field is encountered. System fields (enabled toggle, privacy_mode button,
-	 * etc.) are excluded. Each returned field object carries the plugin-specific
-	 * properties (pmp_default, filterable, required, taxonomy) read directly
-	 * from the field definition — falling back to the section's pmp_default
-	 * when a field does not declare its own.
-	 *
-	 * Fields that appear before the first tab marker are collected under a
-	 * synthetic "General" group.
-	 *
-	 * @param array $section  A section array from get_sections() or get_section().
-	 * @return array<array{tab: string, fields: array}>
-	 */
-	public static function get_field_groups( array $section ): array {
-		$acf_fields = $section['acf_group']['fields'] ?? [];
-
-		if ( ! empty( $acf_fields ) ) {
-			return self::derive_field_groups( $acf_fields, $section['pmp_default'] ?? 'member' );
-		}
-
-		return [];
-	}
-
-	/**
-	 * Flatten a section's content fields into a single array.
-	 *
-	 * Useful for any code that needs all fields regardless of tab grouping —
-	 * e.g. PMP resolution loops, field counts, or FieldRenderer iteration.
-	 *
-	 * @param array $section  A section array from get_sections() or get_section().
-	 * @return array  Flat array of field objects.
-	 */
-	public static function get_all_fields( array $section ): array {
-		$fields = [];
-
-		foreach ( self::get_field_groups( $section ) as $group ) {
-			if ( ! empty( $group['fields'] ) && is_array( $group['fields'] ) ) {
-				array_push( $fields, ...$group['fields'] );
-			}
-		}
-
-		return $fields;
 	}
 
 	/**
@@ -479,58 +420,6 @@ class SectionRegistry {
 		}
 
 		return null;
-	}
-
-	/**
-	 * Derive tab-grouped content field arrays from a flat acf_group.fields list.
-	 *
-	 * Tab fields open new groups; system fields are excluded; all remaining
-	 * fields are emitted with a normalised set of plugin properties.
-	 *
-	 * @param  array  $acf_fields         The fields array from acf_group.
-	 * @param  string $section_pmp_default Fallback pmp_default when a field
-	 *                                     does not declare its own.
-	 * @return array<array{tab: string, fields: array}>
-	 */
-	private static function derive_field_groups( array $acf_fields, string $section_pmp_default ): array {
-		$groups         = [];
-		$current_tab    = 'General';
-		$current_fields = [];
-
-		foreach ( $acf_fields as $field ) {
-			// Tab fields open a new group — flush the current one first.
-			if ( ( $field['type'] ?? '' ) === 'tab' ) {
-				if ( ! empty( $current_fields ) ) {
-					$groups[]       = [ 'tab' => $current_tab, 'fields' => $current_fields ];
-					$current_fields = [];
-				}
-				$current_tab = $field['label'] ?? 'General';
-				continue;
-			}
-
-			// Skip system/non-content fields.
-			if ( self::is_system_field( $field ) ) {
-				continue;
-			}
-
-			$current_fields[] = [
-				'key'         => $field['key']         ?? '',
-				'name'        => $field['name']        ?? '',   // Required by section-view.php for PMP companion lookup.
-				'label'       => $field['label']       ?? '',
-				'type'        => $field['type']        ?? 'text',
-				'pmp_default' => $field['pmp_default'] ?? $section_pmp_default,
-				'filterable'  => (bool) ( $field['filterable']  ?? false ),
-				'taxonomy'    => $field['taxonomy']    ?? null,
-				'required'    => (bool) ( $field['required']    ?? false ),
-			];
-		}
-
-		// Flush the last group.
-		if ( ! empty( $current_fields ) ) {
-			$groups[] = [ 'tab' => $current_tab, 'fields' => $current_fields ];
-		}
-
-		return $groups;
 	}
 
 	/**
