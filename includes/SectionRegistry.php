@@ -50,14 +50,14 @@ class SectionRegistry {
 	 * A file that is missing any of these is skipped with a warning.
 	 *
 	 * Note: field_groups is intentionally absent — derived at runtime.
-	 * order is optional — sections without it sort to the end; use the
-	 * Section Editor arrows to position them after upload.
+	 * order is optional — sections without it sort to the end.
 	 * pmp_default is optional — fields without it default to 'member'.
+	 * can_be_primary is optional — controlled via the Section Editor
+	 *   checkbox; absent means false.
 	 */
 	const REQUIRED_KEYS = [
 		'key',
 		'label',
-		'can_be_primary',
 		'acf_group',
 	];
 

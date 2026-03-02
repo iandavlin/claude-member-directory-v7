@@ -51,6 +51,12 @@ class AdminSync {
 	/** Nonce field name in delete forms. */
 	const DELETE_NONCE_FIELD = 'member_directory_delete_nonce';
 
+	/** Nonce action used to validate can_be_primary toggle submissions. */
+	const TOGGLE_PRIMARY_NONCE_ACTION = 'member_directory_toggle_primary';
+
+	/** Nonce field name in can_be_primary toggle forms. */
+	const TOGGLE_PRIMARY_NONCE_FIELD = 'member_directory_toggle_primary_nonce';
+
 	/** Admin page slug registered with WordPress. */
 	const PAGE_SLUG = 'member-directory-sync';
 
@@ -123,6 +129,7 @@ class AdminSync {
 			self::maybe_handle_section_edit();
 			self::maybe_handle_reorder();
 			self::maybe_handle_section_delete();
+			self::maybe_handle_toggle_primary();
 			self::render_section_editor();
 			?>
 
@@ -546,6 +553,63 @@ class AdminSync {
 		}
 	}
 
+	/**
+	 * If this is a valid can_be_primary toggle POST, update the JSON file and re-sync.
+	 */
+	private static function maybe_handle_toggle_primary(): void {
+		if ( ! isset( $_POST[ self::TOGGLE_PRIMARY_NONCE_FIELD ] ) ) {
+			return;
+		}
+
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST[ self::TOGGLE_PRIMARY_NONCE_FIELD ] ) ), self::TOGGLE_PRIMARY_NONCE_ACTION ) ) {
+			wp_die( esc_html__( 'Security check failed. Please go back and try again.' ) );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to run this action.' ) );
+		}
+
+		$section_key    = sanitize_key( $_POST['toggle_section_key'] ?? '' );
+		$can_be_primary = isset( $_POST['can_be_primary'] ) && $_POST['can_be_primary'] === '1';
+
+		if ( empty( $section_key ) ) {
+			self::render_upload_result( false, 'No section key provided.' );
+			return;
+		}
+
+		$sections_dir = SectionRegistry::sections_dir();
+		$target_file  = $sections_dir . $section_key . '.json';
+
+		if ( ! file_exists( $target_file ) ) {
+			self::render_upload_result( false, 'Section file <code>sections/' . esc_html( $section_key ) . '.json</code> not found.' );
+			return;
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		$raw  = file_get_contents( $target_file );
+		$data = json_decode( $raw !== false ? $raw : '', true );
+
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			self::render_upload_result( false, 'Could not parse section JSON.' );
+			return;
+		}
+
+		$data['can_be_primary'] = $can_be_primary;
+		$pretty = (string) json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+		if ( file_put_contents( $target_file, $pretty ) === false ) {
+			self::render_upload_result( false, 'Could not write <code>sections/' . esc_html( $section_key ) . '.json</code>.' );
+			return;
+		}
+
+		SectionRegistry::sync();
+		self::$last_edited_key = $section_key;
+
+		$state = $can_be_primary ? 'enabled' : 'disabled';
+		self::render_upload_result( true, '"Can be primary" ' . $state . ' for <strong>' . esc_html( $section_key ) . '</strong>.' );
+	}
+
 	// -----------------------------------------------------------------------
 	// Import helpers
 	// -----------------------------------------------------------------------
@@ -648,10 +712,9 @@ class AdminSync {
 		$group['fields'] = array_merge( $system_fields, $fields );
 
 		$config = [
-			'key'            => $section_key,
-			'label'          => $title,
-			'can_be_primary' => true,
-			'acf_group'      => $group,
+			'key'       => $section_key,
+			'label'     => $title,
+			'acf_group' => $group,
 		];
 
 		// Build the conversion note.
@@ -695,13 +758,14 @@ class AdminSync {
 		$count = count( $sections );
 
 		foreach ( $sections as $i => $section ) {
-			$key        = $section['key']   ?? '';
-			$label      = $section['label'] ?? $key;
-			$order      = $section['order'] ?? 0;
-			$is_first   = ( $i === 0 );
-			$is_last    = ( $i === $count - 1 );
-			$open_attr  = ( $key === self::$last_edited_key ) ? ' open' : '';
-			$pretty_json = (string) json_encode( $section, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+			$key            = $section['key']           ?? '';
+			$label          = $section['label']         ?? $key;
+			$order          = $section['order']         ?? 0;
+			$can_be_primary = ! empty( $section['can_be_primary'] );
+			$is_first       = ( $i === 0 );
+			$is_last        = ( $i === $count - 1 );
+			$open_attr      = ( $key === self::$last_edited_key ) ? ' open' : '';
+			$pretty_json    = (string) json_encode( $section, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 
 			echo '<details' . esc_attr( $open_attr ) . ' style="margin-bottom:8px;border:1px solid #ddd;border-radius:3px;">';
 
@@ -735,10 +799,24 @@ class AdminSync {
 
 			echo '</span>';
 
-			// Section label + key + order badge.
+			// Section label + key.
 			echo '<strong>' . esc_html( $label ) . '</strong>';
 			echo '<code style="font-size:12px;">' . esc_html( $key ) . '</code>';
-			echo '<span style="margin-left:auto;font-size:11px;color:#888;">order: ' . esc_html( (string) $order ) . '</span>';
+
+			// Can be primary toggle — auto-submits on change; stops summary click propagation.
+			echo '<form method="post" action="" style="margin-left:auto;display:flex;align-items:center;gap:5px;" onclick="event.stopPropagation();">';
+			wp_nonce_field( self::TOGGLE_PRIMARY_NONCE_ACTION, self::TOGGLE_PRIMARY_NONCE_FIELD );
+			echo '<input type="hidden" name="toggle_section_key" value="' . esc_attr( $key ) . '">';
+			echo '<label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#555;cursor:pointer;user-select:none;" onclick="event.stopPropagation();">';
+			echo '<input type="checkbox" name="can_be_primary" value="1"'
+				. checked( $can_be_primary, true, false )
+				. ' onchange="this.form.submit();" onclick="event.stopPropagation();">';
+			echo 'Can be primary';
+			echo '</label>';
+			echo '</form>';
+
+			// Order badge.
+			echo '<span style="font-size:11px;color:#888;">order:&nbsp;' . esc_html( (string) $order ) . '</span>';
 
 			echo '</summary>';
 
