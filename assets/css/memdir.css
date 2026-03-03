@@ -1253,6 +1253,25 @@ dialog.memdir-avatar-modal::backdrop {
 
 .memdir-avatar-modal__body {
   padding: 16px 20px 20px;
+  text-align: center;
+}
+
+.memdir-avatar-modal__preview {
+  display: block;
+  max-width: 200px;
+  max-height: 200px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--md-border);
+}
+
+.memdir-avatar-modal__status {
+  font-family: var(--md-font);
+  font-size: 13px;
+  color: var(--md-text-muted);
+  margin: 0 0 12px;
+  min-height: 1.3em;
 }
 
 /* ─────────────────────────────────────────────────────────────

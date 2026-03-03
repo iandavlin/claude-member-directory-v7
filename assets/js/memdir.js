@@ -1509,7 +1509,7 @@
 	}
 
 	// -----------------------------------------------------------------------
-	// Avatar / Header Image Modal
+	// Avatar / Header Image — Direct Upload Modal
 	// -----------------------------------------------------------------------
 
 	function initAvatarModal() {
@@ -1517,18 +1517,21 @@
 			var fieldContent = section.querySelector( '.memdir-field-content' );
 			if ( ! fieldContent ) { return; }
 
-			// Find the first image field in this section.
+			// Find the first image field — hide it from the form.
 			var imageField = null;
 			fieldContent.querySelectorAll( '.acf-field[data-key]' ).forEach( function ( field ) {
 				if ( ! imageField && ( field.dataset.type || '' ) === 'image' ) {
 					imageField = field;
 				}
 			} );
-
 			if ( ! imageField ) { return; }
+
+			var fieldKey = imageField.dataset.key || '';
+			imageField.style.display = 'none';
 
 			// Find the matching header avatar.
 			var sectionKey = section.dataset.section || '';
+			var postId     = section.dataset.postId  || '';
 			var headerWrap = sectionKey
 				? document.querySelector( '.memdir-header-wrap[data-header="' + sectionKey + '"]' )
 				: null;
@@ -1536,17 +1539,18 @@
 
 			var avatarWrap = headerWrap.querySelector( '.memdir-header__avatar-wrap' );
 			if ( ! avatarWrap ) { return; }
+			var avatarImg  = avatarWrap.querySelector( '.memdir-header__avatar' );
 
 			// Build modal.
 			var dialog = document.createElement( 'dialog' );
 			dialog.className = 'memdir-avatar-modal';
 
-			var modalHeader = document.createElement( 'div' );
-			modalHeader.className = 'memdir-avatar-modal__header';
+			var mHeader = document.createElement( 'div' );
+			mHeader.className = 'memdir-avatar-modal__header';
 
-			var modalTitle = document.createElement( 'h3' );
-			modalTitle.className = 'memdir-avatar-modal__title';
-			modalTitle.textContent = 'Change Photo';
+			var mTitle = document.createElement( 'h3' );
+			mTitle.className = 'memdir-avatar-modal__title';
+			mTitle.textContent = 'Change Photo';
 
 			var closeBtn = document.createElement( 'button' );
 			closeBtn.type = 'button';
@@ -1554,13 +1558,41 @@
 			closeBtn.setAttribute( 'aria-label', 'Close' );
 			closeBtn.innerHTML = '&times;';
 
-			modalHeader.appendChild( modalTitle );
-			modalHeader.appendChild( closeBtn );
-			dialog.appendChild( modalHeader );
+			mHeader.appendChild( mTitle );
+			mHeader.appendChild( closeBtn );
+			dialog.appendChild( mHeader );
 
 			var body = document.createElement( 'div' );
 			body.className = 'memdir-avatar-modal__body';
-			body.appendChild( imageField );
+
+			// Current image preview.
+			var preview = document.createElement( 'img' );
+			preview.className = 'memdir-avatar-modal__preview';
+			preview.src = avatarImg ? avatarImg.src : '';
+			preview.alt = 'Current photo';
+			if ( ! avatarImg || ! avatarImg.src ) { preview.style.display = 'none'; }
+			body.appendChild( preview );
+
+			// Status text.
+			var status = document.createElement( 'p' );
+			status.className = 'memdir-avatar-modal__status';
+			status.textContent = '';
+			body.appendChild( status );
+
+			// Hidden file input.
+			var fileInput = document.createElement( 'input' );
+			fileInput.type = 'file';
+			fileInput.accept = 'image/*';
+			fileInput.style.display = 'none';
+			body.appendChild( fileInput );
+
+			// Upload button.
+			var uploadBtn = document.createElement( 'button' );
+			uploadBtn.type = 'button';
+			uploadBtn.className = 'memdir-modal-save';
+			uploadBtn.textContent = 'Choose New Photo';
+			body.appendChild( uploadBtn );
+
 			dialog.appendChild( body );
 			fieldContent.appendChild( dialog );
 
@@ -1574,30 +1606,47 @@
 			avatarWrap.appendChild( overlay );
 
 			// Wire events.
-			overlay.addEventListener( 'click', function () {
-				dialog.showModal();
-			} );
-
-			closeBtn.addEventListener( 'click', function () {
-				dialog.close();
-			} );
-
+			overlay.addEventListener( 'click', function () { dialog.showModal(); } );
+			closeBtn.addEventListener( 'click', function () { dialog.close(); } );
 			dialog.addEventListener( 'click', function ( e ) {
 				if ( e.target === dialog ) { dialog.close(); }
 			} );
 
-			// Save button inside modal.
-			var avatarSave = document.createElement( 'button' );
-			avatarSave.type = 'button';
-			avatarSave.className = 'memdir-modal-save';
-			avatarSave.textContent = 'Save';
-			dialog.appendChild( avatarSave );
+			uploadBtn.addEventListener( 'click', function () { fileInput.click(); } );
 
-			avatarSave.addEventListener( 'click', function () {
-				var sBtn = section.querySelector( '.memdir-section-save' );
-				var ban  = section.querySelector( '.memdir-unsaved-banner' );
-				if ( sBtn ) { saveSection( section, sBtn, ban ); }
-				dialog.close();
+			fileInput.addEventListener( 'change', function () {
+				var file = fileInput.files[ 0 ];
+				if ( ! file ) { return; }
+
+				status.textContent = 'Uploading\u2026';
+				uploadBtn.disabled = true;
+
+				var fd = new FormData();
+				fd.append( 'action',    'memdir_ajax_upload_avatar' );
+				fd.append( 'nonce',     window.mdAjax.nonce );
+				fd.append( 'post_id',   postId );
+				fd.append( 'field_key', fieldKey );
+				fd.append( 'image',     file );
+
+				fetch( window.mdAjax.ajaxurl, { method: 'POST', body: fd } )
+					.then( function ( r ) { return r.json(); } )
+					.then( function ( res ) {
+						if ( res.success && res.data && res.data.url ) {
+							preview.src = res.data.url;
+							preview.style.display = '';
+							if ( avatarImg ) { avatarImg.src = res.data.url; }
+							status.textContent = 'Photo updated.';
+						} else {
+							status.textContent = 'Error: ' + ( res.data && res.data.message ? res.data.message : 'Upload failed.' );
+						}
+						uploadBtn.disabled = false;
+						fileInput.value = '';
+					} )
+					.catch( function () {
+						status.textContent = 'Network error.';
+						uploadBtn.disabled = false;
+						fileInput.value = '';
+					} );
 			} );
 		} );
 	}

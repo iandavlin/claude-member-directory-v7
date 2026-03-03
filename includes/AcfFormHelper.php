@@ -62,6 +62,7 @@ class AcfFormHelper {
 		add_action( 'wp_ajax_memdir_ajax_save_section_enabled',   [ self::class, 'handle_save_section_enabled' ] );
 		add_action( 'wp_ajax_memdir_ajax_save_section_pmp',       [ self::class, 'handle_save_section_pmp' ] );
 		add_action( 'wp_ajax_memdir_ajax_save_field_pmp',         [ self::class, 'handle_save_field_pmp' ] );
+		add_action( 'wp_ajax_memdir_ajax_upload_avatar',          [ self::class, 'handle_avatar_upload' ] );
 	}
 
 	// -----------------------------------------------------------------------
@@ -426,5 +427,71 @@ class AcfFormHelper {
 		update_field( $companion_name, $pmp, $post_id );
 
 		wp_send_json_success( [ 'companion_name' => $companion_name, 'pmp' => $pmp ] );
+	}
+
+	/**
+	 * AJAX handler: direct avatar upload — one image in, one image out.
+	 *
+	 * Receives a file upload, creates a WP attachment, updates the ACF image
+	 * field, and deletes the previous attachment. Returns the new thumbnail URL
+	 * so JS can update the header avatar preview immediately.
+	 *
+	 * Expects $_POST:
+	 *   nonce     — wp_create_nonce( 'md_save_nonce' )
+	 *   post_id   — int, the member-directory post being edited
+	 *   field_key — string, ACF field key (field_md_…)
+	 * Expects $_FILES:
+	 *   image     — the uploaded image file
+	 *
+	 * Action: wp_ajax_memdir_ajax_upload_avatar
+	 */
+	public static function handle_avatar_upload(): void {
+		if ( ! check_ajax_referer( 'md_save_nonce', 'nonce', false ) ) {
+			wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+		}
+
+		$post_id   = isset( $_POST['post_id'] )   ? absint( $_POST['post_id'] )                                        : 0;
+		$field_key = isset( $_POST['field_key'] ) ? sanitize_text_field( wp_unslash( $_POST['field_key'] ) ) : '';
+
+		if ( ! $post_id || get_post_type( $post_id ) !== 'member-directory' ) {
+			wp_send_json_error( [ 'message' => 'Invalid post.' ], 400 );
+		}
+
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+		}
+
+		if ( strpos( $field_key, 'field_' ) !== 0 ) {
+			wp_send_json_error( [ 'message' => 'Invalid field key.' ], 400 );
+		}
+
+		if ( empty( $_FILES['image'] ) ) {
+			wp_send_json_error( [ 'message' => 'No file uploaded.' ], 400 );
+		}
+
+		// Get old attachment ID before uploading.
+		$old_id = (int) ( get_field( $field_key, $post_id, false ) ?: 0 );
+
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+
+		$attachment_id = media_handle_upload( 'image', $post_id );
+
+		if ( is_wp_error( $attachment_id ) ) {
+			wp_send_json_error( [ 'message' => $attachment_id->get_error_message() ], 500 );
+		}
+
+		// Update ACF field with the new attachment ID.
+		update_field( $field_key, $attachment_id, $post_id );
+
+		// Delete the old attachment (one in, one out).
+		if ( $old_id && $old_id !== $attachment_id ) {
+			wp_delete_attachment( $old_id, true );
+		}
+
+		$url = wp_get_attachment_image_url( $attachment_id, 'thumbnail' );
+
+		wp_send_json_success( [ 'url' => $url, 'id' => $attachment_id ] );
 	}
 }
