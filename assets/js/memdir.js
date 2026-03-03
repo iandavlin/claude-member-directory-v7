@@ -1236,7 +1236,7 @@
 				wrap.dataset.storedPmp    = storedPmp;
 
 				var labelEl = fieldEl.querySelector( ".acf-label label" );
-				wrap.dataset.fieldLabel = labelEl ? labelEl.textContent.trim().replace( /s**$/, "" ) : "";
+				wrap.dataset.fieldLabel = labelEl ? labelEl.textContent.trim().replace( /\s*\*$/, "" ) : "";
 
 				var row = document.createElement( 'div' );
 				row.className = 'memdir-field-pmp__row';
