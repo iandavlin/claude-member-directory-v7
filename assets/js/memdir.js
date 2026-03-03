@@ -489,13 +489,16 @@
 							return;
 						}
 
-						// Move active state on the primary-section buttons.
-						panel.querySelectorAll( '.memdir-panel__primary-btn' ).forEach( function ( b ) {
-							b.classList.toggle( 'is-active', b.dataset.sectionKey === sectionKey );
-						} );
-
-						// Reorder pills and update checkbox visibility.
-						updatePrimarySection( sectionKey );
+						// Reload the page so PHP renders the new primary state
+						// correctly (enables section, reorders pills, swaps header).
+						// The disabled section may not exist in the DOM at all, so a
+						// JS-only update is not reliable.
+						window.onbeforeunload = null;
+						if ( typeof jQuery !== 'undefined' ) { jQuery( window ).off( 'beforeunload' ); }
+						var reloadUrl = new URL( window.location.href );
+						reloadUrl.searchParams.set( 'active_section', sectionKey );
+						reloadUrl.searchParams.set( '_t', Date.now().toString() );
+						window.location.href = reloadUrl.toString();
 					} )
 					.catch( function ( err ) {
 						console.error( 'MemberDirectory: primary section AJAX failed', err );
@@ -603,13 +606,9 @@
 		// hidden it via inline style when its section was absent from the DOM.
 		newPrimaryPill.style.display = '';
 
-		// Track disabled state before clearing it — when a disabled section is
-		// promoted to primary, show All Sections view instead of just that section.
-		var wasDisabled = newPrimaryPill.classList.contains( 'memdir-pill--disabled' );
-
 		// Primary sections are always enabled. If the promoted pill was previously
 		// disabled, clear that state, show its section, update the badge, and persist.
-		if ( wasDisabled ) {
+		if ( newPrimaryPill.classList.contains( 'memdir-pill--disabled' ) ) {
 			newPrimaryPill.classList.remove( 'memdir-pill--disabled' );
 
 			var newPrimarySection = document.querySelector(
@@ -652,9 +651,8 @@
 			sticky.dataset.primarySection = newPrimaryKey;
 		}
 
-		// When a disabled section was just promoted, show all sections so the user
-		// sees the full profile; otherwise navigate to the new primary.
-		activatePill( wasDisabled ? 'all' : newPrimaryKey );
+		// Navigate to the new primary so it becomes the active single-section view.
+		activatePill( newPrimaryKey );
 	}
 
 	// -----------------------------------------------------------------------

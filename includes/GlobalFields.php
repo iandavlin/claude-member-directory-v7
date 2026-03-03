@@ -206,6 +206,10 @@ class GlobalFields {
 		}
 
 		update_field( 'field_md_primary_section', $section_key, $post_id );
+
+		// Ensure the section is enabled — a primary section must always be visible.
+		update_field( 'field_md_' . $section_key . '_enabled', true, $post_id );
+
 		wp_send_json_success( [ 'primary_section' => $section_key ] );
 	}
 
