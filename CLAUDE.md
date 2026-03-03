@@ -99,7 +99,11 @@ templates/
                               Field list derived from acf_get_fields( $section['acf_group_key'] ).
     right-panel.php           Author/admin panel. View As buttons, Global Default block, Primary Section block.
 tools/
-  acf-to-config.md            Claude skill: convert ACF JSON export to section config format.
+  acf-field-prep.md           Claude skill: enrich a bare ACF field group with iPMP apparatus
+                              (system fields + per-field PMP companions) and validate header tab.
+  acf-pmp-prep.md             Claude skill: inject only the 2 section-level system fields (legacy).
+  section-manager.md          Claude skill: full section lifecycle (add, change, delete, rename, reorder).
+  patch-memdir.js             Node.js patching utility for memdir.js (CRLF-safe).
 ```
 
 ## Workflow: Sections
