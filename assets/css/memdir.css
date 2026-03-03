@@ -1157,6 +1157,84 @@ dialog.memdir-social-modal::backdrop {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   AVATAR / HEADER IMAGE MODAL
+───────────────────────────────────────────────────────────── */
+
+.memdir-avatar-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.35);
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.memdir-header__avatar-wrap:hover .memdir-avatar-overlay {
+  opacity: 1;
+}
+
+dialog.memdir-avatar-modal {
+  border: none;
+  border-radius: 12px;
+  padding: 0;
+  max-width: 480px;
+  width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  background: var(--md-white);
+}
+
+dialog.memdir-avatar-modal::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.memdir-avatar-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--md-border);
+}
+
+.memdir-avatar-modal__title {
+  font-family: var(--md-font);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--md-text);
+}
+
+.memdir-avatar-modal__close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--md-text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.memdir-avatar-modal__close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--md-text);
+}
+
+.memdir-avatar-modal__body {
+  padding: 16px 20px 20px;
+}
+
+/* ─────────────────────────────────────────────────────────────
    RESPONSIVE
 ───────────────────────────────────────────────────────────── */
 

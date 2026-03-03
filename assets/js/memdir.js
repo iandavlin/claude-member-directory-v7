@@ -1494,6 +1494,86 @@
 		} );
 	}
 
+	// -----------------------------------------------------------------------
+	// Avatar / Header Image Modal
+	// -----------------------------------------------------------------------
+
+	function initAvatarModal() {
+		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
+			var fieldContent = section.querySelector( '.memdir-field-content' );
+			if ( ! fieldContent ) { return; }
+
+			// Find the first image field in this section.
+			var imageField = null;
+			fieldContent.querySelectorAll( '.acf-field[data-key]' ).forEach( function ( field ) {
+				if ( ! imageField && ( field.dataset.type || '' ) === 'image' ) {
+					imageField = field;
+				}
+			} );
+
+			if ( ! imageField ) { return; }
+
+			// Find the matching header avatar.
+			var sectionKey = section.dataset.section || '';
+			var headerWrap = sectionKey
+				? document.querySelector( '.memdir-header-wrap[data-header="' + sectionKey + '"]' )
+				: null;
+			if ( ! headerWrap ) { return; }
+
+			var avatarWrap = headerWrap.querySelector( '.memdir-header__avatar-wrap' );
+			if ( ! avatarWrap ) { return; }
+
+			// Build modal.
+			var dialog = document.createElement( 'dialog' );
+			dialog.className = 'memdir-avatar-modal';
+
+			var modalHeader = document.createElement( 'div' );
+			modalHeader.className = 'memdir-avatar-modal__header';
+
+			var modalTitle = document.createElement( 'h3' );
+			modalTitle.className = 'memdir-avatar-modal__title';
+			modalTitle.textContent = 'Change Photo';
+
+			var closeBtn = document.createElement( 'button' );
+			closeBtn.type = 'button';
+			closeBtn.className = 'memdir-avatar-modal__close';
+			closeBtn.setAttribute( 'aria-label', 'Close' );
+			closeBtn.innerHTML = '&times;';
+
+			modalHeader.appendChild( modalTitle );
+			modalHeader.appendChild( closeBtn );
+			dialog.appendChild( modalHeader );
+
+			var body = document.createElement( 'div' );
+			body.className = 'memdir-avatar-modal__body';
+			body.appendChild( imageField );
+			dialog.appendChild( body );
+			fieldContent.appendChild( dialog );
+
+			// Camera overlay on avatar.
+			avatarWrap.style.position = 'relative';
+			var overlay = document.createElement( 'button' );
+			overlay.type = 'button';
+			overlay.className = 'memdir-avatar-overlay';
+			overlay.setAttribute( 'aria-label', 'Change photo' );
+			overlay.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>';
+			avatarWrap.appendChild( overlay );
+
+			// Wire events.
+			overlay.addEventListener( 'click', function () {
+				dialog.showModal();
+			} );
+
+			closeBtn.addEventListener( 'click', function () {
+				dialog.close();
+			} );
+
+			dialog.addEventListener( 'click', function ( e ) {
+				if ( e.target === dialog ) { dialog.close(); }
+			} );
+		} );
+	}
+
 	function syncControlsTop() {
 		var sticky = document.querySelector( '.memdir-sticky' );
 		if ( ! sticky ) { return; }
@@ -1518,6 +1598,7 @@
 		relocateFieldInstructions();
 		initFieldPmp();           // inject field PMP controls after section PMP is wired
 		initSocialModal();        // move social URL fields into modal dialogs
+		initAvatarModal();        // move header image field into avatar modal
 		hideEmptySectionPills();  // hide pills for PHP-dropped empty/PMP-blocked sections
 		restoreState();
 		syncControlsTop();
