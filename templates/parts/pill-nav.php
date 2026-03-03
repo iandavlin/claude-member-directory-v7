@@ -90,6 +90,7 @@ $active_section = isset( $active_section ) ? (string) $active_section : 'all';
 	<button
 		class="<?php echo esc_attr( $pill_classes ); ?>"
 		data-section="<?php echo esc_attr( $key ); ?>"
+		data-order="<?php echo esc_attr( (string) ( $section['order'] ?? 99 ) ); ?>"
 		type="button"
 	>
 		<span class="memdir-pill__label"><?php echo esc_html( $label ); ?></span>
@@ -122,6 +123,7 @@ $active_section = isset( $active_section ) ? (string) $active_section : 'all';
 	<button
 		class="<?php echo esc_attr( $pill_classes ); ?>"
 		data-section="<?php echo esc_attr( $key ); ?>"
+		data-order="<?php echo esc_attr( (string) ( $section['order'] ?? 99 ) ); ?>"
 		type="button"
 		<?php if ( ! $is_on ) : ?>title="Activate Check Box"<?php endif; ?>
 	>

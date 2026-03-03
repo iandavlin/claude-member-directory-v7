@@ -757,7 +757,7 @@
 	 * Reorder pills so disabled pills appear after enabled pills.
 	 *
 	 * Order: All Sections -> primary -> enabled non-primary -> disabled non-primary.
-	 * Relative order within each group is preserved (DOM order at call time).
+	 * Within each group, pills are sorted by data-order (section registry order).
 	 *
 	 * @param {Element} nav  The .memdir-pills nav element.
 	 */
@@ -779,6 +779,15 @@
 			       ! p.classList.contains( 'memdir-pill--primary' ) &&
 			       p.classList.contains( 'memdir-pill--disabled' );
 		} );
+
+		// Sort enabled and disabled groups by their section registry order
+		// (data-order attribute set by PHP). This keeps pill positions stable
+		// regardless of which toggles or primary switches have been applied.
+		function byOrder( a, b ) {
+			return ( parseInt( a.dataset.order, 10 ) || 99 ) - ( parseInt( b.dataset.order, 10 ) || 99 );
+		}
+		enabled.sort( byOrder );
+		disabled.sort( byOrder );
 
 		allPill.concat( primary ).concat( enabled ).concat( disabled ).forEach( function ( p ) {
 			p.style.marginLeft = '';
