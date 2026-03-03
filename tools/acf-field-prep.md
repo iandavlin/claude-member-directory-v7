@@ -1,18 +1,30 @@
 ACF Field Group Prep
 
-You take a bare ACF field group export — one that has only tabs and content fields — and
-enrich it with the full Member Directory iPMP apparatus. You also check for a header tab
-and validate its structure against what the sticky header template expects.
+You take a bare ACF field group export and enrich it with the full Member Directory
+iPMP apparatus so it works as a section. You also check for a header tab and validate
+its structure against what the sticky header template expects.
 
 
 What You Produce
 
-1. ENRICHED ACF JSON — the original field group with system fields prepended and per-field
-   PMP companions injected after every content field. Ready for re-import via
-   WP Admin → ACF → Tools → Import.
+One output: ENRICHED ACF JSON — the original field group with section-level system
+fields prepended and per-field PMP companions injected after every content field.
+Ready for re-import via WP Admin → Custom Fields → Tools → Import.
 
-2. LEAN SECTION CONFIG — a 5-property JSON pointer for sections/{key}.json. This is the
-   only file the plugin reads at runtime; the field definitions stay in ACF's database.
+After importing, the user adds the section via the plugin's AdminSync page
+(WP Admin → Member Directory Sync → Add Section form — enter the section key and
+ACF group key). No section JSON file needs to be written manually.
+
+
+Architecture Context
+
+- Section JSON files (sections/*.json) are immutable pointers containing only
+  { "acf_group_key": "group_md_xx_key" }. The section key is derived from the filename.
+- Mutable metadata (label, order, can_be_primary) lives in the DB option
+  member_directory_sections, managed through the AdminSync UI.
+- ACF field groups live entirely in ACF's database. The plugin never registers,
+  overrides, or caches field groups — no acf-json/ folder.
+- PMP waterfall: field → section → global. Any level set to "inherit" passes through.
 
 
 Step 1 — Derive and Confirm Metadata
@@ -23,15 +35,12 @@ Parse the incoming JSON to extract what you can:
   Title:       top-level "title" (e.g. "MD: Workspace")
   Section key: extract the slug after the last underscore-delimited number segment
                in the group key (group_md_06_workspace → workspace)
-  Label:       strip leading "MD: " from the title if present (MD: Workspace → Workspace)
 
 Present your interpretation and ask the user to confirm or correct:
 
-  Section key:    {key}
-  Display label:  {label}
-  Order:          ? (ask — integer, use odd numbers with gaps: 1, 3, 5, 7…)
+  Section key:   {key}
+  ACF group key: {group_key} (from the export)
   Can be primary: ? (ask — yes/no, determines if this section can drive the sticky header)
-  ACF group key:  {group_key} (from the export)
 
 
 Step 2 — Validate Input
@@ -207,10 +216,6 @@ Wait for user confirmation before outputting.
 
 Step 7 — Output
 
-Output 1: Enriched ACF JSON
-
-Label: ENRICHED ACF JSON — import via WP Admin → ACF → Tools → Import
-
 Output the complete field group JSON wrapped in an array (ACF import format):
 
   [
@@ -229,7 +234,7 @@ Output the complete field group JSON wrapped in an array (ACF import format):
           }
         ]
       ],
-      ... all other original top-level properties preserved (menu_order, position, style, etc.) ...
+      ... all other original top-level properties preserved ...
     }
   ]
 
@@ -237,21 +242,25 @@ Preserve every original top-level property from the input (menu_order, position,
 label_placement, instruction_placement, hide_on_screen, active, description, show_in_rest).
 Only modify the "fields" array and ensure the "location" rule targets member-directory.
 
-Output 2: Lean Section Config
+Label: ENRICHED ACF JSON — import via WP Admin → Custom Fields → Tools → Import
 
-Label: SECTION CONFIG — save to: sections/{key}.json
-
-  {
-    "key": "{key}",
-    "label": "{label}",
-    "order": {order},
-    "can_be_primary": {true|false},
-    "acf_group_key": "{acf_group_key}"
-  }
+After output, remind:
+  "Import this JSON via Custom Fields → Tools → Import. Then add the section via
+   WP Admin → Member Directory Sync → Add Section (enter key: '{key}',
+   ACF group key: '{acf_group_key}')."
 
 
-Remind: "Import the enriched JSON via ACF → Tools → Import. Save the section config to
-sections/{key}.json. Then run WP Admin → Member Directory → Sync."
+Naming Reference
+
+  Section key:         {key}                                  e.g.  workspace
+  ACF group key:       group_md_{nn}_{key}                    e.g.  group_md_06_workspace
+  Content field key:   field_md_{key}_{suffix}                e.g.  field_md_workspace_description
+  Content field name:  member_directory_{key}_{suffix}        e.g.  member_directory_workspace_description
+  PMP companion key:   field_md_{key}_pmp_{suffix}            e.g.  field_md_workspace_pmp_description
+  PMP companion name:  member_directory_field_pmp_{key}_{suffix}
+                                                              e.g.  member_directory_field_pmp_workspace_description
+  System field keys:   field_md_{key}_enabled                 (true_false toggle)
+                       field_md_{key}_privacy_mode            (4-state button_group)
 
 
 Drop-In Shortcut
@@ -260,7 +269,7 @@ If the user pastes a raw ACF JSON export alongside a short command like "prep th
 "add ipmp", or "enrich this for {section name}":
 
   1. Skip the step-by-step preamble.
-  2. Derive section key and label from the group key/title.
-  3. Ask only for order and can_be_primary (two quick questions).
+  2. Derive section key from the group key.
+  3. Ask only for can_be_primary (one quick question).
   4. Run Steps 2–7 in one pass.
-  5. If a section name was given in the command, pre-fill the label and suggest a key.
+  5. If a section name was given in the command, pre-fill the key accordingly.
