@@ -951,15 +951,29 @@ a.memdir-field-value:hover {
 
 
 /* ─────────────────────────────────────────────────────────────
-   PER-FIELD PMP CONTROLS (injected by JS after each ACF field)
+   PER-FIELD PMP CONTROLS (injected by JS into .acf-label row)
 ───────────────────────────────────────────────────────────── */
 
+/* Make the ACF label a flex row so PMP buttons sit beside the field name */
+.memdir-section--edit .acf-field > .acf-label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.memdir-section--edit .acf-field > .acf-label > label {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Push description (if any) to its own row */
+.memdir-section--edit .acf-field > .acf-label > p.description {
+  width: 100%;
+  margin-top: 2px;
+}
+
 .memdir-field-pmp {
-  margin-top: 6px;
-  padding: 5px 8px;
-  background: rgba(151, 169, 124, 0.06);
-  border: 1px solid var(--md-border);
-  border-radius: var(--md-radius);
+  margin-left: auto;
   display: flex;
   justify-content: flex-end;
 }
@@ -1017,7 +1031,7 @@ a.memdir-field-value:hover {
   color: var(--md-text-muted);
   width: 100%;
   text-align: right;
-  margin-top: 2px;
+  margin-top: 1px;
   line-height: 1.3;
   transition: color 0.2s;
 }

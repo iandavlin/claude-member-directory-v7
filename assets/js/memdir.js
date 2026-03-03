@@ -1260,7 +1260,8 @@
 				row.appendChild( statusSpan );
 
 				wrap.appendChild( row );
-				fieldEl.appendChild( wrap );
+				var labelEl = fieldEl.querySelector( ".acf-label" );
+				( labelEl || fieldEl ).appendChild( wrap );
 
 				// Wire click handlers on the 4 icon buttons.
 				row.querySelectorAll( '.memdir-field-pmp__btn' ).forEach( function ( btn ) {
