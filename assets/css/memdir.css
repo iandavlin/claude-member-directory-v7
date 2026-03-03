@@ -1042,6 +1042,29 @@ a.memdir-field-value:hover {
   font-style: normal;
 }
 
+/* Collapsed: only active-state emoji visible as subtle indicator */
+.memdir-field-pmp__btn:not(.is-active) {
+  display: none;
+}
+
+.memdir-field-pmp:not(:hover) .memdir-field-pmp__btn.is-active {
+  background: transparent;
+  border-color: transparent;
+}
+
+.memdir-field-pmp__status {
+  display: none;
+}
+
+/* Expanded on hover: all buttons + status visible */
+.memdir-field-pmp:hover .memdir-field-pmp__btn:not(.is-active) {
+  display: flex;
+}
+
+.memdir-field-pmp:hover .memdir-field-pmp__status {
+  display: block;
+}
+
 /* ─────────────────────────────────────────────────────────────
    RESPONSIVE
 ───────────────────────────────────────────────────────────── */
