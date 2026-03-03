@@ -1442,12 +1442,41 @@
 			trigger.className = 'memdir-social-modal__trigger';
 			trigger.textContent = 'Edit Social Links';
 
-			// Insert trigger after the section subtitle.
-			var subtitle = fieldContent.querySelector( '.memdir-section-subtitle' );
-			if ( subtitle ) {
-				subtitle.after( trigger );
-			} else {
-				fieldContent.prepend( trigger );
+			// Place trigger in the header social area (next to the live icons).
+			var sectionKey = section.dataset.section || '';
+			var headerWrap = sectionKey
+				? document.querySelector( '.memdir-header-wrap[data-header="' + sectionKey + '"]' )
+				: null;
+			var placed = false;
+			if ( headerWrap ) {
+				var socialDiv = headerWrap.querySelector( '.memdir-header__social' );
+				var metaDiv   = headerWrap.querySelector( '.memdir-header__meta' );
+				if ( socialDiv ) {
+					socialDiv.appendChild( trigger );
+					placed = true;
+				} else if ( metaDiv ) {
+					metaDiv.appendChild( trigger );
+					placed = true;
+				} else {
+					// Header exists but no meta/social div — create one.
+					var bodyDiv = headerWrap.querySelector( '.memdir-header__body' );
+					if ( bodyDiv ) {
+						var newMeta = document.createElement( 'div' );
+						newMeta.className = 'memdir-header__meta';
+						newMeta.appendChild( trigger );
+						bodyDiv.appendChild( newMeta );
+						placed = true;
+					}
+				}
+			}
+			if ( ! placed ) {
+				// Fallback: put it in the field content area.
+				var subtitle = fieldContent.querySelector( '.memdir-section-subtitle' );
+				if ( subtitle ) {
+					subtitle.after( trigger );
+				} else {
+					fieldContent.prepend( trigger );
+				}
 			}
 
 			// Wire events.
