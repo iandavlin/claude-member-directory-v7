@@ -13,17 +13,21 @@
  *
  * 2. SYNC (admin-triggered only)
  *    SectionRegistry::sync() reads all JSON files from the sections/ folder,
- *    validates them, sorts them, and saves the result to the
- *    member_directory_sections option. The next page load then picks up the
- *    new data automatically via load_from_db().
+ *    validates them, and merges with the existing DB option (preserving
+ *    mutable metadata like label, can_be_primary, and position order).
+ *    New sections get sensible defaults. The next page load then picks up
+ *    the new data automatically via load_from_db().
+ *
+ * JSON files are immutable registration-only pointers. They contain only
+ * acf_group_key. The section key is derived from the filename. All mutable
+ * metadata (label, can_be_primary, order) lives in the DB option only.
  *
  * Public API (all static):
  *   SectionRegistry::get_sections()        — all sections as an ordered array
  *   SectionRegistry::get_section( $key )   — one section by key, or null
- *   SectionRegistry::sync()                — read filesystem → save to option
+ *   SectionRegistry::sync()                — read filesystem → merge with DB → save
  *   SectionRegistry::load_from_db()        — read option → populate cache
  *   SectionRegistry::validate_for_upload() — validate a config before saving
- *   SectionRegistry::removed_content_keys() — always empty (ACF owns fields now)
  */
 
 namespace MemberDirectory;
@@ -40,14 +44,9 @@ class SectionRegistry {
 	 *
 	 * acf_group_key — the ACF field group key this section points to
 	 *                 (e.g. "group_md_02_profile"). ACF loads and owns that
-	 *                 group via the acf-json/ folder; the section config is
-	 *                 metadata only.
-	 * order         — optional; sections without it sort to the end.
-	 * can_be_primary — optional; absent means false.
+	 *                 group; the section config is metadata only.
 	 */
 	const REQUIRED_KEYS = [
-		'key',
-		'label',
 		'acf_group_key',
 	];
 
@@ -107,9 +106,14 @@ class SectionRegistry {
 	}
 
 	/**
-	 * SYNC — read all JSON files from sections/ and save to the database.
+	 * SYNC — read all JSON files from sections/ and merge with the DB option.
 	 *
 	 * Called only from the admin sync action, never on a regular page load.
+	 *
+	 * JSON files are immutable registration-only pointers containing just
+	 * acf_group_key. The section key is derived from the filename. Mutable
+	 * metadata (label, can_be_primary) is preserved from the existing DB
+	 * record when present; new sections get sensible defaults.
 	 *
 	 * @return array{
 	 *     loaded: string[],
@@ -124,10 +128,10 @@ class SectionRegistry {
 			$json_files = [];
 		}
 
-		$valid     = [];
-		$loaded    = [];
-		$skipped   = [];
-		$seen_keys = [];
+		$existing_db = get_option( self::OPTION_KEY, [] );
+		$valid       = [];
+		$loaded      = [];
+		$skipped     = [];
 
 		foreach ( $json_files as $file ) {
 			$filename = basename( $file );
@@ -152,21 +156,31 @@ class SectionRegistry {
 				continue;
 			}
 
-			$integrity_error = self::validate_section_integrity( $data, $seen_keys );
+			$acf_group_key = $data['acf_group_key'] ?? '';
 
-			if ( $integrity_error !== null ) {
-				$skipped[ $filename ] = $integrity_error;
+			if ( empty( $acf_group_key ) ) {
+				$skipped[ $filename ] = 'acf_group_key must be a non-empty string.';
 				continue;
 			}
 
-			$key           = $data['key'];
-			$valid[ $key ] = $data;
-			$loaded[]      = $filename;
+			// Derive section key from filename.
+			$key = pathinfo( $filename, PATHINFO_FILENAME );
+
+			// Merge with existing DB record to preserve mutable metadata.
+			$existing = $existing_db[ $key ] ?? [];
+
+			$valid[ $key ] = [
+				'key'            => $key,
+				'label'          => $existing['label'] ?? ( $data['label'] ?? ucfirst( $key ) ),
+				'can_be_primary' => $existing['can_be_primary'] ?? ( $data['can_be_primary'] ?? false ),
+				'acf_group_key'  => $acf_group_key,
+			];
+
+			$loaded[] = $filename;
 		}
 
 		// Preserve existing DB order; append newly discovered sections at the end.
-		$existing_db = get_option( self::OPTION_KEY, [] );
-		$ordered     = [];
+		$ordered = [];
 
 		foreach ( array_keys( $existing_db ) as $existing_key ) {
 			if ( isset( $valid[ $existing_key ] ) ) {
@@ -193,8 +207,8 @@ class SectionRegistry {
 	 * RUNTIME — read section metadata from the database.
 	 *
 	 * Populates the in-memory section cache from the member_directory_sections
-	 * option. ACF owns all field groups — the plugin never registers them.
-	 * Templates call acf_get_fields( $section['acf_group_key'] ) directly.
+	 * option. The DB option stores sections in position order (maintained by
+	 * the reorder handler in AdminSync), so no additional sorting is needed.
 	 */
 	public static function load_from_db(): void {
 		$stored = get_option( self::OPTION_KEY, [] );
@@ -203,13 +217,48 @@ class SectionRegistry {
 			return;
 		}
 
-		// Sort by the 'order' field so sections render in the intended sequence
-		// (profile=1, discovery=3, business=5) rather than glob's alphabetical order.
-		uasort( $stored, static function ( array $a, array $b ): int {
-			return ( $a['order'] ?? PHP_INT_MAX ) <=> ( $b['order'] ?? PHP_INT_MAX );
-		} );
-
 		self::$sections = $stored;
+	}
+
+	// -----------------------------------------------------------------------
+	// Validation
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Validate a section config for the Add Section form.
+	 *
+	 * @param  array  $data  Decoded section config.
+	 * @return string|null   First error message found, or null if clean.
+	 */
+	public static function validate_for_upload( array $data ): ?string {
+		if ( empty( $data['key'] ?? '' ) ) {
+			return 'Missing required key: key.';
+		}
+
+		if ( empty( $data['acf_group_key'] ?? '' ) ) {
+			return 'Missing required key: acf_group_key.';
+		}
+
+		// Sanitize key — must be a valid slug.
+		$key = sanitize_key( $data['key'] );
+		if ( $key !== $data['key'] ) {
+			return 'Key must be lowercase alphanumeric with underscores only (got "' . $data['key'] . '").';
+		}
+
+		return null;
+	}
+
+	/**
+	 * Always returns an empty array.
+	 *
+	 * Field management is ACF's responsibility now — field keys live in
+	 * ACF's database and are not part of the lean section config.
+	 *
+	 * @param  array    $incoming  Unused.
+	 * @return string[]            Always empty.
+	 */
+	public static function removed_content_keys( array $incoming ): array {
+		return [];
 	}
 
 	// -----------------------------------------------------------------------
@@ -218,40 +267,10 @@ class SectionRegistry {
 
 	/**
 	 * Absolute path to the plugin's sections/ directory, with trailing slash.
-	 * Public so AdminSync can resolve the same path for file uploads.
+	 * Public so AdminSync can resolve the same path for file writes.
 	 */
 	public static function sections_dir(): string {
 		return dirname( __DIR__ ) . '/sections/';
-	}
-
-	/**
-	 * Validate a single section config for upload.
-	 *
-	 * @param  array  $data  Decoded section config.
-	 * @return string|null   First error message found, or null if clean.
-	 */
-	public static function validate_for_upload( array $data ): ?string {
-		$missing = self::missing_required_keys( $data );
-		if ( ! empty( $missing ) ) {
-			return 'Missing required keys: ' . implode( ', ', $missing ) . '.';
-		}
-
-		$seen_keys = [];
-		return self::validate_section_integrity( $data, $seen_keys );
-	}
-
-	/**
-	 * Always returns an empty array.
-	 *
-	 * Field management is ACF's responsibility now — field keys live in
-	 * acf-json/ and are not part of the lean section config. No diff is
-	 * possible or necessary at upload time.
-	 *
-	 * @param  array    $incoming  Unused.
-	 * @return string[]            Always empty.
-	 */
-	public static function removed_content_keys( array $incoming ): array {
-		return [];
 	}
 
 	/**
@@ -274,28 +293,6 @@ class SectionRegistry {
 		}
 
 		return $missing;
-	}
-
-	/**
-	 * Validate the internal integrity of a lean section config.
-	 *
-	 * Checks that acf_group_key is a non-empty string. Full field-level
-	 * validation (system field presence, naming conventions, key collisions)
-	 * is no longer performed here — ACF owns the field group and enforces
-	 * its own constraints.
-	 *
-	 * @param  array                $data       Decoded section config.
-	 * @param  array<string,string> &$seen_keys  Unused; kept for call-site compat.
-	 * @return string|null  Error message on failure, null if clean.
-	 */
-	private static function validate_section_integrity( array $data, array &$seen_keys ): ?string {
-		$acf_group_key = $data['acf_group_key'] ?? '';
-
-		if ( empty( $acf_group_key ) ) {
-			return 'acf_group_key must be a non-empty string (e.g. "group_md_02_profile").';
-		}
-
-		return null;
 	}
 
 	/**

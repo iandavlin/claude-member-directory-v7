@@ -4,12 +4,12 @@
  *
  * Adds a Settings sub-menu page that lets an administrator trigger
  * SectionRegistry::sync() — reading all JSON files from sections/ and
- * writing the results to the WordPress database.
+ * merging the results with the WordPress database.
  *
  * Also provides:
- *   - A section editor: inline JSON textarea per section with up/down
- *     reordering. Save validates, backs up, writes the file, and syncs.
- *   - A JSON uploader for adding new sections from a file.
+ *   - A section editor: rename, reorder, toggle can_be_primary, delete.
+ *     All mutable metadata lives in the DB only — JSON files are immutable.
+ *   - An "Add Section" form for creating new section pointers by typing JSON.
  *
  * Usage (from Plugin.php):
  *   AdminSync::init();
@@ -27,17 +27,11 @@ class AdminSync {
 	/** Nonce field name in the sync form. */
 	const NONCE_FIELD = 'member_directory_sync_nonce';
 
-	/** Nonce action used to validate the upload form submission. */
-	const UPLOAD_NONCE_ACTION = 'member_directory_upload';
+	/** Nonce action used to validate the Add Section form submission. */
+	const ADD_NONCE_ACTION = 'member_directory_add_section';
 
-	/** Nonce field name in the upload form. */
-	const UPLOAD_NONCE_FIELD = 'member_directory_upload_nonce';
-
-	/** Nonce action used to validate section edit form submissions. */
-	const EDIT_NONCE_ACTION = 'member_directory_edit_section';
-
-	/** Nonce field name in section edit forms. */
-	const EDIT_NONCE_FIELD = 'member_directory_edit_nonce';
+	/** Nonce field name in the Add Section form. */
+	const ADD_NONCE_FIELD = 'member_directory_add_nonce';
 
 	/** Nonce action used to validate section reorder submissions. */
 	const REORDER_NONCE_ACTION = 'member_directory_reorder';
@@ -65,9 +59,6 @@ class AdminSync {
 
 	/** Admin page slug registered with WordPress. */
 	const PAGE_SLUG = 'member-directory-sync';
-
-	/** Maximum allowed upload size in bytes (256 KB). */
-	const MAX_UPLOAD_BYTES = 262144;
 
 	/**
 	 * Section key of the most recently saved or reordered section this
@@ -125,10 +116,9 @@ class AdminSync {
 
 			<hr>
 			<h2>Section Editor</h2>
-			<p>Rename, reorder, toggle primary eligibility, or delete sections. Each save validates, backs up, and syncs immediately.</p>
+			<p>Rename, reorder, toggle primary eligibility, or delete sections. All changes are saved to the database &mdash; JSON files are not modified.</p>
 
 			<?php
-			self::maybe_handle_section_edit();
 			self::maybe_handle_reorder();
 			self::maybe_handle_section_delete();
 			self::maybe_handle_toggle_primary();
@@ -137,20 +127,22 @@ class AdminSync {
 			?>
 
 			<hr>
-			<h2>Upload Section Config</h2>
-			<p>Upload a section config JSON directly from your browser. The file is
-			validated before anything is saved — invalid configs are rejected with a
-			specific error message. If the section already exists, the current file is
-			backed up to <code>sections/backups/</code> automatically before overwriting.
-			Valid uploads are saved and synced immediately.</p>
+			<h2>Add Section</h2>
+			<p>Type a lean section config to register a new section. Only <code>key</code> and
+			<code>acf_group_key</code> are required. The JSON file is written to
+			<code>sections/</code> and synced immediately.</p>
 
-			<?php self::maybe_handle_upload(); ?>
+			<?php self::maybe_handle_add_section(); ?>
 
-			<form method="post" action="" enctype="multipart/form-data">
-				<?php wp_nonce_field( self::UPLOAD_NONCE_ACTION, self::UPLOAD_NONCE_FIELD ); ?>
+			<form method="post" action="">
+				<?php wp_nonce_field( self::ADD_NONCE_ACTION, self::ADD_NONCE_FIELD ); ?>
 				<p>
-					<input type="file" name="section_config_file" accept=".json" style="margin-right:8px;">
-					<?php submit_button( 'Upload &amp; Sync', 'secondary', 'upload_submit', false ); ?>
+					<textarea name="add_section_json" rows="5" cols="60"
+						style="font-family:monospace;font-size:12px;white-space:pre;"
+						placeholder='{&#10;    "key": "my_section",&#10;    "acf_group_key": "group_md_xx_my_section"&#10;}'></textarea>
+				</p>
+				<p>
+					<?php submit_button( 'Add Section', 'secondary', 'add_submit', false ); ?>
 				</p>
 			</form>
 
@@ -268,94 +260,8 @@ class AdminSync {
 	}
 
 	/**
-	 * If this is a valid section edit form POST, validate, back up, save, and sync.
-	 * The result is stored in $last_edited_key so render_section_editor() can
-	 * auto-open the affected section's <details> element.
-	 */
-	private static function maybe_handle_section_edit(): void {
-		if ( ! isset( $_POST[ self::EDIT_NONCE_FIELD ] ) ) {
-			return;
-		}
-
-		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST[ self::EDIT_NONCE_FIELD ] ) ), self::EDIT_NONCE_ACTION ) ) {
-			wp_die( esc_html__( 'Security check failed. Please go back and try again.' ) );
-		}
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to run this action.' ) );
-		}
-
-		$section_key = sanitize_key( $_POST['edit_section_key'] ?? '' );
-		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-		$raw         = wp_unslash( $_POST['section_json'] ?? '' );
-
-		self::$last_edited_key = $section_key;
-
-		if ( empty( $raw ) ) {
-			self::render_upload_result( false, 'No JSON content received.' );
-			return;
-		}
-
-		$data = json_decode( $raw, true );
-		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			self::render_upload_result( false, 'Invalid JSON: ' . json_last_error_msg() . '.' );
-			return;
-		}
-
-		$error = SectionRegistry::validate_for_upload( $data );
-		if ( $error !== null ) {
-			self::render_upload_result( false, $error );
-			return;
-		}
-
-		// Compute removed keys before writing (advisory warning only).
-		$removed_keys = SectionRegistry::removed_content_keys( $data );
-
-		$backup_note = self::backup_section_file( $section_key );
-		$pretty_raw  = (string) json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-
-		$sections_dir = SectionRegistry::sections_dir();
-		$target_file  = $sections_dir . $section_key . '.json';
-
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-		if ( file_put_contents( $target_file, $pretty_raw ) === false ) {
-			self::render_upload_result(
-				false,
-				'Could not write to <code>sections/' . esc_html( $section_key ) . '.json</code>. Check server file permissions.'
-			);
-			return;
-		}
-
-		$sync_result   = SectionRegistry::sync();
-		$skipped_count = count( $sync_result['skipped'] ?? [] );
-		$detail        = $backup_note;
-
-		if ( ! empty( $removed_keys ) ) {
-			$detail .= ( $detail ? ' ' : '' )
-				. '<strong style="color:#b94a00;">Warning:</strong> the following field key(s) were removed &mdash; member data stored under them is now inaccessible: '
-				. '<code>' . esc_html( implode( '</code>, <code>', $removed_keys ) ) . '</code>.';
-		}
-
-		if ( $skipped_count > 0 ) {
-			$detail .= ( $detail ? ' ' : '' )
-				. 'Note: ' . esc_html( (string) $skipped_count )
-				. ' other section(s) failed validation during sync &mdash; see results below.';
-		}
-
-		self::render_upload_result(
-			true,
-			'Section <strong>' . esc_html( $section_key ) . '</strong> saved and synced successfully.',
-			$detail
-		);
-
-		if ( $skipped_count > 0 ) {
-			self::render_results( $sync_result );
-		}
-	}
-
-	/**
 	 * If this is a valid reorder POST, swap the order values of two adjacent
-	 * sections, write both files, and re-sync.
+	 * sections in the DB option and refresh the cache.
 	 */
 	private static function maybe_handle_reorder(): void {
 		if ( ! isset( $_POST[ self::REORDER_NONCE_FIELD ] ) ) {
@@ -373,8 +279,6 @@ class AdminSync {
 		$key = sanitize_key( $_POST['reorder_key'] ?? '' );
 		$dir = ( ( $_POST['reorder_direction'] ?? '' ) === 'up' ) ? 'up' : 'down';
 
-		// Reorder directly in the DB option — no JSON file writes needed.
-		// The DB option is the authoritative order source; JSON files carry no order.
 		$stored = get_option( SectionRegistry::OPTION_KEY, [] );
 		$keys   = array_keys( $stored );
 
@@ -387,7 +291,6 @@ class AdminSync {
 		$swap_pos = ( $dir === 'up' ) ? $pos - 1 : $pos + 1;
 
 		if ( $swap_pos < 0 || $swap_pos >= count( $keys ) ) {
-			// Already at the boundary — nothing to do.
 			return;
 		}
 
@@ -402,8 +305,7 @@ class AdminSync {
 
 		update_option( SectionRegistry::OPTION_KEY, $reordered, false );
 
-		// Sync refreshes the in-memory cache so render_section_editor() reflects
-		// the new order within this same request.
+		// Refresh the in-memory cache so the editor reflects the new order.
 		SectionRegistry::sync();
 
 		self::$last_edited_key = $key;
@@ -465,115 +367,8 @@ class AdminSync {
 	}
 
 	/**
-	 * If this is a valid upload form POST, validate, back up, save, and sync.
-	 * Does nothing on a GET request or when another form was submitted.
-	 */
-	private static function maybe_handle_upload(): void {
-		if ( ! isset( $_FILES['section_config_file'] ) ) {
-			return;
-		}
-
-		// Nonce verification.
-		if ( ! isset( $_POST[ self::UPLOAD_NONCE_FIELD ] )
-			|| ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST[ self::UPLOAD_NONCE_FIELD ] ) ), self::UPLOAD_NONCE_ACTION )
-		) {
-			wp_die( esc_html__( 'Security check failed. Please go back and try again.' ) );
-		}
-
-		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_die( esc_html__( 'You do not have permission to run this action.' ) );
-		}
-
-		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-		$file = $_FILES['section_config_file'];
-
-		$upload_error = isset( $file['error'] ) ? (int) $file['error'] : -1;
-		if ( $upload_error !== UPLOAD_ERR_OK ) {
-			self::render_upload_result( false, "Upload failed (PHP error code {$upload_error})." );
-			return;
-		}
-
-		if ( (int) $file['size'] > self::MAX_UPLOAD_BYTES ) {
-			self::render_upload_result( false, 'File exceeds the 256 KB size limit.' );
-			return;
-		}
-
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		$raw = file_get_contents( $file['tmp_name'] );
-		if ( $raw === false ) {
-			self::render_upload_result( false, 'Could not read the uploaded file.' );
-			return;
-		}
-
-		$data = json_decode( $raw, true );
-		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			self::render_upload_result( false, 'Invalid JSON: ' . json_last_error_msg() . '.' );
-			return;
-		}
-
-		// Auto-convert raw ACF exports into section configs.
-		$coerce_note = '';
-		$data        = self::coerce_acf_export( $data, $coerce_note );
-
-		$error = SectionRegistry::validate_for_upload( $data );
-		if ( $error !== null ) {
-			self::render_upload_result( false, $error, $coerce_note );
-			return;
-		}
-
-		$section_key  = $data['key'];
-		$sections_dir = SectionRegistry::sections_dir();
-		$target_file  = $sections_dir . $section_key . '.json';
-
-		// Compute removed keys before writing (advisory warning only).
-		$removed_keys = SectionRegistry::removed_content_keys( $data );
-		$backup_note  = self::backup_section_file( $section_key );
-
-		// Always write the (possibly coerced) pretty-printed version.
-		$write_raw = (string) json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-		if ( file_put_contents( $target_file, $write_raw ) === false ) {
-			self::render_upload_result(
-				false,
-				'Could not write to <code>sections/' . esc_html( $section_key ) . '.json</code>. Check server file permissions.'
-			);
-			return;
-		}
-
-		$sync_result   = SectionRegistry::sync();
-		$skipped_count = count( $sync_result['skipped'] ?? [] );
-		$detail        = $coerce_note;
-
-		if ( $backup_note ) {
-			$detail .= ( $detail ? ' ' : '' ) . $backup_note;
-		}
-
-		if ( ! empty( $removed_keys ) ) {
-			$detail .= ( $detail ? ' ' : '' )
-				. '<strong style="color:#b94a00;">Warning:</strong> the following field key(s) were removed &mdash; member data stored under them is now inaccessible: '
-				. '<code>' . esc_html( implode( '</code>, <code>', $removed_keys ) ) . '</code>.';
-		}
-
-		if ( $skipped_count > 0 ) {
-			$detail .= ( $detail ? ' ' : '' )
-				. 'Note: ' . esc_html( (string) $skipped_count )
-				. ' other section(s) failed validation during sync &mdash; see results below.';
-		}
-
-		self::render_upload_result(
-			true,
-			'Section <strong>' . esc_html( $section_key ) . '</strong> uploaded and synced successfully.',
-			$detail
-		);
-
-		if ( $skipped_count > 0 ) {
-			self::render_results( $sync_result );
-		}
-	}
-
-	/**
-	 * If this is a valid can_be_primary toggle POST, update the JSON file and re-sync.
+	 * If this is a valid can_be_primary toggle POST, update the DB option directly.
+	 * No file I/O — mutable metadata lives in the DB only.
 	 */
 	private static function maybe_handle_toggle_primary(): void {
 		if ( ! isset( $_POST[ self::TOGGLE_PRIMARY_NONCE_FIELD ] ) ) {
@@ -596,33 +391,19 @@ class AdminSync {
 			return;
 		}
 
-		$sections_dir = SectionRegistry::sections_dir();
-		$target_file  = $sections_dir . $section_key . '.json';
+		$stored = get_option( SectionRegistry::OPTION_KEY, [] );
 
-		if ( ! file_exists( $target_file ) ) {
-			self::render_upload_result( false, 'Section file <code>sections/' . esc_html( $section_key ) . '.json</code> not found.' );
+		if ( ! isset( $stored[ $section_key ] ) ) {
+			self::render_upload_result( false, 'Section <strong>' . esc_html( $section_key ) . '</strong> not found in database.' );
 			return;
 		}
 
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		$raw  = file_get_contents( $target_file );
-		$data = json_decode( $raw !== false ? $raw : '', true );
+		$stored[ $section_key ]['can_be_primary'] = $can_be_primary;
+		update_option( SectionRegistry::OPTION_KEY, $stored, false );
 
-		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			self::render_upload_result( false, 'Could not parse section JSON.' );
-			return;
-		}
+		// Refresh in-memory cache.
+		SectionRegistry::load_from_db();
 
-		$data['can_be_primary'] = $can_be_primary;
-		$pretty = (string) json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-		if ( file_put_contents( $target_file, $pretty ) === false ) {
-			self::render_upload_result( false, 'Could not write <code>sections/' . esc_html( $section_key ) . '.json</code>.' );
-			return;
-		}
-
-		SectionRegistry::sync();
 		self::$last_edited_key = $section_key;
 
 		$state = $can_be_primary ? 'enabled' : 'disabled';
@@ -630,9 +411,8 @@ class AdminSync {
 	}
 
 	/**
-	 * If this is a valid rename POST, update the label in the JSON file and re-sync.
-	 * Only the display label is changed — the section key and acf_group_key remain
-	 * untouched. The ACF group title lives in acf-json/ and is managed via ACF admin.
+	 * If this is a valid rename POST, update the label in the DB option directly.
+	 * No file I/O — mutable metadata lives in the DB only.
 	 */
 	private static function maybe_handle_rename(): void {
 		if ( ! isset( $_POST[ self::RENAME_NONCE_FIELD ] ) ) {
@@ -655,36 +435,21 @@ class AdminSync {
 			return;
 		}
 
-		$sections_dir = SectionRegistry::sections_dir();
-		$target_file  = $sections_dir . $section_key . '.json';
+		$stored = get_option( SectionRegistry::OPTION_KEY, [] );
 
-		if ( ! file_exists( $target_file ) ) {
-			self::render_upload_result( false, 'Section file <code>sections/' . esc_html( $section_key ) . '.json</code> not found.' );
+		if ( ! isset( $stored[ $section_key ] ) ) {
+			self::render_upload_result( false, 'Section <strong>' . esc_html( $section_key ) . '</strong> not found in database.' );
 			return;
 		}
 
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-		$raw  = file_get_contents( $target_file );
-		$data = json_decode( $raw !== false ? $raw : '', true );
+		$old_label = $stored[ $section_key ]['label'] ?? $section_key;
 
-		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			self::render_upload_result( false, 'Could not parse section JSON.' );
-			return;
-		}
+		$stored[ $section_key ]['label'] = $new_label;
+		update_option( SectionRegistry::OPTION_KEY, $stored, false );
 
-		$old_label = $data['label'] ?? $section_key;
+		// Refresh in-memory cache.
+		SectionRegistry::load_from_db();
 
-		$data['label'] = $new_label;
-
-		$pretty = (string) json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
-
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-		if ( file_put_contents( $target_file, $pretty ) === false ) {
-			self::render_upload_result( false, 'Could not write <code>sections/' . esc_html( $section_key ) . '.json</code>.' );
-			return;
-		}
-
-		SectionRegistry::sync();
 		self::$last_edited_key = $section_key;
 
 		self::render_upload_result(
@@ -693,61 +458,88 @@ class AdminSync {
 		);
 	}
 
-	// -----------------------------------------------------------------------
-	// Import helpers
-	// -----------------------------------------------------------------------
-
 	/**
-	 * Convert a raw ACF export into a lean section config pointer, or return
-	 * the input unchanged if it already looks like a section config.
-	 *
-	 * ACF exports are top-level JSON arrays: [ { "key": "group_...", ... } ].
-	 * This method detects that shape and extracts only the metadata needed for
-	 * a lean section config (key, label, acf_group_key). The field group itself
-	 * belongs in acf-json/ and is managed by ACF — it is NOT embedded here.
-	 *
-	 * If the export contains multiple groups only the first is used.
-	 *
-	 * @param  mixed  $raw   Decoded JSON value (array or other).
-	 * @param  string &$note Human-readable description of changes made.
-	 * @return array         Section config ready for validate_for_upload().
+	 * If this is a valid Add Section POST, validate, write the JSON file, and sync.
 	 */
-	private static function coerce_acf_export( mixed $raw, string &$note ): array {
-		$note = '';
-
-		// Already a lean section config (or old-format with acf_group) — pass through.
-		if ( is_array( $raw ) && ( array_key_exists( 'acf_group_key', $raw ) || array_key_exists( 'acf_group', $raw ) ) ) {
-			return $raw;
+	private static function maybe_handle_add_section(): void {
+		if ( ! isset( $_POST[ self::ADD_NONCE_FIELD ] ) ) {
+			return;
 		}
 
-		// Must be a numerically-indexed array (ACF export format).
-		if ( ! is_array( $raw ) || ! array_is_list( $raw ) || empty( $raw[0] ) ) {
-			return is_array( $raw ) ? $raw : [];
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST[ self::ADD_NONCE_FIELD ] ) ), self::ADD_NONCE_ACTION ) ) {
+			wp_die( esc_html__( 'Security check failed. Please go back and try again.' ) );
 		}
 
-		$group       = $raw[0];
-		$group_key   = $group['key']   ?? '';
-		$title       = $group['title'] ?? 'Section';
-		$section_key = str_replace( '-', '_', sanitize_key( $title ) );
-
-		$config = [
-			'key'          => $section_key,
-			'label'        => $title,
-			'acf_group_key' => $group_key,
-		];
-
-		$parts = [ 'Auto-converted from ACF export to lean section pointer.' ];
-
-		if ( count( $raw ) > 1 ) {
-			$parts[] = 'Export contained ' . count( $raw ) . ' groups &mdash; only the first (<em>' . esc_html( $title ) . '</em>) was used.';
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to run this action.' ) );
 		}
 
-		$parts[] = 'The field group (<code>' . esc_html( $group_key ) . '</code>) must be present in <code>acf-json/</code> for fields to load at runtime.';
-		$parts[] = 'Review the section key (<code>' . esc_html( $section_key ) . '</code>) in the Section Editor before going live.';
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput
+		$raw = wp_unslash( $_POST['add_section_json'] ?? '' );
 
-		$note = implode( ' ', $parts );
+		if ( empty( trim( $raw ) ) ) {
+			self::render_upload_result( false, 'No JSON content provided.' );
+			return;
+		}
 
-		return $config;
+		$data = json_decode( $raw, true );
+		if ( json_last_error() !== JSON_ERROR_NONE ) {
+			self::render_upload_result( false, 'Invalid JSON: ' . json_last_error_msg() . '.' );
+			return;
+		}
+
+		$error = SectionRegistry::validate_for_upload( $data );
+		if ( $error !== null ) {
+			self::render_upload_result( false, $error );
+			return;
+		}
+
+		$section_key   = sanitize_key( $data['key'] );
+		$acf_group_key = $data['acf_group_key'];
+		$sections_dir  = SectionRegistry::sections_dir();
+		$target_file   = $sections_dir . $section_key . '.json';
+
+		// Check if section already exists.
+		if ( file_exists( $target_file ) ) {
+			self::render_upload_result(
+				false,
+				'Section <strong>' . esc_html( $section_key ) . '</strong> already exists. Delete it first if you want to recreate it.'
+			);
+			return;
+		}
+
+		// Write the lean JSON file (only acf_group_key — key comes from filename).
+		$lean_config = [ 'acf_group_key' => $acf_group_key ];
+		$pretty_raw  = (string) json_encode( $lean_config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+		if ( file_put_contents( $target_file, $pretty_raw . "\n" ) === false ) {
+			self::render_upload_result(
+				false,
+				'Could not write to <code>sections/' . esc_html( $section_key ) . '.json</code>. Check server file permissions.'
+			);
+			return;
+		}
+
+		// If a label was provided, store it in the DB before syncing so sync
+		// picks it up as the existing DB value.
+		if ( ! empty( $data['label'] ) ) {
+			$stored = get_option( SectionRegistry::OPTION_KEY, [] );
+			$stored[ $section_key ] = [
+				'key'            => $section_key,
+				'label'          => sanitize_text_field( $data['label'] ),
+				'can_be_primary' => ! empty( $data['can_be_primary'] ),
+				'acf_group_key'  => $acf_group_key,
+			];
+			update_option( SectionRegistry::OPTION_KEY, $stored, false );
+		}
+
+		$sync_result = SectionRegistry::sync();
+
+		self::render_upload_result(
+			true,
+			'Section <strong>' . esc_html( $section_key ) . '</strong> added and synced successfully.'
+		);
 	}
 
 	// -----------------------------------------------------------------------
@@ -756,13 +548,13 @@ class AdminSync {
 
 	/**
 	 * Render the section editor: a sorted list of <details> elements, one per
-	 * section, each containing a JSON textarea and save/reorder controls.
+	 * section, each with rename, reorder, toggle primary, and delete controls.
 	 */
 	private static function render_section_editor(): void {
 		$sections = SectionRegistry::get_sections();
 
 		if ( empty( $sections ) ) {
-			echo '<p>No sections are currently synced. Upload a section config or run Sync to load sections from the <code>sections/</code> folder.</p>';
+			echo '<p>No sections are currently synced. Add a section below or run Sync to load sections from the <code>sections/</code> folder.</p>';
 			return;
 		}
 
@@ -771,11 +563,11 @@ class AdminSync {
 		foreach ( $sections as $i => $section ) {
 			$key            = $section['key']   ?? '';
 			$label          = $section['label'] ?? $key;
+			$acf_group_key  = $section['acf_group_key'] ?? '';
 			$can_be_primary = ! empty( $section['can_be_primary'] );
 			$is_first       = ( $i === 0 );
 			$is_last        = ( $i === $count - 1 );
 			$open_attr      = ( $key === self::$last_edited_key ) ? ' open' : '';
-			$pretty_json    = (string) json_encode( $section, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 
 			echo '<details' . esc_attr( $open_attr ) . ' style="margin-bottom:8px;border:1px solid #ddd;border-radius:3px;">';
 
@@ -827,10 +619,15 @@ class AdminSync {
 
 			echo '</summary>';
 
-			// --- Edit form --------------------------------------------------
+			// --- Detail content ---------------------------------------------
 			echo '<div style="padding:14px;">';
 
-			// Rename form — updates label and acf_group.title only; key is unchanged.
+			// Read-only info.
+			echo '<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eee;">';
+			echo '<span style="font-size:12px;color:#666;">ACF Group Key: <code>' . esc_html( $acf_group_key ) . '</code></span>';
+			echo '</div>';
+
+			// Rename form.
 			echo '<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eee;">';
 			echo '<label style="font-weight:600;white-space:nowrap;font-size:13px;">Section Label:</label>';
 			echo '<form method="post" action="" style="display:flex;gap:6px;flex:1;" onclick="event.stopPropagation();">';
@@ -841,20 +638,8 @@ class AdminSync {
 			echo '</form>';
 			echo '</div>';
 
-			echo '<form method="post" action="">';
-			wp_nonce_field( self::EDIT_NONCE_ACTION, self::EDIT_NONCE_FIELD );
-			echo '<input type="hidden" name="edit_section_key" value="' . esc_attr( $key ) . '">';
-
-			echo '<textarea name="section_json" rows="28" style="width:100%;font-family:monospace;font-size:12px;white-space:pre;">'
-				. esc_textarea( $pretty_json )
-				. '</textarea>';
-
-			submit_button( 'Save &amp; Sync', 'secondary', 'edit_submit_' . esc_attr( $key ), false );
-
-			echo '</form>';
-
 			// --- Delete form ------------------------------------------------
-			echo '<div style="margin-top:12px;padding-top:12px;border-top:1px solid #eee;">';
+			echo '<div>';
 			echo '<form method="post" action="" style="display:inline;">';
 			wp_nonce_field( self::DELETE_NONCE_ACTION, self::DELETE_NONCE_FIELD );
 			echo '<input type="hidden" name="delete_section_key" value="' . esc_attr( $key ) . '">';

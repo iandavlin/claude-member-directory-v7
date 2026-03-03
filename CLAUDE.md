@@ -6,9 +6,9 @@ WordPress plugin: section-based member profile and directory system powered by A
 ## Build Status
 
 ### Complete
-- `SectionRegistry` — JSON→DB sync (metadata only); runtime DB cache
+- `SectionRegistry` — JSON→DB sync (immutable pointers); runtime DB cache; mutable metadata in DB only
 - `TemplateLoader` — routes `member-directory` single/archive to plugin templates
-- `AdminSync` — admin page that triggers `SectionRegistry::sync()`; section editor UI (rename, reorder, toggle primary, delete)
+- `AdminSync` — admin page that triggers `SectionRegistry::sync()`; section editor UI (rename, reorder, toggle primary, delete); Add Section form
 - `PmpResolver` — PMP waterfall resolution + viewer context + view-as spoofing
 - `FieldRenderer` — field-to-HTML rendering for view mode (text, textarea, url, wysiwyg, image, gallery, file, google_map, true_false, checkbox, radio, taxonomy, select)
 - `GlobalFields` — ACF group for global PMP + primary section controls (**⚠ debug code present — see Known Issues**)
@@ -50,7 +50,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 
 3. **ACF is the field source of truth.** Field groups live entirely in ACF's own database. The plugin never registers, overrides, or caches field groups — no `acf-json/` folder, no `load_json`/`save_json` hooks. Templates call `acf_get_fields( $section['acf_group_key'] )` directly. Editing a field group in ACF admin and clicking Save is all that's needed — changes are live on the next page load.
 
-4. **Section configs are lean metadata pointers.** `sections/*.json` contains only `key`, `label`, `order`, `can_be_primary`, `acf_group_key`. Field definitions live in ACF's database only. Never embed field definitions in section configs or in the plugin.
+4. **Section JSON files are immutable registration-only pointers.** `sections/*.json` contains only `acf_group_key`. The section key is derived from the filename. Mutable metadata (`label`, `can_be_primary`, order) lives in the `member_directory_sections` DB option only, managed through the AdminSync UI. JSON files are never written back to after creation. Field definitions live in ACF's database only.
 
 5. **PMP waterfall order: field → section → global.** `PmpResolver::can_view()` receives all three levels. Author and admin always see everything. Ghost behavior: hidden fields/sections render zero HTML — no empty wrappers.
 
@@ -67,7 +67,9 @@ member-directory.php              Entry point. ACF dependency check. Boots Plugi
 member-directory-architecture.html Primary design reference. Read this when starting work on any new feature.
 includes/
   Plugin.php                  Bootstrap. Registers CPT + hooks. Calls each class init().
-  SectionRegistry.php         Section metadata store. sync() = sections/*.json → DB option.
+  SectionRegistry.php         Section metadata store. sync() = sections/*.json → merge with DB option.
+                              JSON files are immutable (acf_group_key only); mutable metadata
+                              (label, can_be_primary, order) lives in the DB option only.
                               load_from_db() = DB option → in-memory cache.
                               Public API: get_sections(), get_section(), validate_for_upload(),
                               removed_content_keys() (always []), is_system_field().
@@ -77,14 +79,16 @@ includes/
                               AJAX: section save, enabled toggle, section PMP.
   AdminSync.php               Admin page + nonce-protected handler that calls SectionRegistry::sync().
                               Section editor UI: rename label, reorder, toggle can_be_primary, delete.
+                              Add Section form for creating new section pointers inline.
+                              All mutable metadata operations are DB-only — no JSON file writes.
   TemplateLoader.php          template_include filter → plugin templates for member-directory CPT.
   PmpResolver.php             resolve_viewer(), spoof_viewer(), can_view() (waterfall), is_member().
   FieldRenderer.php           render() — field definition + post_id → escaped HTML output.
   DirectoryQuery.php          🔜 Not yet created.
 sections/
-  profile.json                Lean section pointer. { key, label, order, can_be_primary, acf_group_key }
-  discovery.json              Lean section pointer.
-  business.json               Lean section pointer.
+  profile.json                Immutable section pointer. { acf_group_key }. Key from filename.
+  discovery.json              Immutable section pointer.
+  business.json               Immutable section pointer.
 templates/
   single-member-directory.php Single profile. Calls form_head first, then branches edit/view per section.
   archive-member-directory.php Scaffold only — no real implementation.
@@ -110,8 +114,8 @@ tools/
 
 ### Add a new section
 1. Build the field group in ACF admin → click Save (ACF saves to its own DB)
-2. Create `sections/key.json` (5 lines: key, label, order, can_be_primary, acf_group_key)
-3. Run **WP Admin → Member Directory → Sync** once
+2. Use the **Add Section** form in WP Admin → Member Directory Sync (type `key` + `acf_group_key` as JSON), or create `sections/key.json` with just `{ "acf_group_key": "group_md_xx_key" }` and run Sync
+3. Rename, toggle can_be_primary, and reorder via the Section Editor UI (DB-only, no file writes)
 4. Both edit and view surfaces are live
 
 ### Modify fields (add, remove, rename, reorder tabs)
@@ -119,7 +123,7 @@ tools/
 2. Done — ACF saves to its DB, next page load both surfaces reflect the change. No sync needed.
 
 ### Modify section metadata (label, order, can_be_primary)
-- Use the AdminSync UI controls (rename, reorder arrows, checkbox toggle)
+- Use the AdminSync UI controls (rename, reorder arrows, checkbox toggle) — all DB-only, no file writes needed
 
 ### Delete a section
 1. Delete or deactivate the field group in ACF admin
@@ -190,16 +194,13 @@ Any level set to `inherit` passes through to the next. Global is always explicit
 
 ## Section JSON Schema
 
-### Lean section config (`sections/*.json`)
+### Immutable section pointer (`sections/*.json`)
 ```json
 {
-  "key": "business",
-  "label": "Business",
-  "order": 5,
-  "can_be_primary": true,
   "acf_group_key": "group_md_05_business"
 }
 ```
+The section `key` is derived from the filename (`business.json` → `business`). Mutable metadata (`label`, `can_be_primary`, position order) lives in the `member_directory_sections` DB option, managed through the AdminSync UI. JSON files are never modified after creation.
 
 ### ACF field group (managed in ACF admin, stored in ACF's DB)
 Field ordering convention inside each field group:
@@ -229,13 +230,15 @@ Remove once meta box issue resolved:
 
 ## Sections on Disk
 
-| File | Key | Label | order | can_be_primary | ACF group key |
-|------|-----|-------|-------|----------------|---------------|
-| `sections/profile.json` | `profile` | Profile | 1 | true | `group_md_02_profile` |
-| `sections/discovery.json` | `discovery` | Discovery | 3 | false | `group_md_03_discovery` |
-| `sections/business.json` | `business` | Business | 5 | true | `group_md_05_business` |
+| File | Key (from filename) | ACF group key |
+|------|---------------------|---------------|
+| `sections/profile.json` | `profile` | `group_md_02_profile` |
+| `sections/discovery.json` | `discovery` | `group_md_03_discovery` |
+| `sections/business.json` | `business` | `group_md_05_business` |
 
-> **After pulling on the server: run AdminSync only if sections/*.json changed.**
+Label, can_be_primary, and order live in the DB option only (managed via AdminSync UI).
+
+> **After pulling on the server: run AdminSync Sync only if sections/*.json changed.**
 
 ---
 
