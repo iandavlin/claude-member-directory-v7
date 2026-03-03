@@ -1167,10 +1167,11 @@
 	 * @returns {string}
 	 */
 	function computeFieldPmpStatus( fieldPmpEl ) {
-		var storedPmp = fieldPmpEl.dataset.storedPmp || 'inherit';
+		var storedPmp  = fieldPmpEl.dataset.storedPmp || 'inherit';
+		var fieldLabel = fieldPmpEl.dataset.fieldLabel || '';
 
 		if ( storedPmp !== 'inherit' ) {
-			return 'Field override: ' + ( PMP_LABELS[ storedPmp ] || storedPmp );
+			return ( fieldLabel ? fieldLabel + ' · ' : '' ) + 'Field override: ' + ( PMP_LABELS[ storedPmp ] || storedPmp );
 		}
 
 		// Inherit from section -- read the currently active section PMP button.
@@ -1181,11 +1182,11 @@
 		var sectionPmp = activeSectionBtn ? ( activeSectionBtn.dataset.pmp || 'inherit' ) : 'inherit';
 
 		if ( sectionPmp !== 'inherit' ) {
-			return 'Section: ' + ( PMP_LABELS[ sectionPmp ] || sectionPmp );
+			return ( fieldLabel ? fieldLabel + ' · ' : '' ) + 'Section: ' + ( PMP_LABELS[ sectionPmp ] || sectionPmp );
 		}
 
 		// Inherit from global.
-		return 'Global: ' + ( PMP_LABELS[ getGlobalPmp() ] || 'Public' );
+		return ( fieldLabel ? fieldLabel + ' · ' : '' ) + 'Global: ' + ( PMP_LABELS[ getGlobalPmp() ] || 'Public' );
 	}
 
 	/**
@@ -1233,6 +1234,9 @@
 				wrap.dataset.fieldKey     = fieldKey;
 				wrap.dataset.companionKey = companionKey;
 				wrap.dataset.storedPmp    = storedPmp;
+
+				var labelEl = fieldEl.querySelector( ".acf-label label" );
+				wrap.dataset.fieldLabel = labelEl ? labelEl.textContent.trim().replace( /s**$/, "" ) : "";
 
 				var row = document.createElement( 'div' );
 				row.className = 'memdir-field-pmp__row';

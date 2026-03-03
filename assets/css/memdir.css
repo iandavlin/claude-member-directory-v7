@@ -980,7 +980,6 @@ a.memdir-field-value:hover {
 
 .memdir-field-pmp__row {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
   justify-content: flex-end;
   gap: 4px;
@@ -1042,27 +1041,34 @@ a.memdir-field-value:hover {
   font-style: normal;
 }
 
-/* Collapsed: only active-state emoji visible as subtle indicator */
+/* Collapsed: only active-state emoji visible; status always shown */
 .memdir-field-pmp__btn:not(.is-active) {
   display: none;
 }
 
 .memdir-field-pmp:not(:hover) .memdir-field-pmp__btn.is-active {
-  background: transparent;
-  border-color: transparent;
+  width: 30px;
+  height: 30px;
+  background: rgba(151, 169, 124, 0.1);
+  border-color: var(--md-border);
 }
 
+.memdir-field-pmp:not(:hover) .memdir-field-pmp__btn.is-active::before {
+  font-size: 14px;
+}
+
+/* Status always visible, to the left of the button */
 .memdir-field-pmp__status {
-  display: none;
+  order: -1;
+  width: auto;
+  margin-right: 6px;
+  margin-top: 0;
+  white-space: nowrap;
 }
 
-/* Expanded on hover: all buttons + status visible */
+/* Expanded on hover: all buttons visible */
 .memdir-field-pmp:hover .memdir-field-pmp__btn:not(.is-active) {
   display: flex;
-}
-
-.memdir-field-pmp:hover .memdir-field-pmp__status {
-  display: block;
 }
 
 /* ─────────────────────────────────────────────────────────────
