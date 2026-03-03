@@ -50,11 +50,11 @@ body.single-member-directory #content {
 
 /* Admin bar (32px desktop, 46px mobile) + BuddyBoss sticky nav (~60px) + gap. */
 body.admin-bar .memdir-sticky {
-  top: 132px;
+  top: 115px;
 }
 @media screen and (max-width: 782px) {
   body.admin-bar .memdir-sticky {
-    top: 146px;
+    top: 129px;
   }
 }
 
@@ -117,7 +117,7 @@ body.single-member-directory .select2-dropdown--above {
 
 .memdir-sticky {
   position: sticky;
-  top: 100px;
+  top: 85px;
   z-index: 9999;
   background: var(--md-bg);
   border-bottom: 1px solid var(--md-border);
@@ -391,6 +391,9 @@ body.single-member-directory .select2-dropdown--above {
 ───────────────────────────────────────────────────────────── */
 
 .memdir-section-controls {
+  position: sticky;
+  top: 300px; /* overridden at runtime by syncControlsTop() in memdir.js */
+  align-self: start;
   background: var(--section-tint);
   padding: 20px 16px;
   border-radius: 12px;

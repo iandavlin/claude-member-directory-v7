@@ -1300,6 +1300,24 @@
 	}
 
 	// -----------------------------------------------------------------------
+	// 10. Sticky section controls
+	//
+	// The section controls column needs to stick just below the sticky header
+	// zone. We measure .memdir-sticky's rendered height + CSS top at runtime
+	// and apply it as an inline style so it always tracks the real layout.
+	// -----------------------------------------------------------------------
+
+	function syncControlsTop() {
+		var sticky = document.querySelector( '.memdir-sticky' );
+		if ( ! sticky ) { return; }
+		var stickyTop    = parseInt( getComputedStyle( sticky ).top, 10 ) || 0;
+		var controlsTop  = stickyTop + sticky.offsetHeight + 8;
+		document.querySelectorAll( '.memdir-section-controls' ).forEach( function ( el ) {
+			el.style.top = controlsTop + 'px';
+		} );
+	}
+
+	// -----------------------------------------------------------------------
 	// Boot
 	// -----------------------------------------------------------------------
 
@@ -1313,6 +1331,9 @@
 		initFieldPmp();           // inject field PMP controls after section PMP is wired
 		hideEmptySectionPills();  // hide pills for PHP-dropped empty/PMP-blocked sections
 		restoreState();
+		syncControlsTop();
 	} );
+
+	window.addEventListener( 'resize', syncControlsTop );
 
 }() );
