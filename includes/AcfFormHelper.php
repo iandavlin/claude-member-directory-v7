@@ -381,11 +381,15 @@ class AcfFormHelper {
 	 *   'member'   — explicit override: logged-in users only.
 	 *   'private'  — explicit override: author and admin only.
 	 *
+	 * Uses the companion field NAME (not key) for update_field() so the
+	 * save works even if the companion field is not formally registered
+	 * in an ACF field group — ACF falls back to update_post_meta().
+	 *
 	 * Expects $_POST:
-	 *   nonce         — wp_create_nonce( 'md_save_nonce' )
-	 *   post_id       — int, the member-directory post being edited
-	 *   companion_key — string, e.g. 'field_md_business_pmp_name'
-	 *   pmp           — 'inherit' | 'public' | 'member' | 'private'
+	 *   nonce          — wp_create_nonce( 'md_save_nonce' )
+	 *   post_id        — int, the member-directory post being edited
+	 *   companion_name — string, e.g. 'member_directory_field_pmp_business_name'
+	 *   pmp            — 'inherit' | 'public' | 'member' | 'private'
 	 *
 	 * Action: wp_ajax_memdir_ajax_save_field_pmp
 	 */
@@ -394,9 +398,9 @@ class AcfFormHelper {
 			wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
 		}
 
-		$post_id       = isset( $_POST['post_id'] )       ? absint( $_POST['post_id'] )                                        : 0;
-		$companion_key = isset( $_POST['companion_key'] ) ? sanitize_text_field( wp_unslash( $_POST['companion_key'] ) ) : '';
-		$pmp           = isset( $_POST['pmp'] )           ? sanitize_text_field( wp_unslash( $_POST['pmp'] ) )           : '';
+		$post_id        = isset( $_POST['post_id'] )        ? absint( $_POST['post_id'] )                                          : 0;
+		$companion_name = isset( $_POST['companion_name'] ) ? sanitize_text_field( wp_unslash( $_POST['companion_name'] ) ) : '';
+		$pmp            = isset( $_POST['pmp'] )            ? sanitize_text_field( wp_unslash( $_POST['pmp'] ) )            : '';
 
 		if ( ! $post_id || get_post_type( $post_id ) !== 'member-directory' ) {
 			wp_send_json_error( [ 'message' => 'Invalid post.' ], 400 );
@@ -410,13 +414,17 @@ class AcfFormHelper {
 			wp_send_json_error( [ 'message' => 'Invalid PMP value.' ], 400 );
 		}
 
-		// Companion key must start with 'field_' and contain '_pmp_' to be a valid per-field companion.
-		if ( strpos( $companion_key, 'field_' ) !== 0 || ! str_contains( $companion_key, '_pmp_' ) ) {
-			wp_send_json_error( [ 'message' => 'Invalid companion key.' ], 400 );
+		// Companion name must follow the pattern member_directory_field_pmp_{section}_{suffix}.
+		if ( strpos( $companion_name, 'member_directory_field_pmp_' ) !== 0 ) {
+			wp_send_json_error( [ 'message' => 'Invalid companion name.' ], 400 );
 		}
 
-		update_field( $companion_key, $pmp, $post_id );
+		// Save via field name — works whether or not the companion field is
+		// formally registered in an ACF group.  ACF resolves field names to
+		// post meta keys, falling back to update_post_meta() when no field
+		// object exists.  get_field( $companion_name ) will read it back.
+		update_field( $companion_name, $pmp, $post_id );
 
-		wp_send_json_success( [ 'companion_key' => $companion_key, 'pmp' => $pmp ] );
+		wp_send_json_success( [ 'companion_name' => $companion_name, 'pmp' => $pmp ] );
 	}
 }

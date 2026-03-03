@@ -1208,7 +1208,8 @@
 			Object.keys( fieldPmpData ).forEach( function ( fieldKey ) {
 				var data         = fieldPmpData[ fieldKey ];
 				var storedPmp    = data.storedPmp    || 'inherit';
-				var companionKey = data.companionKey || '';
+				var companionKey  = data.companionKey  || '';
+				var companionName = data.companionName || '';
 
 				var fieldEl = section.querySelector( '.acf-field[data-key="' + fieldKey + '"]' );
 				if ( ! fieldEl ) {
@@ -1256,9 +1257,9 @@
 						var pmp    = btn.dataset.pmp || '';
 						var postId = section.dataset.postId || '';
 
-						if ( ! pmp || ! postId || ! companionKey ) {
-							if ( ! companionKey ) {
-								console.warn( 'MemberDirectory: field PMP missing companionKey for', fieldKey );
+						if ( ! pmp || ! postId || ! companionName ) {
+							if ( ! companionName ) {
+								console.warn( 'MemberDirectory: field PMP missing companionName for', fieldKey );
 							}
 							return;
 						}
@@ -1285,7 +1286,7 @@
 						formData.set( 'action',        'memdir_ajax_save_field_pmp' );
 						formData.set( 'nonce',         nonce );
 						formData.set( 'post_id',       postId );
-						formData.set( 'companion_key', companionKey );
+						formData.set( 'companion_name', companionName );
 						formData.set( 'pmp',           pmp );
 
 						fetch( ajaxUrl, {
@@ -1295,7 +1296,16 @@
 						} )
 							.then( function ( response ) { return response.json(); } )
 							.then( function ( data ) {
-								if ( ! data.success ) {
+								if ( data.success ) {
+									// Brief visual confirmation — flash the status text.
+									var savedText = statusSpan.textContent;
+									statusSpan.textContent = '✓ Saved';
+									statusSpan.classList.add( 'memdir-field-pmp__status--saved' );
+									setTimeout( function () {
+										statusSpan.textContent = savedText;
+										statusSpan.classList.remove( 'memdir-field-pmp__status--saved' );
+									}, 1200 );
+								} else {
 									console.error( 'MemberDirectory: field PMP AJAX error', data );
 									// Revert optimistic change.
 									wrap.dataset.storedPmp = prevPmp;

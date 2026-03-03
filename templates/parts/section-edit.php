@@ -95,8 +95,9 @@ foreach ( $raw_fields as $f ) {
 	$stored_pmp = (string) ( get_field( $companion_name, $post_id ) ?: 'inherit' );
 
 	$field_pmp_data[ $fkey ] = [
-		'companionKey' => $companion_key,
-		'storedPmp'    => $stored_pmp,
+		'companionKey'  => $companion_key,
+		'companionName' => $companion_name,
+		'storedPmp'     => $stored_pmp,
 	];
 }
 
