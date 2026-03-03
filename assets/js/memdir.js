@@ -1208,6 +1208,19 @@
 	 * Inject per-field PMP controls into each .acf-field wrapper and wire
 	 * click handlers and AJAX save for all edit-mode sections.
 	 */
+	/**
+	 * Move ACF field instructions from .acf-label to below .acf-input
+	 * so they don't crowd the label row where the PMP controls sit.
+	 */
+	function relocateFieldInstructions() {
+		document.querySelectorAll( '.memdir-section--edit .acf-field > .acf-label > p.description' ).forEach( function ( desc ) {
+			var acfInput = desc.closest( '.acf-field' ).querySelector( '.acf-input' );
+			if ( acfInput ) {
+				acfInput.after( desc );
+			}
+		} );
+	}
+
 	function initFieldPmp() {
 		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
 			var fieldPmpData = {};
@@ -1375,6 +1388,7 @@
 		initSectionSave();
 		initRightPanel();
 		initSectionPmp();
+		relocateFieldInstructions();
 		initFieldPmp();           // inject field PMP controls after section PMP is wired
 		hideEmptySectionPills();  // hide pills for PHP-dropped empty/PMP-blocked sections
 		restoreState();
