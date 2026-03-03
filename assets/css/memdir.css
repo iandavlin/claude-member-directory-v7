@@ -30,6 +30,32 @@ body.single-member-directory #primary {
   width: 100% !important;
 }
 
+/*
+ * Overflow-visible chain: any ancestor with overflow:hidden/auto/scroll breaks
+ * position:sticky. Force visible on the known BuddyBoss wrapper chain so the
+ * sticky zone can stick to the viewport.
+ */
+body.single-member-directory .container,
+body.single-member-directory .bb-grid.site-content-grid,
+body.single-member-directory #primary,
+body.single-member-directory #buddypress,
+body.single-member-directory .entry-content,
+body.single-member-directory .bb-page-content-inner,
+body.single-member-directory .site-content,
+body.single-member-directory #content {
+  overflow: visible !important;
+}
+
+/* Admin bar pushes the viewport top down — match that offset. */
+body.admin-bar .memdir-sticky {
+  top: 32px;
+}
+@media screen and (max-width: 782px) {
+  body.admin-bar .memdir-sticky {
+    top: 46px;
+  }
+}
+
 /* ─────────────────────────────────────────────────────────────
    CSS CUSTOM PROPERTIES
 ───────────────────────────────────────────────────────────── */
