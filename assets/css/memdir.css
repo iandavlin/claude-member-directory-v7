@@ -50,11 +50,11 @@ body.single-member-directory #content {
 
 /* Admin bar (32px desktop, 46px mobile) + BuddyBoss sticky nav (~60px) + gap. */
 body.admin-bar .memdir-sticky {
-  top: 115px;
+  top: 109px;
 }
 @media screen and (max-width: 782px) {
   body.admin-bar .memdir-sticky {
-    top: 129px;
+    top: 123px;
   }
 }
 
@@ -117,10 +117,11 @@ body.single-member-directory .select2-dropdown--above {
 
 .memdir-sticky {
   position: sticky;
-  top: 85px;
+  top: 79px;
   z-index: 9999;
   background: var(--md-bg);
   border-bottom: 1px solid var(--md-border);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -129,7 +130,7 @@ body.single-member-directory .select2-dropdown--above {
 ───────────────────────────────────────────────────────────── */
 
 .memdir-header {
-  padding: 16px 0 10px;
+  padding: 16px 12px 10px;
   position: relative;
 }
 
