@@ -58,7 +58,7 @@ $global_pmp    = get_field( 'member_directory_global_pmp', $post_id ) ?: 'public
 $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 
 ?>
-<div class="memdir-section" data-section="<?php echo esc_attr( $section_key ); ?>">
+<div class="memdir-section" data-section="<?php echo esc_attr( $section_key ); ?>" data-color="<?php echo esc_attr( (string) ( $section_color ?? 0 ) ); ?>">
 
 	<div class="memdir-field-content">
 		<h2 class="memdir-section-title"><?php echo esc_html( $section_label ); ?></h2>

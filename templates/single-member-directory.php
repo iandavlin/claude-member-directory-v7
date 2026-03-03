@@ -99,8 +99,11 @@ $primary_section = get_field( 'member_directory_primary_section', $post_id ) ?: 
 		</div>
 
 		<div class="memdir-sections">
+			<?php $_section_idx = 0; ?>
 			<?php foreach ( $sections as $section ) : ?>
 				<?php
+				$section_color   = ( $_section_idx % 15 ) + 1;
+				$_section_idx++;
 				$section_key     = $section['key'] ?? '';
 				$section_enabled = get_field( 'member_directory_' . $section_key . '_enabled', $post_id );
 

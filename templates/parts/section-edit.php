@@ -120,7 +120,7 @@ $pmp_status_text = ( $section_pmp === 'inherit' )
 $pmp_mode_attr = ( $section_pmp === 'inherit' ) ? 'inherit' : 'override';
 
 ?>
-<div class="memdir-section memdir-section--edit" data-section="<?php echo esc_attr( $section_key ); ?>" data-post-id="<?php echo esc_attr( (string) $post_id ); ?>" data-field-pmp="<?php echo esc_attr( wp_json_encode( $field_pmp_data ) ?: '{}' ); ?>">
+<div class="memdir-section memdir-section--edit" data-section="<?php echo esc_attr( $section_key ); ?>" data-color="<?php echo esc_attr( (string) ( $section_color ?? 0 ) ); ?>" data-post-id="<?php echo esc_attr( (string) $post_id ); ?>" data-field-pmp="<?php echo esc_attr( wp_json_encode( $field_pmp_data ) ?: '{}' ); ?>">
 
 	<div class="memdir-section-controls">
 
