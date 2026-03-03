@@ -128,19 +128,30 @@ class AdminSync {
 
 			<hr>
 			<h2>Add Section</h2>
-			<p>Type a lean section config to register a new section. Only <code>key</code> and
-			<code>acf_group_key</code> are required. The JSON file is written to
-			<code>sections/</code> and synced immediately.</p>
+			<p>Register a new section pointer. The plugin writes the JSON file to <code>sections/</code> and syncs immediately.</p>
 
 			<?php self::maybe_handle_add_section(); ?>
 
 			<form method="post" action="">
 				<?php wp_nonce_field( self::ADD_NONCE_ACTION, self::ADD_NONCE_FIELD ); ?>
-				<p>
-					<textarea name="add_section_json" rows="5" cols="60"
-						style="font-family:monospace;font-size:12px;white-space:pre;"
-						placeholder='{&#10;    "key": "my_section",&#10;    "acf_group_key": "group_md_xx_my_section"&#10;}'></textarea>
-				</p>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><label for="add_section_name">Section Name</label></th>
+						<td>
+							<input type="text" id="add_section_name" name="add_section_name"
+								class="regular-text" placeholder="e.g. Business">
+							<p class="description">Display label. The section key is derived automatically (lowercased, underscores).</p>
+						</td>
+					</tr>
+					<tr>
+						<th scope="row"><label for="add_acf_group_key">ACF Group Key</label></th>
+						<td>
+							<input type="text" id="add_acf_group_key" name="add_acf_group_key"
+								class="regular-text" placeholder="e.g. group_md_05_business">
+							<p class="description">The <code>key</code> value from the ACF field group.</p>
+						</td>
+					</tr>
+				</table>
 				<p>
 					<?php submit_button( 'Add Section', 'secondary', 'add_submit', false ); ?>
 				</p>
@@ -474,28 +485,21 @@ class AdminSync {
 			wp_die( esc_html__( 'You do not have permission to run this action.' ) );
 		}
 
-		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput
-		$raw = wp_unslash( $_POST['add_section_json'] ?? '' );
+		$label         = sanitize_text_field( wp_unslash( $_POST['add_section_name'] ?? '' ) );
+		$acf_group_key = sanitize_text_field( wp_unslash( $_POST['add_acf_group_key'] ?? '' ) );
 
-		if ( empty( trim( $raw ) ) ) {
-			self::render_upload_result( false, 'No JSON content provided.' );
+		if ( empty( $label ) ) {
+			self::render_upload_result( false, 'Section name is required.' );
 			return;
 		}
 
-		$data = json_decode( $raw, true );
-		if ( json_last_error() !== JSON_ERROR_NONE ) {
-			self::render_upload_result( false, 'Invalid JSON: ' . json_last_error_msg() . '.' );
+		if ( empty( $acf_group_key ) ) {
+			self::render_upload_result( false, 'ACF Group Key is required.' );
 			return;
 		}
 
-		$error = SectionRegistry::validate_for_upload( $data );
-		if ( $error !== null ) {
-			self::render_upload_result( false, $error );
-			return;
-		}
-
-		$section_key   = sanitize_key( $data['key'] );
-		$acf_group_key = $data['acf_group_key'];
+		// Derive key from label: lowercase, underscores.
+		$section_key = str_replace( '-', '_', sanitize_key( $label ) );
 		$sections_dir  = SectionRegistry::sections_dir();
 		$target_file   = $sections_dir . $section_key . '.json';
 
@@ -521,18 +525,15 @@ class AdminSync {
 			return;
 		}
 
-		// If a label was provided, store it in the DB before syncing so sync
-		// picks it up as the existing DB value.
-		if ( ! empty( $data['label'] ) ) {
-			$stored = get_option( SectionRegistry::OPTION_KEY, [] );
-			$stored[ $section_key ] = [
-				'key'            => $section_key,
-				'label'          => sanitize_text_field( $data['label'] ),
-				'can_be_primary' => ! empty( $data['can_be_primary'] ),
-				'acf_group_key'  => $acf_group_key,
-			];
-			update_option( SectionRegistry::OPTION_KEY, $stored, false );
-		}
+		// Store the label in the DB before syncing so sync preserves it.
+		$stored = get_option( SectionRegistry::OPTION_KEY, [] );
+		$stored[ $section_key ] = [
+			'key'            => $section_key,
+			'label'          => $label,
+			'can_be_primary' => false,
+			'acf_group_key'  => $acf_group_key,
+		];
+		update_option( SectionRegistry::OPTION_KEY, $stored, false );
 
 		$sync_result = SectionRegistry::sync();
 
