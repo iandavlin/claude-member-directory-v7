@@ -157,6 +157,15 @@ class AdminSync {
 				</p>
 			</form>
 
+			<hr>
+			<h2>Claude Skill</h2>
+			<p>Download the skill file and attach it to a Claude conversation to enrich a bare ACF field group export with the full iPMP apparatus — section system fields, per-field PMP companions, and auto-generated header fields (title, avatar, badge taxonomy, social icons).</p>
+			<p>
+				<a class="button button-primary" href="<?php echo esc_url( plugin_dir_url( dirname( __FILE__ ) ) . 'tools/acf-field-prep.md' ); ?>" download>
+					Download ACF Field Group Prep
+				</a>
+			</p>
+
 		</div>
 		<?php
 	}

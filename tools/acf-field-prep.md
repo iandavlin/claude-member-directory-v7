@@ -1,14 +1,20 @@
 ACF Field Group Prep
 
 You take a bare ACF field group export and enrich it with the full Member Directory
-iPMP apparatus so it works as a section. You also check for a header tab and validate
-its structure against what the sticky header template expects.
+iPMP apparatus so it works as a section. You also detect whether a header tab is
+present and, if so, populate any missing header-slot fields automatically — including
+title, avatar, taxonomy badges, and social icon URL fields.
 
 
 What You Produce
 
-One output: ENRICHED ACF JSON — the original field group with section-level system
-fields prepended and per-field PMP companions injected after every content field.
+One output: ENRICHED ACF JSON — the original field group with:
+  • Section-level system fields prepended
+  • Per-field PMP companions injected after every existing content field
+  • A header tab created (if requested) or detected and populated:
+      title text field, avatar image field, taxonomy badge field(s),
+      social URL fields — each with its own PMP companion
+
 Ready for re-import via WP Admin → Custom Fields → Tools → Import.
 
 After importing, the user adds the section via the plugin's AdminSync page
@@ -36,11 +42,27 @@ Parse the incoming JSON to extract what you can:
   Section key: extract the slug after the last underscore-delimited number segment
                in the group key (group_md_06_workspace → workspace)
 
-Present your interpretation and ask the user to confirm or correct:
+Scan the fields array now for a header tab (any tab whose label contains "header",
+case-insensitive substring match). Record whether one is present.
 
-  Section key:   {key}
-  ACF group key: {group_key} (from the export)
-  Can be primary: ? (ask — yes/no, determines if this section can drive the sticky header)
+Present your interpretation and ask the user to confirm or correct — all in one message:
+
+  Section key:    {key}
+  ACF group key:  {group_key} (from the export)
+  Can be primary: ? (yes/no — determines if this section can drive the sticky header)
+  Add header tab: ? (yes/no — only ask this if NO header tab is already present)
+                    If a header tab already exists, skip this question entirely.
+
+If a header tab IS already present, also ask in the same message:
+  Taxonomy slug(s) for badge pills: ? (comma-separated, e.g. member_category — or "none")
+                                      Skip if taxonomy fields already exist under the tab.
+  Social platforms: ? (comma-separated from: website, linkedin, instagram, twitter,
+                       facebook, youtube, tiktok, vimeo, linktree — or "none")
+                      Skip if url fields already exist under the tab.
+
+If no header tab exists and the user says yes to adding one, ask in a follow-up:
+  Taxonomy slug(s) for badge pills: ?
+  Social platforms: ?
 
 
 Step 2 — Validate Input
@@ -96,7 +118,7 @@ Field 2 — Visibility (4-state iPMP)
   }
 
 
-Step 4 — Inject Per-Field PMP Companions
+Step 4 — Inject Per-Field PMP Companions (existing content fields only)
 
 Walk the fields array sequentially. For each field, decide whether it is a content field
 (gets a companion) or should be skipped.
@@ -134,82 +156,188 @@ Where {suffix} is the portion of the content field's key after "field_md_{key}_"
     Companion name:     member_directory_field_pmp_workspace_description
     Companion label:    Description Visibility
 
+NOTE: This step covers existing content fields from the original export only.
+Newly generated header fields (Step 5) carry their own companions and are not
+re-walked here.
 
-Step 5 — Header Tab Check
 
-Scan all tab fields for one whose label contains the word "header" (case-insensitive,
-substring match — "Header", "Header Info", "HEADER SECTION" all qualify).
+Step 5 — Header Tab: Detect and Populate
 
---- If NO header tab found ---
+5a. Resolve header tab
 
-Report: "No header tab detected. The sticky header will not render content for this
-section (it will fall back to the post title)."
+If a header tab was already present in the export, use it.
 
-If can_be_primary is true, escalate:
-  "⚠ This section can be primary but has no header tab. The sticky header uses the
-   first tab whose label contains 'header' to populate the avatar, title, badges, and
-   social icons. Without one, the header will show only the post title."
+If no header tab was present and the user said YES to adding one, insert a new tab
+field immediately after the two system fields (before any existing tabs):
 
---- If a header tab IS found ---
+  {
+    "key":   "field_md_{key}_tab_header",
+    "label": "{Section Title} Header",
+    "name":  "member_directory_{key}_tab_header",
+    "type":  "tab"
+  }
 
-Collect all content fields (after skip-list filtering) between the header tab and the
-next tab (or end of fields). Map them to the display slots the template expects:
+If no header tab was present and the user said NO to adding one:
+  If can_be_primary:
+    Report: "⚠ This section can be primary but has no header tab. The sticky header
+    will show only the post title. Consider adding a header tab later."
+  Otherwise:
+    Report: "No header tab. The sticky header will not render content for this section."
+  Skip to Step 6.
 
-  Slot          Source                     Match rule
-  ─────────     ────────────────────────   ─────────────────────────────────────
-  Title         First text field           type == "text"
-  Avatar        First image field          type == "image"
-  Badges        All taxonomy fields        type == "taxonomy"
-  Social icons  All url fields             type == "url", name suffix → platform
 
-Social platform detection — the template matches url field names by suffix:
+5b. Identify existing header fields
 
-  Suffix         Platform        Icon
-  ───────        ────────        ─────────────
-  _website       Website         globe stroke
-  _linkedin      LinkedIn        LinkedIn logo
-  _instagram     Instagram       Instagram logo
-  _twitter       X (Twitter)     X logo
-  _facebook      Facebook        Facebook logo
-  _youtube       YouTube         YouTube logo
-  _tiktok        TikTok          TikTok logo
-  _vimeo         Vimeo           Vimeo logo
-  _linktree      Linktree        Linktree logo
+Collect all content fields (after skip-list filtering) currently between the header
+tab and the next tab (or end of fields). Map them to slots:
 
-URL fields whose names don't end with a recognised suffix are silently ignored by the
-template (the link won't appear in the header).
+  Slot          Match rule
+  ─────────     ───────────────────────────────────────────────
+  Title         First text field  (type == "text")
+  Avatar        First image field (type == "image")
+  Badges        All taxonomy fields (type == "taxonomy")
+  Social icons  All url fields (type == "url")
 
-Report a table:
 
-  Slot          Field                                Status
-  ─────────     ──────────────────────────────────   ──────
-  Title         field_md_{key}_name                  ✅ text
-  Avatar        field_md_{key}_photo                 ✅ image
-  Badges        field_md_{key}_category              ✅ taxonomy
-  Social        field_md_{key}_linkedin              ✅ url → LinkedIn
-  Social        field_md_{key}_website               ✅ url → Website
-  Social        field_md_{key}_myspace               ⚠ url — no platform match
+5c. Auto-inject Title (text) and Avatar (image) if missing
+
+Insert these fields at the end of the header tab's content block (after any existing
+header fields, before the next tab or end of array). Each field is followed immediately
+by its PMP companion.
+
+If no text field exists under the header tab:
+
+  Content field:
+  {
+    "key":           "field_md_{key}_name",
+    "label":         "Name",
+    "name":          "member_directory_{key}_name",
+    "type":          "text",
+    "default_value": "",
+    "placeholder":   ""
+  }
+  PMP companion:
+  {
+    "key":           "field_md_{key}_pmp_name",
+    "label":         "Name Visibility",
+    "name":          "member_directory_field_pmp_{key}_name",
+    "type":          "button_group",
+    "choices":       { "inherit": "Inherit", "public": "Public",
+                       "member": "Member", "private": "Private" },
+    "default_value": "inherit",
+    "return_format": "value",
+    "allow_null":    0,
+    "layout":        "horizontal"
+  }
+
+If no image field exists under the header tab:
+
+  Content field:
+  {
+    "key":           "field_md_{key}_photo",
+    "label":         "Photo",
+    "name":          "member_directory_{key}_photo",
+    "type":          "image",
+    "return_format": "array",
+    "preview_size":  "thumbnail",
+    "library":       "all"
+  }
+  PMP companion:
+  {
+    "key":           "field_md_{key}_pmp_photo",
+    "label":         "Photo Visibility",
+    "name":          "member_directory_field_pmp_{key}_photo",
+    "type":          "button_group",
+    "choices":       { "inherit": "Inherit", "public": "Public",
+                       "member": "Member", "private": "Private" },
+    "default_value": "inherit",
+    "return_format": "value",
+    "allow_null":    0,
+    "layout":        "horizontal"
+  }
+
+
+5d. Inject taxonomy badge fields
+
+Skip this step if at least one taxonomy field already exists under the header tab,
+or if the user answered "none" to the taxonomy question.
+
+For each taxonomy slug the user provided, generate and append:
+
+  Content field:
+  {
+    "key":           "field_md_{key}_{taxonomy_slug}",
+    "label":         "{Taxonomy Label}",    ← title-case the slug, replace _ with space
+    "name":          "member_directory_{key}_{taxonomy_slug}",
+    "type":          "taxonomy",
+    "taxonomy":      "{taxonomy_slug}",
+    "field_type":    "multi_select",
+    "return_format": "id",
+    "add_term":      0,
+    "save_terms":    1,
+    "load_terms":    1,
+    "multiple":      0,
+    "allow_null":    0
+  }
+  PMP companion: (same button_group template as above, suffix = {taxonomy_slug})
+
+
+5e. Inject social platform URL fields
+
+Skip this step if at least one url field already exists under the header tab,
+or if the user answered "none" to the social platforms question.
+
+For each platform the user provided, generate and append:
+
+  Content field:
+  {
+    "key":           "field_md_{key}_{platform}",
+    "label":         "{Platform Label}",
+    "name":          "member_directory_{key}_{platform}",
+    "type":          "url",
+    "default_value": "",
+    "placeholder":   ""
+  }
+  PMP companion: (same button_group template as above, suffix = {platform})
+
+Platform label lookup:
+  website → Website     linkedin → LinkedIn    instagram → Instagram
+  twitter → Twitter / X   facebook → Facebook   youtube → YouTube
+  tiktok → TikTok       vimeo → Vimeo          linktree → Linktree
+
+
+5f. Report
+
+After injection, show a summary table of the header tab result:
+
+  Slot          Field                                 Action
+  ─────────     ───────────────────────────────────   ──────────────────────
+  Title         field_md_{key}_name                  ✅ already present / ➕ added
+  Avatar        field_md_{key}_photo                 ✅ already present / ➕ added
+  Badges        field_md_{key}_{taxonomy_slug}        ✅ already present / ➕ added
+  Social        field_md_{key}_linkedin               ✅ already present / ➕ added
+  Social        field_md_{key}_website                ➕ added
+  Social        field_md_{key}_myspace                ⚠ url — no platform match (ignored by header)
 
 Warnings:
-  • Missing text field: "No text field in header tab — title will fall back to the post title."
-  • Missing image field: "No image field in header tab — no avatar will display."
-  • URL with no platform match: "URL field '{name}' has no recognised platform suffix.
-    It will be ignored by the header. Recognised suffixes: _website, _linkedin,
-    _instagram, _twitter, _facebook, _youtube, _tiktok, _vimeo, _linktree."
-  • If can_be_primary and title or avatar missing:
-    "⚠ This section can be primary. A missing title/avatar means the sticky header
-     will look incomplete when this section drives it."
+  • URL fields with no recognised platform suffix will be silently ignored by the
+    header template. Recognised suffixes: _website, _linkedin, _instagram, _twitter,
+    _facebook, _youtube, _tiktok, _vimeo, _linktree.
+  • If can_be_primary and title or avatar are still missing after injection:
+    "⚠ This section can be primary but is missing a title/avatar in the header tab."
 
 
 Step 6 — Summary
 
 Report before outputting:
 
-  System fields added:      2
-  Content fields found:     N
-  PMP companions injected:  N  (must equal content field count)
-  Header tab:               found / not found
-  Total fields in group:    N  (system + tabs + content + companions)
+  System fields added:             2
+  Existing content fields found:   N
+  PMP companions (existing):       N  (must equal existing content field count)
+  Header tab:                      found / added / not added
+  Header fields generated:         N  (new fields injected in Step 5)
+  Header PMP companions:           N  (one per generated header field)
+  Total fields in group:           N  (system + tabs + all content + all companions)
 
 Wait for user confirmation before outputting.
 
@@ -223,7 +351,9 @@ Output the complete field group JSON wrapped in an array (ACF import format):
       "key": "{acf_group_key}",
       "title": "{title}",
       "fields": [
-        ... system fields, then original fields interleaved with PMP companions ...
+        ... system fields, then original fields interleaved with PMP companions,
+            with header tab (if added) and generated header fields inserted
+            in position order ...
       ],
       "location": [
         [
@@ -261,6 +391,21 @@ Naming Reference
                                                               e.g.  member_directory_field_pmp_workspace_description
   System field keys:   field_md_{key}_enabled                 (true_false toggle)
                        field_md_{key}_privacy_mode            (4-state button_group)
+  Header tab key:      field_md_{key}_tab_header              (if generated)
+
+Social platform suffixes (template matches url field names by suffix):
+
+  Suffix         Platform        Icon
+  ───────        ────────        ─────────────
+  _website       Website         globe stroke
+  _linkedin      LinkedIn        LinkedIn logo
+  _instagram     Instagram       Instagram logo
+  _twitter       X (Twitter)     X logo
+  _facebook      Facebook        Facebook logo
+  _youtube       YouTube         YouTube logo
+  _tiktok        TikTok          TikTok logo
+  _vimeo         Vimeo           Vimeo logo
+  _linktree      Linktree        Linktree logo
 
 
 Drop-In Shortcut
@@ -270,6 +415,9 @@ If the user pastes a raw ACF JSON export alongside a short command like "prep th
 
   1. Skip the step-by-step preamble.
   2. Derive section key from the group key.
-  3. Ask only for can_be_primary (one quick question).
-  4. Run Steps 2–7 in one pass.
+  3. Ask in a single message:
+       - can_be_primary (yes/no)
+       - If no header tab found: add one? (yes/no)
+       - If header tab found or user says yes: taxonomy slug(s)? / social platforms?
+  4. Run Steps 2–7 in one pass after receiving answers.
   5. If a section name was given in the command, pre-fill the key accordingly.
