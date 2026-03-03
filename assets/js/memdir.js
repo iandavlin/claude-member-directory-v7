@@ -603,9 +603,13 @@
 		// hidden it via inline style when its section was absent from the DOM.
 		newPrimaryPill.style.display = '';
 
+		// Track disabled state before clearing it — when a disabled section is
+		// promoted to primary, show All Sections view instead of just that section.
+		var wasDisabled = newPrimaryPill.classList.contains( 'memdir-pill--disabled' );
+
 		// Primary sections are always enabled. If the promoted pill was previously
 		// disabled, clear that state, show its section, update the badge, and persist.
-		if ( newPrimaryPill.classList.contains( 'memdir-pill--disabled' ) ) {
+		if ( wasDisabled ) {
 			newPrimaryPill.classList.remove( 'memdir-pill--disabled' );
 
 			var newPrimarySection = document.querySelector(
@@ -648,8 +652,9 @@
 			sticky.dataset.primarySection = newPrimaryKey;
 		}
 
-		// Navigate to the new primary so it becomes the active single-section view.
-		activatePill( newPrimaryKey );
+		// When a disabled section was just promoted, show all sections so the user
+		// sees the full profile; otherwise navigate to the new primary.
+		activatePill( wasDisabled ? 'all' : newPrimaryKey );
 	}
 
 	// -----------------------------------------------------------------------
