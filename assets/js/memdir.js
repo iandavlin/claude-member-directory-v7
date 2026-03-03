@@ -63,6 +63,17 @@
 			tabButtons.forEach( function ( btn ) {
 				btn.addEventListener( 'click', function () {
 					activateTab( section, btn );
+
+					// Anchor scroll to the top of the section so switching from
+					// a tall tab to a short one does not jump to another section.
+					var sticky = document.querySelector( '.memdir-sticky' );
+					var offset = sticky
+						? ( parseInt( getComputedStyle( sticky ).top, 10 ) || 0 ) + sticky.offsetHeight + 8
+						: 0;
+					var rect = section.getBoundingClientRect();
+					if ( rect.top < offset ) {
+						window.scrollBy( 0, rect.top - offset );
+					}
 				} );
 			} );
 		} );
