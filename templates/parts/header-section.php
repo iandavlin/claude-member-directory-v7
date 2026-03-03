@@ -162,6 +162,12 @@ foreach ( $header_fields as $f ) {
 	}
 }
 
+// Fallback avatar: section default_avatar if member hasn't set one.
+if ( ! $found_image && ! empty( $section['default_avatar'] ) ) {
+	$image_value = (int) $section['default_avatar'];
+	$found_image = true;
+}
+
 // Fallback title: post title.
 if ( empty( $title_value ) ) {
 	$title_value = (string) get_the_title( $post_id );

@@ -106,6 +106,28 @@ class SectionRegistry {
 	}
 
 	/**
+	 * Update a single metadata field for one section in the DB option.
+	 *
+	 * Used by AdminSync to set default_avatar and similar mutable values
+	 * without running a full sync.
+	 */
+	public static function update_section_meta( string $key, string $field, mixed $value ): bool {
+		$sections = get_option( self::OPTION_KEY, [] );
+
+		if ( ! isset( $sections[ $key ] ) ) {
+			return false;
+		}
+
+		$sections[ $key ][ $field ] = $value;
+		update_option( self::OPTION_KEY, $sections, false );
+
+		// Refresh in-memory cache.
+		self::$sections = $sections;
+
+		return true;
+	}
+
+	/**
 	 * SYNC — read all JSON files from sections/ and merge with the DB option.
 	 *
 	 * Called only from the admin sync action, never on a regular page load.
@@ -174,6 +196,7 @@ class SectionRegistry {
 				'label'          => $existing['label'] ?? ( $data['label'] ?? ucfirst( $key ) ),
 				'can_be_primary' => $existing['can_be_primary'] ?? ( $data['can_be_primary'] ?? false ),
 				'acf_group_key'  => $acf_group_key,
+				'default_avatar' => $existing['default_avatar'] ?? null,
 			];
 
 			$loaded[] = $filename;

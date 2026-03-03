@@ -57,6 +57,12 @@ class AdminSync {
 	/** Nonce field name in rename forms. */
 	const RENAME_NONCE_FIELD = 'member_directory_rename_nonce';
 
+	/** Nonce action used to validate default avatar upload/remove submissions. */
+	const AVATAR_NONCE_ACTION = 'member_directory_default_avatar';
+
+	/** Nonce field name in avatar upload/remove forms. */
+	const AVATAR_NONCE_FIELD = 'member_directory_avatar_nonce';
+
 	/** Admin page slug registered with WordPress. */
 	const PAGE_SLUG = 'member-directory-sync';
 
@@ -123,6 +129,8 @@ class AdminSync {
 			self::maybe_handle_section_delete();
 			self::maybe_handle_toggle_primary();
 			self::maybe_handle_rename();
+			self::maybe_handle_avatar_upload();
+			self::maybe_handle_avatar_remove();
 			self::render_section_editor();
 			?>
 
@@ -400,6 +408,94 @@ class AdminSync {
 	}
 
 	/**
+	 * Handle default avatar upload for a section.
+	 *
+	 * One image in, one image out: uploads the file, stores the attachment ID
+	 * in section metadata, and deletes the previous attachment if present.
+	 */
+	private static function maybe_handle_avatar_upload(): void {
+		if ( ! isset( $_POST[ self::AVATAR_NONCE_FIELD ] ) || ! isset( $_POST['avatar_upload_key'] ) ) {
+			return;
+		}
+
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST[ self::AVATAR_NONCE_FIELD ] ) ), self::AVATAR_NONCE_ACTION ) ) {
+			wp_die( esc_html__( 'Security check failed. Please go back and try again.' ) );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to run this action.' ) );
+		}
+
+		$section_key = sanitize_key( $_POST['avatar_upload_key'] ?? '' );
+
+		if ( empty( $section_key ) || empty( $_FILES['default_avatar_file'] ) || empty( $_FILES['default_avatar_file']['name'] ) ) {
+			return;
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+
+		// Get old attachment ID before uploading.
+		$section = SectionRegistry::get_section( $section_key );
+		$old_id  = (int) ( $section['default_avatar'] ?? 0 );
+
+		$attachment_id = media_handle_upload( 'default_avatar_file', 0 );
+
+		if ( is_wp_error( $attachment_id ) ) {
+			self::render_upload_result( false, 'Upload failed: ' . esc_html( $attachment_id->get_error_message() ) );
+			return;
+		}
+
+		SectionRegistry::update_section_meta( $section_key, 'default_avatar', $attachment_id );
+
+		// Delete old attachment (one in, one out).
+		if ( $old_id && $old_id !== $attachment_id ) {
+			wp_delete_attachment( $old_id, true );
+		}
+
+		self::$last_edited_key = $section_key;
+
+		self::render_upload_result( true, 'Default avatar uploaded for <strong>' . esc_html( $section_key ) . '</strong>.' );
+	}
+
+	/**
+	 * Handle default avatar removal for a section.
+	 */
+	private static function maybe_handle_avatar_remove(): void {
+		if ( ! isset( $_POST[ self::AVATAR_NONCE_FIELD ] ) || ! isset( $_POST['avatar_remove_key'] ) ) {
+			return;
+		}
+
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST[ self::AVATAR_NONCE_FIELD ] ) ), self::AVATAR_NONCE_ACTION ) ) {
+			wp_die( esc_html__( 'Security check failed. Please go back and try again.' ) );
+		}
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to run this action.' ) );
+		}
+
+		$section_key = sanitize_key( $_POST['avatar_remove_key'] ?? '' );
+
+		if ( empty( $section_key ) ) {
+			return;
+		}
+
+		$section = SectionRegistry::get_section( $section_key );
+		$old_id  = (int) ( $section['default_avatar'] ?? 0 );
+
+		SectionRegistry::update_section_meta( $section_key, 'default_avatar', null );
+
+		if ( $old_id ) {
+			wp_delete_attachment( $old_id, true );
+		}
+
+		self::$last_edited_key = $section_key;
+
+		self::render_upload_result( true, 'Default avatar removed for <strong>' . esc_html( $section_key ) . '</strong>.' );
+	}
+
+	/**
 	 * If this is a valid Add Section POST, validate, write the JSON file, and sync.
 	 */
 	private static function maybe_handle_add_section(): void {
@@ -556,6 +652,35 @@ class AdminSync {
 			// Read-only info.
 			echo '<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eee;">';
 			echo '<span style="font-size:12px;color:#666;">ACF Group Key: <code>' . esc_html( $acf_group_key ) . '</code></span>';
+			echo '</div>';
+
+			// Default avatar.
+			$avatar_id  = (int) ( $section['default_avatar'] ?? 0 );
+			$avatar_url = $avatar_id ? wp_get_attachment_image_url( $avatar_id, 'thumbnail' ) : '';
+
+			echo '<div style="margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid #eee;">';
+			echo '<label style="font-weight:600;white-space:nowrap;font-size:13px;display:block;margin-bottom:6px;">Default Avatar:</label>';
+
+			if ( $avatar_url ) {
+				echo '<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">';
+				echo '<img src="' . esc_url( $avatar_url ) . '" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:1px solid #ddd;">';
+				echo '<form method="post" action="" style="display:inline;" onclick="event.stopPropagation();">';
+				wp_nonce_field( self::AVATAR_NONCE_ACTION, self::AVATAR_NONCE_FIELD );
+				echo '<input type="hidden" name="avatar_remove_key" value="' . esc_attr( $key ) . '">';
+				echo '<button type="submit" class="button" style="color:#b94a00;border-color:#b94a00;" '
+					. 'onclick="return confirm(\'Remove the default avatar for this section?\')">Remove</button>';
+				echo '</form>';
+				echo '</div>';
+			} else {
+				echo '<p style="font-size:12px;color:#999;margin:0 0 6px;">None set.</p>';
+			}
+
+			echo '<form method="post" action="" enctype="multipart/form-data" style="display:flex;align-items:center;gap:6px;" onclick="event.stopPropagation();">';
+			wp_nonce_field( self::AVATAR_NONCE_ACTION, self::AVATAR_NONCE_FIELD );
+			echo '<input type="hidden" name="avatar_upload_key" value="' . esc_attr( $key ) . '">';
+			echo '<input type="file" name="default_avatar_file" accept="image/*" style="font-size:12px;">';
+			submit_button( 'Upload', 'small', 'avatar_upload_' . esc_attr( $key ), false );
+			echo '</form>';
 			echo '</div>';
 
 			// Rename form.
