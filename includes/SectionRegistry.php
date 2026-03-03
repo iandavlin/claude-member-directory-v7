@@ -203,6 +203,12 @@ class SectionRegistry {
 			return;
 		}
 
+		// Sort by the 'order' field so sections render in the intended sequence
+		// (profile=1, discovery=3, business=5) rather than glob's alphabetical order.
+		uasort( $stored, static function ( array $a, array $b ): int {
+			return ( $a['order'] ?? PHP_INT_MAX ) <=> ( $b['order'] ?? PHP_INT_MAX );
+		} );
+
 		self::$sections = $stored;
 	}
 

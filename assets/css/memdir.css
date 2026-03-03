@@ -124,93 +124,39 @@ body.single-member-directory .select2-dropdown--above {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   HEADER
+   HEADER — modern spread layout
+   Identity (avatar + name) left, badges + social icons right.
 ───────────────────────────────────────────────────────────── */
 
 .memdir-header {
-  padding: 20px 0 12px;
+  padding: 16px 0 10px;
   position: relative;
 }
 
-.memdir-header__eyebrow {
-  font-family: var(--md-font);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--md-text-muted);
-  margin: 0 0 6px;
-}
-
-.memdir-header__title {
-  font-family: var(--md-font);
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--md-text);
-  margin: 0 0 4px;
-  line-height: 1.2;
-}
-
-.memdir-header__subline {
-  font-size: 14px;
-  color: var(--md-text-muted);
-  margin: 0;
-  min-height: 20px; /* placeholder height */
-}
-
-.memdir-header__social {
-  display: flex;
-  gap: 10px;
-  margin-top: 8px;
-}
-
-.memdir-header__badges {
-  position: absolute;
-  top: 20px;
-  right: 0;
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.memdir-header__badge {
-  font-family: var(--md-font);
-  font-size: 11px;
-  font-weight: 500;
-  padding: 4px 10px;
-  border-radius: var(--md-radius-pill);
-  border: 1px solid var(--md-border);
-  background: var(--md-white);
-  color: var(--md-text-muted);
-  white-space: nowrap;
-}
-
-.memdir-header__badge--edit {
-  border-color: var(--md-green-sage);
-  color: var(--md-green-dark);
-  background: rgba(151, 169, 124, 0.1);
-}
-
-.memdir-header__badge--viewing {
-  border-color: var(--md-border);
-  color: var(--md-text-muted);
-}
-
-/* Header — image + text flex layout */
+/* Main flex row — spreads identity left, meta right */
 .memdir-header__body {
   display: flex;
-  align-items: flex-start;
-  gap: 16px;
+  align-items: center;
+  gap: 24px;
 }
 
-.memdir-header__image-wrap {
+/* Identity cluster: avatar + name side by side */
+.memdir-header__identity {
+  display: flex;
+  align-items: center;
+  gap: 14px;
   flex-shrink: 0;
-  width: 72px;
-  height: 72px;
+}
+
+.memdir-header__avatar-wrap {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   overflow: hidden;
-  border: 2px solid var(--md-border);
+  border: 2px solid var(--md-green-pale);
   background: var(--md-bg);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
 }
 
 .memdir-header__avatar {
@@ -221,61 +167,112 @@ body.single-member-directory .select2-dropdown--above {
 }
 
 .memdir-header__text {
-  flex: 1;
   min-width: 0;
 }
 
-/* Taxonomy badge pills inside the header */
+.memdir-header__title {
+  font-family: var(--md-font);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--md-text);
+  margin: 0;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+
+.memdir-header__eyebrow {
+  font-family: var(--md-font);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--md-green-sage);
+  margin: 2px 0 0;
+}
+
+/* Meta cluster: badges + divider + social — pushed right */
+.memdir-header__meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Vertical divider between badges and social */
+.memdir-header__divider {
+  width: 1px;
+  height: 24px;
+  background: var(--md-border);
+  flex-shrink: 0;
+}
+
+/* Taxonomy badge pills */
 .memdir-header__taxo {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 6px;
+  align-items: center;
 }
 
 .memdir-header__taxo-badge {
   font-family: var(--md-font);
   font-size: 11px;
   font-weight: 500;
-  padding: 3px 9px;
+  padding: 3px 10px;
   border-radius: var(--md-radius-pill);
   border: 1px solid var(--md-border);
   background: var(--md-white);
   color: var(--md-text-muted);
   white-space: nowrap;
+  line-height: 1.4;
 }
 
 /* Social icon links */
+.memdir-header__social {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
 .memdir-social-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   border: 1px solid var(--md-border);
   background: var(--md-white);
   color: var(--md-text-muted);
-  font-size: 14px;
   text-decoration: none;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
   flex-shrink: 0;
+}
+
+.memdir-social-link svg {
+  display: block;
 }
 
 .memdir-social-link:hover {
   border-color: var(--md-green-sage);
   color: var(--md-green-dark);
   background: rgba(151, 169, 124, 0.1);
+  transform: translateY(-1px);
 }
 
 /* Per-platform hover accent colours */
-.memdir-social-link--linkedin:hover   { border-color: #0a66c2; color: #0a66c2; }
-.memdir-social-link--instagram:hover  { border-color: #e1306c; color: #e1306c; }
-.memdir-social-link--twitter:hover    { border-color: #1da1f2; color: #1da1f2; }
-.memdir-social-link--facebook:hover   { border-color: #1877f2; color: #1877f2; }
-.memdir-social-link--youtube:hover    { border-color: #ff0000; color: #ff0000; }
-.memdir-social-link--tiktok:hover     { border-color: #010101; color: #010101; }
-.memdir-social-link--vimeo:hover      { border-color: #1ab7ea; color: #1ab7ea; }
+.memdir-social-link--linkedin:hover   { border-color: #0a66c2; color: #0a66c2; background: rgba(10,102,194,0.06); }
+.memdir-social-link--instagram:hover  { border-color: #e1306c; color: #e1306c; background: rgba(225,48,108,0.06); }
+.memdir-social-link--twitter:hover    { border-color: #1da1f2; color: #1da1f2; background: rgba(29,161,242,0.06); }
+.memdir-social-link--facebook:hover   { border-color: #1877f2; color: #1877f2; background: rgba(24,119,242,0.06); }
+.memdir-social-link--youtube:hover    { border-color: #ff0000; color: #ff0000; background: rgba(255,0,0,0.06); }
+.memdir-social-link--tiktok:hover     { border-color: #010101; color: #010101; background: rgba(1,1,1,0.06); }
+.memdir-social-link--vimeo:hover      { border-color: #1ab7ea; color: #1ab7ea; background: rgba(26,183,234,0.06); }
+.memdir-social-link--linktree:hover   { border-color: #43e55e; color: #43e55e; background: rgba(67,229,94,0.06); }
 
 /* ─────────────────────────────────────────────────────────────
    PILL NAVIGATION
@@ -1021,9 +1018,17 @@ a.memdir-field-value:hover {
     grid-template-columns: 1fr;
   }
 
-  .memdir-header__badges {
-    position: static;
-    margin-top: 8px;
+  .memdir-header__body {
+    flex-wrap: wrap;
+  }
+
+  .memdir-header__meta {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .memdir-header__title {
+    max-width: none;
   }
 
   .memdir-pills {
