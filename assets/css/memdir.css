@@ -150,8 +150,8 @@ body.single-member-directory .select2-dropdown--above {
 
 .memdir-header__avatar-wrap {
   flex-shrink: 0;
-  width: 56px;
-  height: 56px;
+  width: 75px;
+  height: 75px;
   border-radius: 50%;
   overflow: hidden;
   border: 2px solid var(--md-green-pale);
@@ -368,28 +368,28 @@ body.single-member-directory .select2-dropdown--above {
 
 /* Fallback tint for sections without a color assignment */
 .memdir-section {
-  --section-tint:       hsl(96, 25%, 91%);
-  --section-field-tint: hsl(96, 25%, 96%);
+  --section-tint:       hsl(96, 25%, 95%);
+  --section-field-tint: hsl(96, 25%, 95%);
 }
 
 /* ── Section colour palette ── 15 tint sets assigned via data-color.
    Hues alternate warm/cool for maximum contrast between neighbours.
    All derived from the brand gold → sage → olive range.            */
-.memdir-section[data-color="1"]  { --section-tint: hsl(36, 70%, 90%);  --section-field-tint: hsl(36, 70%, 96%);  }
-.memdir-section[data-color="2"]  { --section-tint: hsl(104, 28%, 90%); --section-field-tint: hsl(104, 28%, 96%); }
-.memdir-section[data-color="3"]  { --section-tint: hsl(48, 58%, 90%);  --section-field-tint: hsl(48, 58%, 96%);  }
-.memdir-section[data-color="4"]  { --section-tint: hsl(88, 32%, 90%);  --section-field-tint: hsl(88, 32%, 96%);  }
-.memdir-section[data-color="5"]  { --section-tint: hsl(64, 35%, 90%);  --section-field-tint: hsl(64, 35%, 96%);  }
-.memdir-section[data-color="6"]  { --section-tint: hsl(115, 20%, 90%); --section-field-tint: hsl(115, 20%, 96%); }
-.memdir-section[data-color="7"]  { --section-tint: hsl(42, 55%, 90%);  --section-field-tint: hsl(42, 55%, 96%);  }
-.memdir-section[data-color="8"]  { --section-tint: hsl(96, 30%, 90%);  --section-field-tint: hsl(96, 30%, 96%);  }
-.memdir-section[data-color="9"]  { --section-tint: hsl(54, 45%, 90%);  --section-field-tint: hsl(54, 45%, 96%);  }
-.memdir-section[data-color="10"] { --section-tint: hsl(78, 22%, 90%);  --section-field-tint: hsl(78, 22%, 96%);  }
-.memdir-section[data-color="11"] { --section-tint: hsl(110, 25%, 90%); --section-field-tint: hsl(110, 25%, 96%); }
-.memdir-section[data-color="12"] { --section-tint: hsl(72, 30%, 90%);  --section-field-tint: hsl(72, 30%, 96%);  }
-.memdir-section[data-color="13"] { --section-tint: hsl(100, 20%, 90%); --section-field-tint: hsl(100, 20%, 96%); }
-.memdir-section[data-color="14"] { --section-tint: hsl(85, 25%, 90%);  --section-field-tint: hsl(85, 25%, 96%);  }
-.memdir-section[data-color="15"] { --section-tint: hsl(105, 16%, 90%); --section-field-tint: hsl(105, 16%, 96%); }
+.memdir-section[data-color="1"]  { --section-tint: hsl(36, 70%, 95%);  --section-field-tint: hsl(36, 70%, 95%);  }
+.memdir-section[data-color="2"]  { --section-tint: hsl(104, 28%, 95%); --section-field-tint: hsl(104, 28%, 95%); }
+.memdir-section[data-color="3"]  { --section-tint: hsl(48, 58%, 95%);  --section-field-tint: hsl(48, 58%, 95%);  }
+.memdir-section[data-color="4"]  { --section-tint: hsl(88, 32%, 95%);  --section-field-tint: hsl(88, 32%, 95%);  }
+.memdir-section[data-color="5"]  { --section-tint: hsl(64, 35%, 95%);  --section-field-tint: hsl(64, 35%, 95%);  }
+.memdir-section[data-color="6"]  { --section-tint: hsl(115, 20%, 95%); --section-field-tint: hsl(115, 20%, 95%); }
+.memdir-section[data-color="7"]  { --section-tint: hsl(42, 55%, 95%);  --section-field-tint: hsl(42, 55%, 95%);  }
+.memdir-section[data-color="8"]  { --section-tint: hsl(96, 30%, 95%);  --section-field-tint: hsl(96, 30%, 95%);  }
+.memdir-section[data-color="9"]  { --section-tint: hsl(54, 45%, 95%);  --section-field-tint: hsl(54, 45%, 95%);  }
+.memdir-section[data-color="10"] { --section-tint: hsl(78, 22%, 95%);  --section-field-tint: hsl(78, 22%, 95%);  }
+.memdir-section[data-color="11"] { --section-tint: hsl(110, 25%, 95%); --section-field-tint: hsl(110, 25%, 95%); }
+.memdir-section[data-color="12"] { --section-tint: hsl(72, 30%, 95%);  --section-field-tint: hsl(72, 30%, 95%);  }
+.memdir-section[data-color="13"] { --section-tint: hsl(100, 20%, 95%); --section-field-tint: hsl(100, 20%, 95%); }
+.memdir-section[data-color="14"] { --section-tint: hsl(85, 25%, 95%);  --section-field-tint: hsl(85, 25%, 95%);  }
+.memdir-section[data-color="15"] { --section-tint: hsl(105, 16%, 95%); --section-field-tint: hsl(105, 16%, 95%); }
 
 /* ─────────────────────────────────────────────────────────────
    SECTION CONTROLS (left column)
@@ -947,6 +947,7 @@ a.memdir-field-value:hover {
 .memdir-section--edit .acf-form .acf-form-submit {
   display: none;
 }
+
 
 /* ─────────────────────────────────────────────────────────────
    PER-FIELD PMP CONTROLS (injected by JS after each ACF field)
