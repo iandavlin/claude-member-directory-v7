@@ -1491,6 +1491,20 @@
 			dialog.addEventListener( 'click', function ( e ) {
 				if ( e.target === dialog ) { dialog.close(); }
 			} );
+
+			// Save button inside modal.
+			var modalSave = document.createElement( 'button' );
+			modalSave.type = 'button';
+			modalSave.className = 'memdir-modal-save';
+			modalSave.textContent = 'Save';
+			dialog.appendChild( modalSave );
+
+			modalSave.addEventListener( 'click', function () {
+				var sBtn = section.querySelector( '.memdir-section-save' );
+				var ban  = section.querySelector( '.memdir-unsaved-banner' );
+				if ( sBtn ) { saveSection( section, sBtn, ban ); }
+				dialog.close();
+			} );
 		} );
 	}
 
@@ -1570,6 +1584,20 @@
 
 			dialog.addEventListener( 'click', function ( e ) {
 				if ( e.target === dialog ) { dialog.close(); }
+			} );
+
+			// Save button inside modal.
+			var avatarSave = document.createElement( 'button' );
+			avatarSave.type = 'button';
+			avatarSave.className = 'memdir-modal-save';
+			avatarSave.textContent = 'Save';
+			dialog.appendChild( avatarSave );
+
+			avatarSave.addEventListener( 'click', function () {
+				var sBtn = section.querySelector( '.memdir-section-save' );
+				var ban  = section.querySelector( '.memdir-unsaved-banner' );
+				if ( sBtn ) { saveSection( section, sBtn, ban ); }
+				dialog.close();
 			} );
 		} );
 	}

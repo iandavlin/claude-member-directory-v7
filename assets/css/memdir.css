@@ -1156,6 +1156,27 @@ dialog.memdir-social-modal::backdrop {
   padding: 8px 0;
 }
 
+/* Shared modal save button */
+.memdir-modal-save {
+  display: block;
+  width: calc(100% - 40px);
+  margin: 0 20px 16px;
+  padding: 10px 0;
+  font-family: var(--md-font);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--md-white);
+  background: var(--md-green-sage);
+  border: none;
+  border-radius: var(--md-radius);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.memdir-modal-save:hover {
+  background: var(--md-green-dark);
+}
+
 /* ─────────────────────────────────────────────────────────────
    AVATAR / HEADER IMAGE MODAL
 ───────────────────────────────────────────────────────────── */
