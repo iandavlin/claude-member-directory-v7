@@ -50,12 +50,22 @@ body.single-member-directory #content {
 
 /* Admin bar (32px desktop, 46px mobile) + BuddyBoss sticky nav (~60px) + gap. */
 body.admin-bar .memdir-sticky {
-  top: 102px;
+  top: 132px;
 }
 @media screen and (max-width: 782px) {
   body.admin-bar .memdir-sticky {
-    top: 116px;
+    top: 146px;
   }
+}
+
+/*
+ * ACF select2 dropdowns default to a very high z-index and paint over the
+ * sticky header. Cap them at 500 so the sticky (9999) always wins.
+ */
+body.single-member-directory .select2-container--open .select2-dropdown,
+body.single-member-directory .select2-dropdown--below,
+body.single-member-directory .select2-dropdown--above {
+  z-index: 500 !important;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -107,8 +117,8 @@ body.admin-bar .memdir-sticky {
 
 .memdir-sticky {
   position: sticky;
-  top: 70px;
-  z-index: 1000;
+  top: 100px;
+  z-index: 9999;
   background: var(--md-bg);
   border-bottom: 1px solid var(--md-border);
 }
