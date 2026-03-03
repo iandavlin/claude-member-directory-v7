@@ -954,28 +954,17 @@ a.memdir-field-value:hover {
    PER-FIELD PMP CONTROLS (injected by JS into .acf-label row)
 ───────────────────────────────────────────────────────────── */
 
-/* Make the ACF label a flex row so PMP buttons sit beside the field name */
+/* Position anchor for absolute PMP controls */
 .memdir-section--edit .acf-field > .acf-label {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.memdir-section--edit .acf-field > .acf-label > label {
-  flex: 1;
-  min-width: 0;
-}
-
-/* Push description (if any) to its own row */
-.memdir-section--edit .acf-field > .acf-label > p.description {
-  width: 100%;
-  margin-top: 2px;
+  position: relative;
 }
 
 .memdir-field-pmp {
-  margin-left: auto;
+  position: absolute;
+  right: 0;
+  top: 0;
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
 }
 
 .memdir-field-pmp__row {
