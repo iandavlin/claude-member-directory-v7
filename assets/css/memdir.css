@@ -1068,6 +1068,94 @@ a.memdir-field-value:hover {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   SOCIAL LINKS MODAL
+───────────────────────────────────────────────────────────── */
+
+.memdir-social-modal__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 12px;
+  padding: 7px 14px;
+  font-family: var(--md-font);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--md-text);
+  background: var(--md-white);
+  border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.memdir-social-modal__trigger:hover {
+  border-color: var(--md-green-sage);
+  background: rgba(151, 169, 124, 0.08);
+}
+
+dialog.memdir-social-modal {
+  border: none;
+  border-radius: 12px;
+  padding: 0;
+  max-width: 520px;
+  width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  background: var(--md-white);
+}
+
+dialog.memdir-social-modal::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.memdir-social-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--md-border);
+}
+
+.memdir-social-modal__title {
+  font-family: var(--md-font);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--md-text);
+}
+
+.memdir-social-modal__close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--md-text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.memdir-social-modal__close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--md-text);
+}
+
+.memdir-social-modal__body {
+  padding: 16px 20px 20px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+/* ACF fields inside the modal — tighten spacing */
+.memdir-social-modal__body .acf-field {
+  padding: 8px 0;
+}
+
+/* ─────────────────────────────────────────────────────────────
    RESPONSIVE
 ───────────────────────────────────────────────────────────── */
 

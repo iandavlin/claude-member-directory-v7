@@ -1367,6 +1367,104 @@
 	// and apply it as an inline style so it always tracks the real layout.
 	// -----------------------------------------------------------------------
 
+	// -----------------------------------------------------------------------
+	// Social Links Modal
+	// -----------------------------------------------------------------------
+
+	var SOCIAL_SUFFIXES = [
+		'_website', '_linkedin', '_instagram', '_twitter', '_facebook',
+		'_youtube', '_tiktok', '_vimeo', '_linktree'
+	];
+
+	function isSocialField( fieldEl ) {
+		var name = fieldEl.dataset.name || '';
+		var type = fieldEl.dataset.type || '';
+		if ( type !== 'url' ) { return false; }
+		for ( var s = 0; s < SOCIAL_SUFFIXES.length; s++ ) {
+			if ( name.length > SOCIAL_SUFFIXES[ s ].length &&
+				name.substring( name.length - SOCIAL_SUFFIXES[ s ].length ) === SOCIAL_SUFFIXES[ s ] ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	function initSocialModal() {
+		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
+			var fieldContent = section.querySelector( '.memdir-field-content' );
+			if ( ! fieldContent ) { return; }
+
+			// Collect social URL fields.
+			var socialFields = [];
+			fieldContent.querySelectorAll( '.acf-field[data-key]' ).forEach( function ( field ) {
+				if ( isSocialField( field ) ) {
+					socialFields.push( field );
+				}
+			} );
+
+			if ( ! socialFields.length ) { return; }
+
+			// Build modal.
+			var dialog = document.createElement( 'dialog' );
+			dialog.className = 'memdir-social-modal';
+
+			var header = document.createElement( 'div' );
+			header.className = 'memdir-social-modal__header';
+
+			var title = document.createElement( 'h3' );
+			title.className = 'memdir-social-modal__title';
+			title.textContent = 'Social Links';
+
+			var closeBtn = document.createElement( 'button' );
+			closeBtn.type = 'button';
+			closeBtn.className = 'memdir-social-modal__close';
+			closeBtn.setAttribute( 'aria-label', 'Close' );
+			closeBtn.innerHTML = '&times;';
+
+			header.appendChild( title );
+			header.appendChild( closeBtn );
+			dialog.appendChild( header );
+
+			var body = document.createElement( 'div' );
+			body.className = 'memdir-social-modal__body';
+
+			// Move social fields into the modal body.
+			socialFields.forEach( function ( field ) {
+				body.appendChild( field );
+			} );
+
+			dialog.appendChild( body );
+			fieldContent.appendChild( dialog );
+
+			// Trigger button.
+			var trigger = document.createElement( 'button' );
+			trigger.type = 'button';
+			trigger.className = 'memdir-social-modal__trigger';
+			trigger.textContent = 'Edit Social Links';
+
+			// Insert trigger after the section subtitle.
+			var subtitle = fieldContent.querySelector( '.memdir-section-subtitle' );
+			if ( subtitle ) {
+				subtitle.after( trigger );
+			} else {
+				fieldContent.prepend( trigger );
+			}
+
+			// Wire events.
+			trigger.addEventListener( 'click', function () {
+				dialog.showModal();
+			} );
+
+			closeBtn.addEventListener( 'click', function () {
+				dialog.close();
+			} );
+
+			dialog.addEventListener( 'click', function ( e ) {
+				if ( e.target === dialog ) { dialog.close(); }
+			} );
+		} );
+	}
+
 	function syncControlsTop() {
 		var sticky = document.querySelector( '.memdir-sticky' );
 		if ( ! sticky ) { return; }
@@ -1390,6 +1488,7 @@
 		initSectionPmp();
 		relocateFieldInstructions();
 		initFieldPmp();           // inject field PMP controls after section PMP is wired
+		initSocialModal();        // move social URL fields into modal dialogs
 		hideEmptySectionPills();  // hide pills for PHP-dropped empty/PMP-blocked sections
 		restoreState();
 		syncControlsTop();
