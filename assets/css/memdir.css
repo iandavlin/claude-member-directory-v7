@@ -35,6 +35,8 @@ body.single-member-directory #primary {
  * position:sticky. Force visible on the known BuddyBoss wrapper chain so the
  * sticky zone can stick to the viewport.
  */
+body.single-member-directory #page,
+body.single-member-directory .site,
 body.single-member-directory .container,
 body.single-member-directory .bb-grid.site-content-grid,
 body.single-member-directory #primary,
