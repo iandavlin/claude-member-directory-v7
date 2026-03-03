@@ -305,9 +305,12 @@ class AcfFormHelper {
 			wp_send_json_error( [ 'message' => 'Primary section cannot be disabled.' ], 400 );
 		}
 
-		// Save via the ACF field key so ACF formats it as true_false (0 → get_field returns false).
-		$field_key = 'field_md_' . $section_key . '_enabled';
-		update_field( $field_key, $enabled ? 1 : 0, $post_id );
+		// Save via the ACF field name so the value is always stored under the
+		// meta key that get_field( 'member_directory_{key}_enabled' ) reads.
+		// Using the name (not the key) guarantees a round-trip even when the
+		// ACF field group hasn't been created for this section yet.
+		$field_name = 'member_directory_' . $section_key . '_enabled';
+		update_field( $field_name, $enabled ? 1 : 0, $post_id );
 
 		wp_send_json_success( [
 			'section_key' => $section_key,
@@ -361,8 +364,10 @@ class AcfFormHelper {
 			wp_send_json_error( [ 'message' => 'Invalid PMP value.' ], 400 );
 		}
 
-		// Single 4-state field — one write, no legacy privacy_level companion.
-		update_field( 'field_md_' . $section_key . '_privacy_mode', $pmp, $post_id );
+		// Single 4-state field — save via the field name so the meta key matches
+		// what get_field( 'member_directory_{key}_privacy_mode' ) reads.
+		$field_name = 'member_directory_' . $section_key . '_privacy_mode';
+		update_field( $field_name, $pmp, $post_id );
 
 		wp_send_json_success( [ 'section_key' => $section_key, 'pmp' => $pmp ] );
 	}
