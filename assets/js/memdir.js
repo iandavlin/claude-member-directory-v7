@@ -389,10 +389,9 @@
 					var reloadTabBtn = section.querySelector( '.memdir-section-controls__tab-item.is-active' );
 					var reloadTabLabel = reloadTabBtn ? reloadTabBtn.textContent.trim() : '';
 					setTimeout( function () {
-						// Disable ACF's form-change unload warning before navigating.
-						if ( typeof acf !== 'undefined' && acf.unload ) {
-							acf.unload.active = false;
-						}
+						// Strip ACF's beforeunload warning before navigating.
+						window.onbeforeunload = null;
+						if ( typeof jQuery !== 'undefined' ) { jQuery( window ).off( 'beforeunload' ); }
 						var reloadUrl = new URL( window.location.href );
 						reloadUrl.searchParams.set( 'active_section', reloadSectionKey );
 						reloadUrl.searchParams.set( '_t', Date.now().toString() );
