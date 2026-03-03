@@ -407,6 +407,16 @@ body.single-member-directory .select2-dropdown--above {
   margin: 0 0 12px;
 }
 
+.memdir-section-controls__pmp-heading {
+  font-family: var(--md-font);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--md-text-muted);
+  margin: 16px 0 6px;
+}
+
 .memdir-section-controls__pmp {
   display: flex;
   flex-direction: row;

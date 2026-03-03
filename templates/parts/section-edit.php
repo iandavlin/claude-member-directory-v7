@@ -125,15 +125,6 @@ $pmp_mode_attr = ( $section_pmp === 'inherit' ) ? 'inherit' : 'override';
 
 		<p class="memdir-section-controls__title"><?php echo esc_html( $section_label ); ?></p>
 
-		<div class="memdir-section-controls__pmp">
-			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--inherit<?php echo $section_pmp === 'inherit'  ? ' is-active' : ''; ?>" data-pmp="inherit" aria-label="Inherit global setting"></button>
-			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--public<?php  echo $section_pmp === 'public'   ? ' is-active' : ''; ?>" data-pmp="public"  aria-label="Public"></button>
-			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--member<?php  echo $section_pmp === 'member'   ? ' is-active' : ''; ?>" data-pmp="member"  aria-label="Members only"></button>
-			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--private<?php echo $section_pmp === 'private'  ? ' is-active' : ''; ?>" data-pmp="private" aria-label="Private"></button>
-		</div>
-
-		<p class="memdir-section-controls__pmp-status" data-pmp-mode="<?php echo esc_attr( $pmp_mode_attr ); ?>"><?php echo esc_html( $pmp_status_text ); ?></p>
-
 		<div class="memdir-unsaved-banner" style="display:none">
 			You have unsaved changes in this section.
 		</div>
@@ -154,6 +145,17 @@ $pmp_mode_attr = ( $section_pmp === 'inherit' ) ? 'inherit' : 'override';
 		<button type="button" class="memdir-section-save" data-section="<?php echo esc_attr( $section_key ); ?>">
 			Save <?php echo esc_html( $section_label ); ?>
 		</button>
+
+		<p class="memdir-section-controls__pmp-heading">Section Default Visibility</p>
+
+		<div class="memdir-section-controls__pmp">
+			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--inherit<?php echo $section_pmp === 'inherit'  ? ' is-active' : ''; ?>" data-pmp="inherit" aria-label="Inherit global setting"></button>
+			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--public<?php  echo $section_pmp === 'public'   ? ' is-active' : ''; ?>" data-pmp="public"  aria-label="Public"></button>
+			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--member<?php  echo $section_pmp === 'member'   ? ' is-active' : ''; ?>" data-pmp="member"  aria-label="Members only"></button>
+			<button type="button" class="memdir-section-controls__pmp-btn memdir-section-controls__pmp-btn--private<?php echo $section_pmp === 'private'  ? ' is-active' : ''; ?>" data-pmp="private" aria-label="Private"></button>
+		</div>
+
+		<p class="memdir-section-controls__pmp-status" data-pmp-mode="<?php echo esc_attr( $pmp_mode_attr ); ?>"><?php echo esc_html( $pmp_status_text ); ?></p>
 
 	</div>
 

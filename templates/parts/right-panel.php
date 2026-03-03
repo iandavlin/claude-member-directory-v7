@@ -58,7 +58,7 @@ $primary_capable = array_filter(
 			   class="memdir-panel__view-btn<?php echo $view_as === 'public' ? ' is-active' : ''; ?>">Public</a>
 		</div>
 
-		<p class="memdir-panel__label">GLOBAL DEFAULT</p>
+		<p class="memdir-panel__label">GLOBAL DEFAULT VISIBILITY</p>
 
 		<button class="memdir-panel__global-btn<?php echo $global_pmp === 'public'  ? ' memdir-panel__global-btn--active' : ''; ?>" data-pmp="public">
 			<span class="memdir-panel__global-icon">🌐</span> Public

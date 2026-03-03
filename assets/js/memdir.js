@@ -1159,7 +1159,7 @@
 		var storedPmp = fieldPmpEl.dataset.storedPmp || 'inherit';
 
 		if ( storedPmp !== 'inherit' ) {
-			return 'Field: ' + ( PMP_LABELS[ storedPmp ] || storedPmp );
+			return 'Field override: ' + ( PMP_LABELS[ storedPmp ] || storedPmp );
 		}
 
 		// Inherit from section -- read the currently active section PMP button.
@@ -1257,6 +1257,9 @@
 						var postId = section.dataset.postId || '';
 
 						if ( ! pmp || ! postId || ! companionKey ) {
+							if ( ! companionKey ) {
+								console.warn( 'MemberDirectory: field PMP missing companionKey for', fieldKey );
+							}
 							return;
 						}
 
@@ -1304,6 +1307,12 @@
 							} )
 							.catch( function ( err ) {
 								console.error( 'MemberDirectory: field PMP AJAX failed', err );
+								// Revert optimistic change on network failure.
+								wrap.dataset.storedPmp = prevPmp;
+								row.querySelectorAll( '.memdir-field-pmp__btn' ).forEach( function ( b ) {
+									b.classList.toggle( 'is-active', b.dataset.pmp === prevPmp );
+								} );
+								statusSpan.textContent = computeFieldPmpStatus( wrap );
 							} );
 					} );
 				} );
