@@ -48,13 +48,13 @@ body.single-member-directory #content {
   overflow: visible !important;
 }
 
-/* Admin bar pushes the viewport top down — match that offset. */
+/* Admin bar pushes the viewport top down — match that offset + 8px gap. */
 body.admin-bar .memdir-sticky {
-  top: 32px;
+  top: 40px;
 }
 @media screen and (max-width: 782px) {
   body.admin-bar .memdir-sticky {
-    top: 46px;
+    top: 54px;
   }
 }
 
@@ -107,8 +107,8 @@ body.admin-bar .memdir-sticky {
 
 .memdir-sticky {
   position: sticky;
-  top: 0;
-  z-index: 100;
+  top: 8px;
+  z-index: 400;
   background: var(--md-bg);
   border-bottom: 1px solid var(--md-border);
 }
