@@ -1264,6 +1264,18 @@ dialog.memdir-header-modal::backdrop {
   background: var(--md-green-dark);
 }
 
+.memdir-header-modal__avatar-btn--delete {
+  background: transparent;
+  color: #b91c1c;
+  border: 1px solid #b91c1c;
+  margin-top: 8px;
+}
+
+.memdir-header-modal__avatar-btn--delete:hover {
+  background: #b91c1c;
+  color: #fff;
+}
+
 /* Select2 is destroyed inside taxonomy modals — no select2 styles needed */
 
 /* Custom taxonomy search box (replaces select2) */

@@ -1806,6 +1806,48 @@
 				uploadBtn.textContent = 'Choose New Photo';
 				avFragment.appendChild( uploadBtn );
 
+				var deleteBtn = document.createElement( 'button' );
+				deleteBtn.type = 'button';
+				deleteBtn.className = 'memdir-header-modal__avatar-btn memdir-header-modal__avatar-btn--delete';
+				deleteBtn.textContent = 'Delete Photo';
+				if ( ! avatarImg || ! avatarImg.src ) { deleteBtn.style.display = 'none'; }
+				avFragment.appendChild( deleteBtn );
+
+				deleteBtn.addEventListener( 'click', function () {
+					if ( ! confirm( 'Remove your profile photo?' ) ) { return; }
+
+					avStatus.textContent = 'Removing…';
+					deleteBtn.disabled = true;
+					uploadBtn.disabled = true;
+
+					var fd = new FormData();
+					fd.append( 'action',  'md_save_section' );
+					fd.append( 'nonce',   window.mdAjax.nonce );
+					fd.append( 'post_id', postId );
+					fd.append( 'acf[' + imageFieldKey + ']', '' );
+
+					fetch( window.mdAjax.ajaxurl, { method: 'POST', body: fd } )
+						.then( function ( r ) { return r.json(); } )
+						.then( function ( res ) {
+							if ( res.success ) {
+								avPreview.src = '';
+								avPreview.style.display = 'none';
+								if ( avatarImg ) { avatarImg.src = ''; avatarImg.style.display = 'none'; }
+								avStatus.textContent = 'Photo removed.';
+								deleteBtn.style.display = 'none';
+							} else {
+								avStatus.textContent = 'Error: ' + ( res.data && res.data.message ? res.data.message : 'Remove failed.' );
+							}
+							deleteBtn.disabled = false;
+							uploadBtn.disabled = false;
+						} )
+						.catch( function () {
+							avStatus.textContent = 'Network error.';
+							deleteBtn.disabled = false;
+							uploadBtn.disabled = false;
+						} );
+				} );
+
 				var avDialog = createMiniModal( 'Update Photo', [], {
 					customContent: avFragment,
 					modifier: 'avatar',
@@ -1833,8 +1875,9 @@
 							if ( res.success && res.data && res.data.url ) {
 								avPreview.src = res.data.url;
 								avPreview.style.display = '';
-								if ( avatarImg ) { avatarImg.src = res.data.url; }
+								if ( avatarImg ) { avatarImg.src = res.data.url; avatarImg.style.display = ''; }
 								avStatus.textContent = 'Photo updated.';
+								deleteBtn.style.display = '';
 							} else {
 								avStatus.textContent = 'Error: ' + ( res.data && res.data.message ? res.data.message : 'Upload failed.' );
 							}
