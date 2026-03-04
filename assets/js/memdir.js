@@ -1403,6 +1403,8 @@
 			var selectElement = acfField.querySelector( 'select' );
 			if ( ! selectElement ) { return; }
 
+			var fieldKey = acfField.dataset.key || '';
+
 			// Destroy select2 and hide the entire ACF input wrapper
 			var acfInput = acfField.querySelector( '.acf-input' );
 			if ( typeof jQuery !== 'undefined' && jQuery.fn.select2 ) {
@@ -1414,13 +1416,11 @@
 			var wrapper = document.createElement( 'div' );
 			wrapper.className = 'memdir-taxo-search';
 
-			// Create input
 			var input = document.createElement( 'input' );
 			input.type = 'text';
 			input.className = 'memdir-taxo-search__input';
-			input.placeholder = 'Type to search...';
+			input.placeholder = 'Type to search…';
 
-			// Create results container
 			var results = document.createElement( 'div' );
 			results.className = 'memdir-taxo-search__results';
 
@@ -1428,58 +1428,101 @@
 			wrapper.appendChild( results );
 			acfField.appendChild( wrapper );
 
-			// Build option list from select
-			var allOptions = Array.from( selectElement.options ).filter( function ( opt ) {
-				return opt.value && opt.value !== '';
-			} );
-
-			// Show currently selected value
+			// Show currently selected value (read from existing <option>)
 			function updateSelectedDisplay() {
-				var selectedVal = selectElement.value;
-				var selectedOpt = allOptions.find( function ( o ) { return o.value == selectedVal; } );
-				input.value = selectedOpt ? selectedOpt.text : '';
+				var selectedOpt = selectElement.querySelector( 'option:checked' );
+				if ( selectedOpt && selectedOpt.value ) {
+					input.value = selectedOpt.textContent.trim();
+				} else {
+					input.value = '';
+				}
 			}
 			updateSelectedDisplay();
 
-			// Filter and display results on input
+			// Debounce timer
+			var debounceTimer = null;
+
+			// AJAX search for taxonomy terms via ACF endpoint
+			function searchTerms( query ) {
+				results.innerHTML = '<div class="memdir-taxo-search__no-results">Searching…</div>';
+				results.style.display = 'block';
+
+				var ajaxUrl = ( typeof acf !== 'undefined' && acf.get ) ? acf.get( 'ajaxurl' ) : ( window.ajaxurl || '/wp-admin/admin-ajax.php' );
+				var nonce   = ( typeof acf !== 'undefined' && acf.get ) ? acf.get( 'nonce' ) : '';
+
+				var formData = new FormData();
+				formData.append( 'action', 'acf/fields/taxonomy/query' );
+				formData.append( 'field_key', fieldKey );
+				formData.append( 's', query );
+				formData.append( 'nonce', nonce );
+				formData.append( 'paged', '1' );
+
+				fetch( ajaxUrl, {
+					method: 'POST',
+					credentials: 'same-origin',
+					body: formData
+				} )
+				.then( function ( res ) { return res.json(); } )
+				.then( function ( data ) {
+					results.innerHTML = '';
+
+					var items = ( data && data.results ) ? data.results : [];
+
+					if ( items.length === 0 ) {
+						results.innerHTML = '<div class="memdir-taxo-search__no-results">No matches</div>';
+						results.style.display = 'block';
+						return;
+					}
+
+					items.forEach( function ( term ) {
+						var item = document.createElement( 'div' );
+						item.className = 'memdir-taxo-search__result-item';
+						item.textContent = term.text || term.name || '';
+						item.dataset.id = term.id || '';
+
+						item.addEventListener( 'click', function () {
+							// Set the select value
+							var existing = selectElement.querySelector( 'option[value="' + term.id + '"]' );
+							if ( ! existing ) {
+								var opt = document.createElement( 'option' );
+								opt.value = term.id;
+								opt.textContent = term.text || term.name || '';
+								opt.selected = true;
+								selectElement.appendChild( opt );
+							} else {
+								existing.selected = true;
+							}
+							selectElement.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+							input.value = term.text || term.name || '';
+							results.innerHTML = '';
+							results.style.display = 'none';
+						} );
+
+						results.appendChild( item );
+					} );
+
+					results.style.display = 'block';
+				} )
+				.catch( function ( err ) {
+					console.error( 'Taxonomy search error:', err );
+					results.innerHTML = '<div class="memdir-taxo-search__no-results">Search error</div>';
+				} );
+			}
+
+			// Debounced input handler
 			input.addEventListener( 'input', function () {
-				var query = input.value.toLowerCase().trim();
-				results.innerHTML = '';
+				var query = input.value.trim();
+				clearTimeout( debounceTimer );
 
 				if ( ! query ) {
+					results.innerHTML = '';
 					results.style.display = 'none';
 					return;
 				}
 
-				var matches = allOptions.filter( function ( opt ) {
-					return opt.text.toLowerCase().indexOf( query ) !== -1;
-				} );
-
-				if ( matches.length === 0 ) {
-					results.innerHTML = '<div class="memdir-taxo-search__no-results">No matches</div>';
-					results.style.display = 'block';
-					return;
-				}
-
-				matches.forEach( function ( opt ) {
-					var item = document.createElement( 'div' );
-					item.className = 'memdir-taxo-search__result-item';
-					item.textContent = opt.text;
-					item.style.cursor = 'pointer';
-
-					item.addEventListener( 'click', function () {
-						selectElement.value = opt.value;
-						// Trigger change so ACF knows
-						selectElement.dispatchEvent( new Event( 'change', { bubbles: true } ) );
-						updateSelectedDisplay();
-						results.innerHTML = '';
-						results.style.display = 'none';
-					} );
-
-					results.appendChild( item );
-				} );
-
-				results.style.display = 'block';
+				debounceTimer = setTimeout( function () {
+					searchTerms( query );
+				}, 250 );
 			} );
 
 			// Close results on blur (delay so click can register)
