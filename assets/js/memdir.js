@@ -1399,9 +1399,16 @@
 
 	
 		// Helper: Create custom taxonomy search box (replaces select2)
-		function createTaxonomySearch( selectElement ) {
-			// Hide the select
-			selectElement.style.display = 'none';
+		function createTaxonomySearch( acfField ) {
+			var selectElement = acfField.querySelector( 'select' );
+			if ( ! selectElement ) { return; }
+
+			// Destroy select2 and hide the entire ACF input wrapper
+			var acfInput = acfField.querySelector( '.acf-input' );
+			if ( typeof jQuery !== 'undefined' && jQuery.fn.select2 ) {
+				try { jQuery( selectElement ).select2( 'destroy' ); } catch ( e ) { /* ok */ }
+			}
+			if ( acfInput ) { acfInput.style.display = 'none'; }
 
 			// Create search wrapper
 			var wrapper = document.createElement( 'div' );
@@ -1419,14 +1426,14 @@
 
 			wrapper.appendChild( input );
 			wrapper.appendChild( results );
-			selectElement.parentNode.insertBefore( wrapper, selectElement );
+			acfField.appendChild( wrapper );
 
-			// Get all available options from select
+			// Build option list from select
 			var allOptions = Array.from( selectElement.options ).filter( function ( opt ) {
 				return opt.value && opt.value !== '';
 			} );
 
-			// Track selected value
+			// Show currently selected value
 			function updateSelectedDisplay() {
 				var selectedVal = selectElement.value;
 				var selectedOpt = allOptions.find( function ( o ) { return o.value == selectedVal; } );
@@ -1462,6 +1469,8 @@
 
 					item.addEventListener( 'click', function () {
 						selectElement.value = opt.value;
+						// Trigger change so ACF knows
+						selectElement.dispatchEvent( new Event( 'change', { bubbles: true } ) );
 						updateSelectedDisplay();
 						results.innerHTML = '';
 						results.style.display = 'none';
@@ -1473,11 +1482,11 @@
 				results.style.display = 'block';
 			} );
 
-			// Close results on blur
+			// Close results on blur (delay so click can register)
 			input.addEventListener( 'blur', function () {
 				setTimeout( function () {
 					results.style.display = 'none';
-				}, 150 );
+				}, 200 );
 			} );
 
 			return wrapper;
@@ -1826,10 +1835,10 @@
 					// (AJAX search, formatters, etc.) while adding dropdownParent
 					// so the dropdown renders inside the dialog, not behind its backdrop.
 					// Initialize custom search boxes for taxonomy fields
-					taxoDialog.querySelectorAll( '.acf-field[data-type="taxonomy"] select' ).forEach( function ( select ) {
+					taxoDialog.querySelectorAll( '.acf-field[data-type="taxonomy"]' ).forEach( function ( acfField ) {
 						// Only create once
-						if ( ! select.previousElementSibling || ! select.previousElementSibling.classList.contains( 'memdir-taxo-search' ) ) {
-							createTaxonomySearch( select );
+						if ( ! acfField.querySelector( '.memdir-taxo-search' ) ) {
+							createTaxonomySearch( acfField );
 						}
 					} );
 					var firstInput = taxoDialog.querySelector( '.memdir-taxo-search__input' );

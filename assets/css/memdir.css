@@ -1264,46 +1264,7 @@ dialog.memdir-header-modal::backdrop {
   background: var(--md-green-dark);
 }
 
-/* Select2 dropdown inside dialog — must render above backdrop */
-dialog.memdir-header-modal .select2-container--open .select2-dropdown {
-  z-index: 100001 !important;
-}
-
-/* Style select2 as text input with placeholder (no dropdown UI) */
-dialog.memdir-header-modal .select2-container {
-  width: 100% !important;
-}
-
-dialog.memdir-header-modal .select2-selection--single {
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  height: auto;
-  padding: 8px 12px;
-  background: var(--md-white);
-}
-
-/* Hide the dropdown arrow */
-dialog.memdir-header-modal .select2-selection--single .select2-selection__arrow {
-  display: none;
-}
-
-/* Style search input to look like placeholder text */
-dialog.memdir-header-modal .select2-selection--single .select2-selection__rendered {
-  padding: 0;
-  color: #666;
-}
-
-dialog.memdir-header-modal .select2-search__field {
-  padding: 0;
-  border: none;
-  font-family: inherit;
-  font-size: 14px;
-  color: var(--md-text);
-}
-
-dialog.memdir-header-modal .select2-search__field::placeholder {
-  color: #999;
-}
+/* Select2 is destroyed inside taxonomy modals — no select2 styles needed */
 
 /* Custom taxonomy search box (replaces select2) */
 .memdir-taxo-search {
