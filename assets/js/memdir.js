@@ -1573,7 +1573,14 @@
 				// Append inside fieldContent so saveSection() finds all ACF fields
 				fieldContent.appendChild( dialog );
 
-				closeBtn.addEventListener( 'click', function () { dialog.close(); } );
+				closeBtn.addEventListener( 'click', function ( e ) {
+				e.preventDefault();
+				try { dialog.close(); } catch ( err ) { console.error( 'Close error:', err ); }
+			} );
+			// Escape key closes dialog
+			dialog.addEventListener( 'keydown', function ( e ) {
+				if ( e.key === 'Escape' ) { e.preventDefault(); try { dialog.close(); } catch ( err ) { } }
+			} );
 				dialog.addEventListener( 'click', function ( e ) {
 					if ( e.target === dialog ) { dialog.close(); }
 				} );
