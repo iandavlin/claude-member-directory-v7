@@ -1368,7 +1368,11 @@
 	// -----------------------------------------------------------------------
 
 	// -----------------------------------------------------------------------
-	// Social Links Modal
+	// Unified Header Edit Modal
+	//
+	// Consolidates social links, avatar, text, and taxonomy header fields
+	// into a single pencil-icon triggered modal. Replaces the old separate
+	// initSocialModal() and initAvatarModal() functions.
 	// -----------------------------------------------------------------------
 
 	var SOCIAL_SUFFIXES = [
@@ -1389,172 +1393,81 @@
 		return false;
 	}
 
-	function initSocialModal() {
+	function initHeaderModal() {
 		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
 			var fieldContent = section.querySelector( '.memdir-field-content' );
 			if ( ! fieldContent ) { return; }
 
-			// Collect social URL fields.
-			var socialFields = [];
+			var sectionKey = section.dataset.section || '';
+			var postId     = section.dataset.postId  || '';
+
+			// ── Find the header tab button ──
+			var headerTabBtn = null;
+			section.querySelectorAll( '.memdir-section-controls__tab-item' ).forEach( function ( btn ) {
+				if ( ( btn.dataset.tab || '' ).toLowerCase().indexOf( 'header' ) !== -1 ) {
+					headerTabBtn = btn;
+				}
+			} );
+			if ( ! headerTabBtn ) { return; }
+
+			var headerFieldKeys = [];
+			try {
+				headerFieldKeys = JSON.parse( headerTabBtn.dataset.fieldKeys || '[]' );
+			} catch ( e ) {
+				headerFieldKeys = [];
+			}
+			if ( ! headerFieldKeys.length ) { return; }
+
+			// ── Classify header fields by type ──
+			var imageField    = null;
+			var imageFieldKey = null;
+			var textFields    = [];
+			var taxonomyFields = [];
+			var socialFields  = [];
+
 			fieldContent.querySelectorAll( '.acf-field[data-key]' ).forEach( function ( field ) {
-				if ( isSocialField( field ) ) {
+				var key  = field.dataset.key  || '';
+				var type = field.dataset.type || '';
+				if ( headerFieldKeys.indexOf( key ) === -1 ) { return; }
+
+				if ( type === 'image' && ! imageField ) {
+					imageField    = field;
+					imageFieldKey = key;
+				} else if ( type === 'text' ) {
+					textFields.push( field );
+				} else if ( type === 'taxonomy' ) {
+					taxonomyFields.push( field );
+				} else if ( isSocialField( field ) ) {
 					socialFields.push( field );
 				}
 			} );
 
-			if ( ! socialFields.length ) { return; }
+			var hasAnyField = imageField || textFields.length || taxonomyFields.length || socialFields.length;
+			if ( ! hasAnyField ) { return; }
 
-			// Build modal.
-			var dialog = document.createElement( 'dialog' );
-			dialog.className = 'memdir-social-modal';
-
-			var header = document.createElement( 'div' );
-			header.className = 'memdir-social-modal__header';
-
-			var title = document.createElement( 'h3' );
-			title.className = 'memdir-social-modal__title';
-			title.textContent = 'Social Links';
-
-			var closeBtn = document.createElement( 'button' );
-			closeBtn.type = 'button';
-			closeBtn.className = 'memdir-social-modal__close';
-			closeBtn.setAttribute( 'aria-label', 'Close' );
-			closeBtn.innerHTML = '&times;';
-
-			header.appendChild( title );
-			header.appendChild( closeBtn );
-			dialog.appendChild( header );
-
-			var body = document.createElement( 'div' );
-			body.className = 'memdir-social-modal__body';
-
-			// Move social fields into the modal body.
-			socialFields.forEach( function ( field ) {
-				body.appendChild( field );
-			} );
-
-			dialog.appendChild( body );
-			fieldContent.appendChild( dialog );
-
-			// Trigger button.
-			var trigger = document.createElement( 'button' );
-			trigger.type = 'button';
-			trigger.className = 'memdir-social-modal__trigger';
-			trigger.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>';
-
-			// Place trigger in the header social area (next to the live icons).
-			var sectionKey = section.dataset.section || '';
+			// ── Find header elements ──
 			var headerWrap = sectionKey
 				? document.querySelector( '.memdir-header-wrap[data-header="' + sectionKey + '"]' )
 				: null;
-			var placed = false;
-			if ( headerWrap ) {
-				var socialDiv = headerWrap.querySelector( '.memdir-header__social' );
-				var metaDiv   = headerWrap.querySelector( '.memdir-header__meta' );
-				if ( socialDiv ) {
-					socialDiv.appendChild( trigger );
-					placed = true;
-				} else if ( metaDiv ) {
-					metaDiv.appendChild( trigger );
-					placed = true;
-				} else {
-					// Header exists but no meta/social div — create one.
-					var bodyDiv = headerWrap.querySelector( '.memdir-header__body' );
-					if ( bodyDiv ) {
-						var newMeta = document.createElement( 'div' );
-						newMeta.className = 'memdir-header__meta';
-						newMeta.appendChild( trigger );
-						bodyDiv.appendChild( newMeta );
-						placed = true;
-					}
-				}
-			}
-			if ( ! placed ) {
-				// Fallback: put it in the field content area.
-				var subtitle = fieldContent.querySelector( '.memdir-section-subtitle' );
-				if ( subtitle ) {
-					subtitle.after( trigger );
-				} else {
-					fieldContent.prepend( trigger );
-				}
-			}
+			var avatarImg = headerWrap ? headerWrap.querySelector( '.memdir-header__avatar' ) : null;
 
-			// Wire events.
-			trigger.addEventListener( 'click', function () {
-				dialog.showModal();
-			} );
+			// Hide the image field from the main form (custom upload UI instead).
+			if ( imageField ) { imageField.style.display = 'none'; }
 
-			closeBtn.addEventListener( 'click', function () {
-				dialog.close();
-			} );
-
-			dialog.addEventListener( 'click', function ( e ) {
-				if ( e.target === dialog ) { dialog.close(); }
-			} );
-
-			// Save button inside modal.
-			var modalSave = document.createElement( 'button' );
-			modalSave.type = 'button';
-			modalSave.className = 'memdir-modal-save';
-			modalSave.textContent = 'Save';
-			dialog.appendChild( modalSave );
-
-			modalSave.addEventListener( 'click', function () {
-				var sBtn = section.querySelector( '.memdir-section-save' );
-				var ban  = section.querySelector( '.memdir-unsaved-banner' );
-				if ( sBtn ) { saveSection( section, sBtn, ban ); }
-				dialog.close();
-			} );
-		} );
-	}
-
-	// -----------------------------------------------------------------------
-	// Avatar / Header Image — Direct Upload Modal
-	// -----------------------------------------------------------------------
-
-	function initAvatarModal() {
-		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
-			var fieldContent = section.querySelector( '.memdir-field-content' );
-			if ( ! fieldContent ) { return; }
-
-			// Find the first image field — hide it from the form.
-			var imageField = null;
-			fieldContent.querySelectorAll( '.acf-field[data-key]' ).forEach( function ( field ) {
-				if ( ! imageField && ( field.dataset.type || '' ) === 'image' ) {
-					imageField = field;
-				}
-			} );
-			if ( ! imageField ) { return; }
-
-			var fieldKey = imageField.dataset.key || '';
-			imageField.style.display = 'none';
-
-			// Find the matching header avatar.
-			var sectionKey = section.dataset.section || '';
-			var postId     = section.dataset.postId  || '';
-			var headerWrap = sectionKey
-				? document.querySelector( '.memdir-header-wrap[data-header="' + sectionKey + '"]' )
-				: null;
-			if ( ! headerWrap ) { return; }
-
-			var avatarWrap = headerWrap.querySelector( '.memdir-header__avatar-wrap' );
-			if ( ! avatarWrap ) { return; }
-			var avatarImg  = avatarWrap.querySelector( '.memdir-header__avatar' );
-
-			// Build modal.
+			// ── Build unified dialog ──
 			var dialog = document.createElement( 'dialog' );
-			dialog.className = 'memdir-avatar-modal';
+			dialog.className = 'memdir-header-modal';
 
 			var mHeader = document.createElement( 'div' );
-			mHeader.className = 'memdir-avatar-modal__header';
+			mHeader.className = 'memdir-header-modal__header';
 
 			var mTitle = document.createElement( 'h3' );
-			mTitle.className = 'memdir-avatar-modal__title';
-			mTitle.textContent = 'Change Photo';
+			mTitle.className = 'memdir-header-modal__title';
+			mTitle.textContent = 'Edit Header';
 
 			var closeBtn = document.createElement( 'button' );
 			closeBtn.type = 'button';
-			closeBtn.className = 'memdir-avatar-modal__close';
+			closeBtn.className = 'memdir-header-modal__close';
 			closeBtn.setAttribute( 'aria-label', 'Close' );
 			closeBtn.innerHTML = '&times;';
 
@@ -1563,94 +1476,211 @@
 			dialog.appendChild( mHeader );
 
 			var body = document.createElement( 'div' );
-			body.className = 'memdir-avatar-modal__body';
+			body.className = 'memdir-header-modal__body';
 
-			// Current image preview.
-			var preview = document.createElement( 'img' );
-			preview.className = 'memdir-avatar-modal__preview';
-			preview.src = avatarImg ? avatarImg.src : '';
-			preview.alt = 'Current photo';
-			if ( ! avatarImg || ! avatarImg.src ) { preview.style.display = 'none'; }
-			body.appendChild( preview );
+			// ── Photo group (custom upload UI) ──
+			if ( imageField ) {
+				var photoGroup = document.createElement( 'div' );
+				photoGroup.className = 'memdir-header-modal__group memdir-header-modal__group--avatar';
 
-			// Status text.
-			var status = document.createElement( 'p' );
-			status.className = 'memdir-avatar-modal__status';
-			status.textContent = '';
-			body.appendChild( status );
+				var photoLabel = document.createElement( 'p' );
+				photoLabel.className = 'memdir-header-modal__group-label';
+				photoLabel.textContent = 'Photo';
+				photoGroup.appendChild( photoLabel );
 
-			// Hidden file input.
-			var fileInput = document.createElement( 'input' );
-			fileInput.type = 'file';
-			fileInput.accept = 'image/*';
-			fileInput.style.display = 'none';
-			body.appendChild( fileInput );
+				var preview = document.createElement( 'img' );
+				preview.className = 'memdir-header-modal__avatar-preview';
+				preview.src = avatarImg ? avatarImg.src : '';
+				preview.alt = 'Current photo';
+				if ( ! avatarImg || ! avatarImg.src ) { preview.style.display = 'none'; }
+				photoGroup.appendChild( preview );
 
-			// Upload button.
-			var uploadBtn = document.createElement( 'button' );
-			uploadBtn.type = 'button';
-			uploadBtn.className = 'memdir-modal-save';
-			uploadBtn.textContent = 'Choose New Photo';
-			body.appendChild( uploadBtn );
+				var avStatus = document.createElement( 'p' );
+				avStatus.className = 'memdir-header-modal__avatar-status';
+				avStatus.textContent = '';
+				photoGroup.appendChild( avStatus );
+
+				var fileInput = document.createElement( 'input' );
+				fileInput.type = 'file';
+				fileInput.accept = 'image/*';
+				fileInput.style.display = 'none';
+				photoGroup.appendChild( fileInput );
+
+				var uploadBtn = document.createElement( 'button' );
+				uploadBtn.type = 'button';
+				uploadBtn.className = 'memdir-header-modal__avatar-btn';
+				uploadBtn.textContent = 'Choose New Photo';
+				photoGroup.appendChild( uploadBtn );
+
+				body.appendChild( photoGroup );
+
+				// Wire avatar upload.
+				uploadBtn.addEventListener( 'click', function () { fileInput.click(); } );
+				fileInput.addEventListener( 'change', function () {
+					var file = fileInput.files[ 0 ];
+					if ( ! file ) { return; }
+
+					avStatus.textContent = 'Uploading\u2026';
+					uploadBtn.disabled = true;
+
+					var fd = new FormData();
+					fd.append( 'action',    'memdir_ajax_upload_avatar' );
+					fd.append( 'nonce',     window.mdAjax.nonce );
+					fd.append( 'post_id',   postId );
+					fd.append( 'field_key', imageFieldKey );
+					fd.append( 'image',     file );
+
+					fetch( window.mdAjax.ajaxurl, { method: 'POST', body: fd } )
+						.then( function ( r ) { return r.json(); } )
+						.then( function ( res ) {
+							if ( res.success && res.data && res.data.url ) {
+								preview.src = res.data.url;
+								preview.style.display = '';
+								if ( avatarImg ) { avatarImg.src = res.data.url; }
+								avStatus.textContent = 'Photo updated.';
+							} else {
+								avStatus.textContent = 'Error: ' + ( res.data && res.data.message ? res.data.message : 'Upload failed.' );
+							}
+							uploadBtn.disabled = false;
+							fileInput.value = '';
+						} )
+						.catch( function () {
+							avStatus.textContent = 'Network error.';
+							uploadBtn.disabled = false;
+							fileInput.value = '';
+						} );
+				} );
+			}
+
+			// ── Name group (DOM-moved text fields) ──
+			if ( textFields.length ) {
+				var textGroup = document.createElement( 'div' );
+				textGroup.className = 'memdir-header-modal__group memdir-header-modal__group--text';
+				var textLabel = document.createElement( 'p' );
+				textLabel.className = 'memdir-header-modal__group-label';
+				textLabel.textContent = 'Name';
+				textGroup.appendChild( textLabel );
+				textFields.forEach( function ( f ) { textGroup.appendChild( f ); } );
+				body.appendChild( textGroup );
+			}
+
+			// ── Categories group (DOM-moved taxonomy fields) ──
+			if ( taxonomyFields.length ) {
+				var taxoGroup = document.createElement( 'div' );
+				taxoGroup.className = 'memdir-header-modal__group memdir-header-modal__group--taxonomy';
+				var taxoLabel = document.createElement( 'p' );
+				taxoLabel.className = 'memdir-header-modal__group-label';
+				taxoLabel.textContent = 'Categories';
+				taxoGroup.appendChild( taxoLabel );
+				taxonomyFields.forEach( function ( f ) { taxoGroup.appendChild( f ); } );
+				body.appendChild( taxoGroup );
+			}
+
+			// ── Social Links group (DOM-moved social URL fields) ──
+			if ( socialFields.length ) {
+				var socialGroup = document.createElement( 'div' );
+				socialGroup.className = 'memdir-header-modal__group memdir-header-modal__group--social';
+				var socialLabel = document.createElement( 'p' );
+				socialLabel.className = 'memdir-header-modal__group-label';
+				socialLabel.textContent = 'Social Links';
+				socialGroup.appendChild( socialLabel );
+				socialFields.forEach( function ( f ) { socialGroup.appendChild( f ); } );
+				body.appendChild( socialGroup );
+			}
 
 			dialog.appendChild( body );
+
+			// Save button.
+			var modalSave = document.createElement( 'button' );
+			modalSave.type = 'button';
+			modalSave.className = 'memdir-modal-save';
+			modalSave.textContent = 'Save';
+			dialog.appendChild( modalSave );
+
+			// Append inside fieldContent so saveSection() can still find all fields.
 			fieldContent.appendChild( dialog );
 
-			// Camera overlay on avatar.
-			avatarWrap.style.position = 'relative';
-			var overlay = document.createElement( 'button' );
-			overlay.type = 'button';
-			overlay.className = 'memdir-avatar-overlay';
-			overlay.setAttribute( 'aria-label', 'Change photo' );
-			overlay.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>';
-			avatarWrap.appendChild( overlay );
+			// ── Pencil trigger on the header ──
+			var trigger = document.createElement( 'button' );
+			trigger.type = 'button';
+			trigger.className = 'memdir-header-modal__trigger';
+			trigger.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>';
 
-			// Wire events.
-			overlay.addEventListener( 'click', function () { dialog.showModal(); } );
+			if ( headerWrap ) {
+				var headerEl = headerWrap.querySelector( '.memdir-header' );
+				if ( headerEl ) {
+					headerEl.appendChild( trigger );
+				}
+			}
+
+			// ── Empty-state pulse animation ──
+			function checkEmpty() {
+				var avatarEmpty = ! avatarImg || ! avatarImg.src || avatarImg.src === window.location.href;
+				var textEmpty = textFields.every( function ( f ) {
+					var inp = f.querySelector( 'input' );
+					return ! inp || ! inp.value.trim();
+				} );
+				var taxoEmpty = taxonomyFields.every( function ( f ) {
+					var sel = f.querySelector( 'select' );
+					if ( ! sel ) { return true; }
+					var selected = Array.from( sel.selectedOptions ).filter( function ( o ) {
+						return o.value && o.value !== '';
+					} );
+					return selected.length === 0;
+				} );
+				var socialEmpty = socialFields.every( function ( f ) {
+					var inp = f.querySelector( 'input' );
+					return ! inp || ! inp.value.trim();
+				} );
+
+				var allEmpty = avatarEmpty && textEmpty && taxoEmpty && socialEmpty;
+				trigger.classList.toggle( 'memdir-header-modal__trigger--pulse', allEmpty );
+			}
+
+			checkEmpty();
+
+			// ── Wire events ──
+			trigger.addEventListener( 'click', function () {
+				dialog.showModal();
+
+				// Fix select2 dropdowns inside dialog (they render behind the backdrop).
+				if ( typeof jQuery !== 'undefined' && jQuery.fn.select2 ) {
+					jQuery( dialog ).find( '.acf-field[data-type="taxonomy"] select' ).each( function () {
+						var $sel = jQuery( this );
+						if ( $sel.data( 'select2' ) ) {
+							$sel.select2( 'destroy' );
+						}
+						$sel.select2( { dropdownParent: jQuery( dialog ) } );
+					} );
+				}
+			} );
+
 			closeBtn.addEventListener( 'click', function () { dialog.close(); } );
+
 			dialog.addEventListener( 'click', function ( e ) {
 				if ( e.target === dialog ) { dialog.close(); }
 			} );
 
-			uploadBtn.addEventListener( 'click', function () { fileInput.click(); } );
-
-			fileInput.addEventListener( 'change', function () {
-				var file = fileInput.files[ 0 ];
-				if ( ! file ) { return; }
-
-				status.textContent = 'Uploading\u2026';
-				uploadBtn.disabled = true;
-
-				var fd = new FormData();
-				fd.append( 'action',    'memdir_ajax_upload_avatar' );
-				fd.append( 'nonce',     window.mdAjax.nonce );
-				fd.append( 'post_id',   postId );
-				fd.append( 'field_key', fieldKey );
-				fd.append( 'image',     file );
-
-				fetch( window.mdAjax.ajaxurl, { method: 'POST', body: fd } )
-					.then( function ( r ) { return r.json(); } )
-					.then( function ( res ) {
-						if ( res.success && res.data && res.data.url ) {
-							preview.src = res.data.url;
-							preview.style.display = '';
-							if ( avatarImg ) { avatarImg.src = res.data.url; }
-							status.textContent = 'Photo updated.';
-						} else {
-							status.textContent = 'Error: ' + ( res.data && res.data.message ? res.data.message : 'Upload failed.' );
-						}
-						uploadBtn.disabled = false;
-						fileInput.value = '';
-					} )
-					.catch( function () {
-						status.textContent = 'Network error.';
-						uploadBtn.disabled = false;
-						fileInput.value = '';
-					} );
+			dialog.addEventListener( 'close', function () {
+				checkEmpty();
 			} );
+
+			modalSave.addEventListener( 'click', function () {
+				var sBtn = section.querySelector( '.memdir-section-save' );
+				var ban  = section.querySelector( '.memdir-unsaved-banner' );
+				if ( sBtn ) { saveSection( section, sBtn, ban ); }
+				dialog.close();
+			} );
+
+			// ── Hide the "Header" tab button ──
+			headerTabBtn.style.display = 'none';
+
+			if ( headerTabBtn.classList.contains( 'is-active' ) ) {
+				var nextTab = section.querySelector( '.memdir-section-controls__tab-item:not([style*="display: none"])' );
+				if ( nextTab ) { activateTab( section, nextTab ); }
+			}
 		} );
 	}
-
 	function syncControlsTop() {
 		var sticky = document.querySelector( '.memdir-sticky' );
 		if ( ! sticky ) { return; }
@@ -1674,8 +1704,7 @@
 		initSectionPmp();
 		relocateFieldInstructions();
 		initFieldPmp();           // inject field PMP controls after section PMP is wired
-		initSocialModal();        // move social URL fields into modal dialogs
-		initAvatarModal();        // move header image field into avatar modal
+		initHeaderModal();        // move all header fields into unified modal
 		hideEmptySectionPills();  // hide pills for PHP-dropped empty/PMP-blocked sections
 		restoreState();
 		syncControlsTop();
