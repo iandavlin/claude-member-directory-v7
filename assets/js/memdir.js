@@ -1744,28 +1744,8 @@
 							var $sel = jQuery( this );
 							var s2   = $sel.data( 'select2' );
 							if ( s2 ) {
-								// Preserve ACF's full config + add randomization of search results
-								var origAjax = s2.options.options.ajax;
 								var opts = Object.assign( {}, s2.options.options, {
-									dropdownParent: jQuery( taxoDialog ),
-									ajax: Object.assign( {}, origAjax, {
-										processResults: function ( data, params ) {
-											// Let ACF's original processResults run first (if exists)
-											if ( origAjax && typeof origAjax.processResults === 'function' ) {
-												data = origAjax.processResults( data, params );
-											}
-											// Shuffle results using Fisher-Yates algorithm
-											if ( data.results && Array.isArray( data.results ) ) {
-												for ( var i = data.results.length - 1; i > 0; i-- ) {
-													var j = Math.floor( Math.random() * ( i + 1 ) );
-													var temp = data.results[ i ];
-													data.results[ i ] = data.results[ j ];
-													data.results[ j ] = temp;
-												}
-											}
-											return data;
-										}
-									} )
+									dropdownParent: jQuery( taxoDialog )
 								} );
 								$sel.select2( 'destroy' );
 								$sel.select2( opts );
