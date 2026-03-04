@@ -105,7 +105,10 @@
 		} );
 
 		// Show fields in this tab group; hide all others.
+		// Skip fields inside <dialog> — they are managed by initHeaderEditing()
+		// and must not be re-hidden when tabs switch.
 		allFields.forEach( function ( field ) {
+			if ( field.closest( 'dialog' ) ) { return; }
 			var key = field.dataset.key || '';
 			field.style.display = fieldKeys.includes( key ) ? '' : 'none';
 		} );
@@ -1674,7 +1677,7 @@
 				} );
 
 				var namePencil = createPencil();
-				headerText.appendChild( namePencil );
+				headerTitle.appendChild( namePencil );  // inline with the name text
 
 				function checkNameEmpty() {
 					var empty = textFields.every( function ( f ) {

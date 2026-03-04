@@ -178,10 +178,10 @@ body.single-member-directory .select2-dropdown--above {
   color: var(--md-text);
   margin: 0;
   line-height: 1.2;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 320px;
 }
 
 .memdir-header__eyebrow {
