@@ -1305,6 +1305,68 @@ dialog.memdir-header-modal .select2-search__field::placeholder {
   color: #999;
 }
 
+/* Custom taxonomy search box (replaces select2) */
+.memdir-taxo-search {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.memdir-taxo-search__input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--md-text);
+  background: var(--md-white);
+  transition: border-color 0.15s;
+}
+
+.memdir-taxo-search__input:focus {
+  outline: none;
+  border-color: var(--md-green-sage);
+  box-shadow: 0 0 0 3px rgba(122, 160, 96, 0.1);
+}
+
+.memdir-taxo-search__results {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 4px;
+  background: var(--md-white);
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+}
+
+.memdir-taxo-search__result-item {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f0f0f0;
+  color: var(--md-text);
+  transition: background 0.1s;
+}
+
+.memdir-taxo-search__result-item:hover {
+  background: #f9f9f9;
+}
+
+.memdir-taxo-search__result-item:last-child {
+  border-bottom: none;
+}
+
+.memdir-taxo-search__no-results {
+  padding: 12px;
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+}
+
 /* ─────────────────────────────────────────────────────────────
    RESPONSIVE
 ───────────────────────────────────────────────────────────── */

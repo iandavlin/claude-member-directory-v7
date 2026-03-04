@@ -1397,6 +1397,92 @@
 		return false;
 	}
 
+	
+		// Helper: Create custom taxonomy search box (replaces select2)
+		function createTaxonomySearch( selectElement ) {
+			// Hide the select
+			selectElement.style.display = 'none';
+
+			// Create search wrapper
+			var wrapper = document.createElement( 'div' );
+			wrapper.className = 'memdir-taxo-search';
+
+			// Create input
+			var input = document.createElement( 'input' );
+			input.type = 'text';
+			input.className = 'memdir-taxo-search__input';
+			input.placeholder = 'Type to search...';
+
+			// Create results container
+			var results = document.createElement( 'div' );
+			results.className = 'memdir-taxo-search__results';
+
+			wrapper.appendChild( input );
+			wrapper.appendChild( results );
+			selectElement.parentNode.insertBefore( wrapper, selectElement );
+
+			// Get all available options from select
+			var allOptions = Array.from( selectElement.options ).filter( function ( opt ) {
+				return opt.value && opt.value !== '';
+			} );
+
+			// Track selected value
+			function updateSelectedDisplay() {
+				var selectedVal = selectElement.value;
+				var selectedOpt = allOptions.find( function ( o ) { return o.value == selectedVal; } );
+				input.value = selectedOpt ? selectedOpt.text : '';
+			}
+			updateSelectedDisplay();
+
+			// Filter and display results on input
+			input.addEventListener( 'input', function () {
+				var query = input.value.toLowerCase().trim();
+				results.innerHTML = '';
+
+				if ( ! query ) {
+					results.style.display = 'none';
+					return;
+				}
+
+				var matches = allOptions.filter( function ( opt ) {
+					return opt.text.toLowerCase().indexOf( query ) !== -1;
+				} );
+
+				if ( matches.length === 0 ) {
+					results.innerHTML = '<div class="memdir-taxo-search__no-results">No matches</div>';
+					results.style.display = 'block';
+					return;
+				}
+
+				matches.forEach( function ( opt ) {
+					var item = document.createElement( 'div' );
+					item.className = 'memdir-taxo-search__result-item';
+					item.textContent = opt.text;
+					item.style.cursor = 'pointer';
+
+					item.addEventListener( 'click', function () {
+						selectElement.value = opt.value;
+						updateSelectedDisplay();
+						results.innerHTML = '';
+						results.style.display = 'none';
+					} );
+
+					results.appendChild( item );
+				} );
+
+				results.style.display = 'block';
+			} );
+
+			// Close results on blur
+			input.addEventListener( 'blur', function () {
+				setTimeout( function () {
+					results.style.display = 'none';
+				}, 150 );
+			} );
+
+			return wrapper;
+		}
+
 	function initHeaderEditing() {
 		var pencilSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>';
 		var cameraSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>';
@@ -1739,21 +1825,15 @@
 					// Fix select2 dropdownParent — preserve ACF's full config
 					// (AJAX search, formatters, etc.) while adding dropdownParent
 					// so the dropdown renders inside the dialog, not behind its backdrop.
-					if ( typeof jQuery !== 'undefined' && jQuery.fn.select2 ) {
-						jQuery( taxoDialog ).find( '.acf-field[data-type="taxonomy"] select' ).each( function () {
-							var $sel = jQuery( this );
-							var s2   = $sel.data( 'select2' );
-							if ( s2 ) {
-								var opts = Object.assign( {}, s2.options.options, {
-									dropdownParent: jQuery( taxoDialog )
-								} );
-								$sel.select2( 'destroy' );
-								$sel.select2( opts );
-							} else {
-								$sel.select2( { dropdownParent: jQuery( taxoDialog ) } );
-							}
-						} );
-					}
+					// Initialize custom search boxes for taxonomy fields
+					taxoDialog.querySelectorAll( '.acf-field[data-type="taxonomy"] select' ).forEach( function ( select ) {
+						// Only create once
+						if ( ! select.previousElementSibling || ! select.previousElementSibling.classList.contains( 'memdir-taxo-search' ) ) {
+							createTaxonomySearch( select );
+						}
+					} );
+					var firstInput = taxoDialog.querySelector( '.memdir-taxo-search__input' );
+					if ( firstInput ) { setTimeout( function () { firstInput.focus(); }, 50 ); }
 				} );
 
 				taxoDialog.addEventListener( 'close', function () { checkTaxoEmpty(); } );
