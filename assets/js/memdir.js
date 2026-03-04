@@ -1540,6 +1540,20 @@
 
 				dialog.appendChild( body );
 
+				// Clean up stale select2 after DOM-move and let ACF re-initialize.
+				// DOM-moving breaks select2's internal references; removing the
+				// container + triggering ACF's 'append' action restores them.
+				if ( typeof jQuery !== 'undefined' ) {
+					var $body = jQuery( body );
+					$body.find( '.select2-container' ).remove();
+					$body.find( 'select' ).each( function () {
+						try { jQuery( this ).select2( 'destroy' ); } catch ( e ) { /* already gone */ }
+					} );
+					if ( typeof acf !== 'undefined' ) {
+						acf.do_action( 'append', $body );
+					}
+				}
+
 				if ( ! opts.noSave ) {
 					var saveBtn = document.createElement( 'button' );
 					saveBtn.type = 'button';
@@ -1722,14 +1736,22 @@
 				taxoPencil.addEventListener( 'click', function () {
 					taxoDialog.showModal();
 
-					// Fix select2 dropdowns inside dialog
+					// Fix select2 dropdownParent — preserve ACF's full config
+					// (AJAX search, formatters, etc.) while adding dropdownParent
+					// so the dropdown renders inside the dialog, not behind its backdrop.
 					if ( typeof jQuery !== 'undefined' && jQuery.fn.select2 ) {
 						jQuery( taxoDialog ).find( '.acf-field[data-type="taxonomy"] select' ).each( function () {
 							var $sel = jQuery( this );
-							if ( $sel.data( 'select2' ) ) {
+							var s2   = $sel.data( 'select2' );
+							if ( s2 ) {
+								var opts = Object.assign( {}, s2.options.options, {
+									dropdownParent: jQuery( taxoDialog )
+								} );
 								$sel.select2( 'destroy' );
+								$sel.select2( opts );
+							} else {
+								$sel.select2( { dropdownParent: jQuery( taxoDialog ) } );
 							}
-							$sel.select2( { dropdownParent: jQuery( taxoDialog ) } );
 						} );
 					}
 				} );
