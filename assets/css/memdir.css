@@ -1068,8 +1068,69 @@ a.memdir-field-value:hover {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   UNIFIED HEADER EDIT MODAL
+   HEADER EDIT — per-element pencils + modals + avatar overlay
 ───────────────────────────────────────────────────────────── */
+
+/* Avatar wrap needs relative positioning for camera overlay */
+.memdir-header__avatar-wrap {
+  position: relative;
+}
+
+/* Camera overlay — visible on hover */
+.memdir-header__avatar-edit {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.2s;
+  cursor: pointer;
+  color: #fff;
+}
+
+.memdir-header__avatar-wrap:hover .memdir-header__avatar-edit {
+  opacity: 1;
+}
+
+/* Inline pencil trigger buttons — appear next to each header element */
+.memdir-hdr-edit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 8px;
+  color: var(--md-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+  vertical-align: middle;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.memdir-hdr-edit:hover {
+  border-color: var(--md-green-sage);
+  color: var(--md-green-dark);
+  background: rgba(151, 169, 124, 0.1);
+}
+
+/* Pulse animation — draws attention when a header field group is empty */
+@keyframes memdir-pencil-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(236, 179, 81, 0.45); }
+  50%      { box-shadow: 0 0 0 8px rgba(236, 179, 81, 0); }
+}
+
+.memdir-hdr-edit--pulse {
+  animation: memdir-pencil-pulse 2s ease-in-out infinite;
+  border-color: var(--md-gold);
+  color: var(--md-gold);
+}
 
 /* Shared modal save button */
 .memdir-modal-save {
@@ -1092,52 +1153,12 @@ a.memdir-field-value:hover {
   background: var(--md-green-dark);
 }
 
-/* Pencil trigger — absolutely positioned top-right of header */
-.memdir-header-modal__trigger {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  margin: 0;
-  padding: 0;
-  color: var(--md-text-muted);
-  background: var(--md-white);
-  border: 1px solid var(--md-border);
-  border-radius: 50%;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s, color 0.15s;
-  flex-shrink: 0;
-  z-index: 10;
-}
-
-.memdir-header-modal__trigger:hover {
-  border-color: var(--md-green-sage);
-  color: var(--md-green-dark);
-  background: rgba(151, 169, 124, 0.1);
-}
-
-/* Pulse animation — draws attention when all header fields are empty */
-@keyframes memdir-pencil-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(236, 179, 81, 0.45); }
-  50%      { box-shadow: 0 0 0 8px rgba(236, 179, 81, 0); }
-}
-
-.memdir-header-modal__trigger--pulse {
-  animation: memdir-pencil-pulse 2s ease-in-out infinite;
-  border-color: var(--md-gold);
-  color: var(--md-gold);
-}
-
-/* Dialog shell */
+/* Dialog shell — sized for per-element modals */
 dialog.memdir-header-modal {
   border: none;
   border-radius: 12px;
   padding: 0;
-  max-width: 580px;
+  max-width: 440px;
   width: 90vw;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   background: var(--md-white);
@@ -1193,29 +1214,6 @@ dialog.memdir-header-modal::backdrop {
 /* ACF fields inside the modal — tighten spacing */
 .memdir-header-modal__body .acf-field {
   padding: 8px 0;
-}
-
-/* Grouped sections inside the modal body */
-.memdir-header-modal__group {
-  margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--md-border);
-}
-
-.memdir-header-modal__group:last-child {
-  margin-bottom: 0;
-  padding-bottom: 0;
-  border-bottom: none;
-}
-
-.memdir-header-modal__group-label {
-  font-family: var(--md-font);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--md-text-muted);
-  margin: 0 0 8px;
 }
 
 /* Avatar section within the modal */

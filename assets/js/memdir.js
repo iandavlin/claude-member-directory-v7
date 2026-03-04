@@ -1368,11 +1368,12 @@
 	// -----------------------------------------------------------------------
 
 	// -----------------------------------------------------------------------
-	// Unified Header Edit Modal
+	// Per-element Header Editing
 	//
-	// Consolidates social links, avatar, text, and taxonomy header fields
-	// into a single pencil-icon triggered modal. Replaces the old separate
-	// initSocialModal() and initAvatarModal() functions.
+	// Each header element (avatar, name, categories, social links) gets its
+	// own edit trigger and small modal. The avatar uses a camera overlay;
+	// name, categories, and social links each get an inline pencil icon.
+	// Pencil icons pulse gold when their corresponding fields are empty.
 	// -----------------------------------------------------------------------
 
 	var SOCIAL_SUFFIXES = [
@@ -1393,7 +1394,10 @@
 		return false;
 	}
 
-	function initHeaderModal() {
+	function initHeaderEditing() {
+		var pencilSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>';
+		var cameraSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>';
+
 		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
 			var fieldContent = section.querySelector( '.memdir-field-content' );
 			if ( ! fieldContent ) { return; }
@@ -1401,7 +1405,7 @@
 			var sectionKey = section.dataset.section || '';
 			var postId     = section.dataset.postId  || '';
 
-			// ── Find the header tab button ──
+			// \u2500\u2500 Find the header tab button \u2500\u2500
 			var headerTabBtn = null;
 			section.querySelectorAll( '.memdir-section-controls__tab-item' ).forEach( function ( btn ) {
 				if ( ( btn.dataset.tab || '' ).toLowerCase().indexOf( 'header' ) !== -1 ) {
@@ -1418,12 +1422,12 @@
 			}
 			if ( ! headerFieldKeys.length ) { return; }
 
-			// ── Classify header fields by type ──
-			var imageField    = null;
-			var imageFieldKey = null;
-			var textFields    = [];
+			// Classify header fields by type
+			var imageField     = null;
+			var imageFieldKey  = null;
+			var textFields     = [];
 			var taxonomyFields = [];
-			var socialFields  = [];
+			var socialFields   = [];
 
 			fieldContent.querySelectorAll( '.acf-field[data-key]' ).forEach( function ( field ) {
 				var key  = field.dataset.key  || '';
@@ -1445,76 +1449,174 @@
 			var hasAnyField = imageField || textFields.length || taxonomyFields.length || socialFields.length;
 			if ( ! hasAnyField ) { return; }
 
-			// ── Find header elements ──
+			// Find header elements in the rendered header
 			var headerWrap = sectionKey
 				? document.querySelector( '.memdir-header-wrap[data-header="' + sectionKey + '"]' )
 				: null;
-			var avatarImg = headerWrap ? headerWrap.querySelector( '.memdir-header__avatar' ) : null;
+			if ( ! headerWrap ) { return; }
 
-			// Hide the image field from the main form (custom upload UI instead).
-			if ( imageField ) { imageField.style.display = 'none'; }
+			var headerEl    = headerWrap.querySelector( '.memdir-header' );
+			if ( ! headerEl ) { return; }
 
-			// ── Build unified dialog ──
-			var dialog = document.createElement( 'dialog' );
-			dialog.className = 'memdir-header-modal';
+			var avatarImg   = headerWrap.querySelector( '.memdir-header__avatar' );
+			var avatarWrap  = headerWrap.querySelector( '.memdir-header__avatar-wrap' );
+			var headerText  = headerWrap.querySelector( '.memdir-header__text' );
+			var headerTitle = headerWrap.querySelector( '.memdir-header__title' );
+			var headerMeta  = headerWrap.querySelector( '.memdir-header__meta' );
+			var headerTaxo  = headerWrap.querySelector( '.memdir-header__taxo' );
+			var headerSocial = headerWrap.querySelector( '.memdir-header__social' );
+			var headerBody  = headerWrap.querySelector( '.memdir-header__body' );
 
-			var mHeader = document.createElement( 'div' );
-			mHeader.className = 'memdir-header-modal__header';
+			// Ensure .memdir-header__meta exists when we have taxonomy or social fields
+			if ( ! headerMeta && ( taxonomyFields.length || socialFields.length ) ) {
+				headerMeta = document.createElement( 'div' );
+				headerMeta.className = 'memdir-header__meta';
+				headerBody.appendChild( headerMeta );
+			}
 
-			var mTitle = document.createElement( 'h3' );
-			mTitle.className = 'memdir-header-modal__title';
-			mTitle.textContent = 'Edit Header';
+			// Ensure .memdir-header__taxo exists for pencil placement
+			if ( ! headerTaxo && taxonomyFields.length && headerMeta ) {
+				headerTaxo = document.createElement( 'div' );
+				headerTaxo.className = 'memdir-header__taxo';
+				headerMeta.insertBefore( headerTaxo, headerMeta.firstChild );
+			}
 
-			var closeBtn = document.createElement( 'button' );
-			closeBtn.type = 'button';
-			closeBtn.className = 'memdir-header-modal__close';
-			closeBtn.setAttribute( 'aria-label', 'Close' );
-			closeBtn.innerHTML = '&times;';
+			// Ensure .memdir-header__social exists for pencil placement
+			if ( ! headerSocial && socialFields.length && headerMeta ) {
+				headerSocial = document.createElement( 'div' );
+				headerSocial.className = 'memdir-header__social';
+				headerMeta.appendChild( headerSocial );
+			}
 
-			mHeader.appendChild( mTitle );
-			mHeader.appendChild( closeBtn );
-			dialog.appendChild( mHeader );
+			// Ensure divider between taxo and social
+			if ( headerTaxo && headerSocial && headerMeta ) {
+				var divider = headerMeta.querySelector( '.memdir-header__divider' );
+				if ( ! divider ) {
+					divider = document.createElement( 'span' );
+					divider.className = 'memdir-header__divider';
+					divider.setAttribute( 'aria-hidden', 'true' );
+					headerMeta.insertBefore( divider, headerSocial );
+				}
+			}
 
-			var body = document.createElement( 'div' );
-			body.className = 'memdir-header-modal__body';
+			// Helper: build a small modal dialog for one field type
+			function createMiniModal( title, fields, opts ) {
+				opts = opts || {};
 
-			// ── Photo group (custom upload UI) ──
-			if ( imageField ) {
-				var photoGroup = document.createElement( 'div' );
-				photoGroup.className = 'memdir-header-modal__group memdir-header-modal__group--avatar';
+				var dialog = document.createElement( 'dialog' );
+				dialog.className = 'memdir-header-modal' + ( opts.modifier ? ' memdir-header-modal--' + opts.modifier : '' );
 
-				var photoLabel = document.createElement( 'p' );
-				photoLabel.className = 'memdir-header-modal__group-label';
-				photoLabel.textContent = 'Photo';
-				photoGroup.appendChild( photoLabel );
+				var mHeader = document.createElement( 'div' );
+				mHeader.className = 'memdir-header-modal__header';
 
-				var preview = document.createElement( 'img' );
-				preview.className = 'memdir-header-modal__avatar-preview';
-				preview.src = avatarImg ? avatarImg.src : '';
-				preview.alt = 'Current photo';
-				if ( ! avatarImg || ! avatarImg.src ) { preview.style.display = 'none'; }
-				photoGroup.appendChild( preview );
+				var mTitle = document.createElement( 'h3' );
+				mTitle.className = 'memdir-header-modal__title';
+				mTitle.textContent = title;
+
+				var closeBtn = document.createElement( 'button' );
+				closeBtn.type = 'button';
+				closeBtn.className = 'memdir-header-modal__close';
+				closeBtn.setAttribute( 'aria-label', 'Close' );
+				closeBtn.innerHTML = '&times;';
+
+				mHeader.appendChild( mTitle );
+				mHeader.appendChild( closeBtn );
+				dialog.appendChild( mHeader );
+
+				var body = document.createElement( 'div' );
+				body.className = 'memdir-header-modal__body';
+
+				if ( opts.customContent ) {
+					body.appendChild( opts.customContent );
+				} else {
+					fields.forEach( function ( f ) {
+						f.style.display = '';  // un-hide from tab nav
+						body.appendChild( f );
+					} );
+				}
+
+				dialog.appendChild( body );
+
+				if ( ! opts.noSave ) {
+					var saveBtn = document.createElement( 'button' );
+					saveBtn.type = 'button';
+					saveBtn.className = 'memdir-modal-save';
+					saveBtn.textContent = 'Save';
+					dialog.appendChild( saveBtn );
+
+					saveBtn.addEventListener( 'click', function () {
+						var sBtn = section.querySelector( '.memdir-section-save' );
+						var ban  = section.querySelector( '.memdir-unsaved-banner' );
+						if ( sBtn ) { saveSection( section, sBtn, ban ); }
+						dialog.close();
+						if ( opts.onSave ) { opts.onSave(); }
+					} );
+				}
+
+				// Append inside fieldContent so saveSection() finds all ACF fields
+				fieldContent.appendChild( dialog );
+
+				closeBtn.addEventListener( 'click', function () { dialog.close(); } );
+				dialog.addEventListener( 'click', function ( e ) {
+					if ( e.target === dialog ) { dialog.close(); }
+				} );
+
+				return dialog;
+			}
+
+			// Helper: create a pencil trigger button
+			function createPencil() {
+				var btn = document.createElement( 'button' );
+				btn.type = 'button';
+				btn.className = 'memdir-hdr-edit';
+				btn.innerHTML = pencilSvg;
+				return btn;
+			}
+
+			// ========================================
+			// Avatar — camera overlay + modal
+			// ========================================
+			if ( imageField && avatarWrap ) {
+				imageField.style.display = 'none';
+
+				var overlay = document.createElement( 'div' );
+				overlay.className = 'memdir-header__avatar-edit';
+				overlay.innerHTML = cameraSvg;
+				overlay.title = 'Change photo';
+				avatarWrap.appendChild( overlay );
+
+				var avFragment = document.createElement( 'div' );
+
+				var avPreview = document.createElement( 'img' );
+				avPreview.className = 'memdir-header-modal__avatar-preview';
+				avPreview.src = avatarImg ? avatarImg.src : '';
+				avPreview.alt = 'Current photo';
+				if ( ! avatarImg || ! avatarImg.src ) { avPreview.style.display = 'none'; }
+				avFragment.appendChild( avPreview );
 
 				var avStatus = document.createElement( 'p' );
 				avStatus.className = 'memdir-header-modal__avatar-status';
 				avStatus.textContent = '';
-				photoGroup.appendChild( avStatus );
+				avFragment.appendChild( avStatus );
 
 				var fileInput = document.createElement( 'input' );
 				fileInput.type = 'file';
 				fileInput.accept = 'image/*';
 				fileInput.style.display = 'none';
-				photoGroup.appendChild( fileInput );
+				avFragment.appendChild( fileInput );
 
 				var uploadBtn = document.createElement( 'button' );
 				uploadBtn.type = 'button';
 				uploadBtn.className = 'memdir-header-modal__avatar-btn';
 				uploadBtn.textContent = 'Choose New Photo';
-				photoGroup.appendChild( uploadBtn );
+				avFragment.appendChild( uploadBtn );
 
-				body.appendChild( photoGroup );
+				var avDialog = createMiniModal( 'Update Photo', [], {
+					customContent: avFragment,
+					modifier: 'avatar',
+					noSave: true
+				} );
 
-				// Wire avatar upload.
 				uploadBtn.addEventListener( 'click', function () { fileInput.click(); } );
 				fileInput.addEventListener( 'change', function () {
 					var file = fileInput.files[ 0 ];
@@ -1534,8 +1636,8 @@
 						.then( function ( r ) { return r.json(); } )
 						.then( function ( res ) {
 							if ( res.success && res.data && res.data.url ) {
-								preview.src = res.data.url;
-								preview.style.display = '';
+								avPreview.src = res.data.url;
+								avPreview.style.display = '';
 								if ( avatarImg ) { avatarImg.src = res.data.url; }
 								avStatus.textContent = 'Photo updated.';
 							} else {
@@ -1550,129 +1652,116 @@
 							fileInput.value = '';
 						} );
 				} );
+
+				overlay.addEventListener( 'click', function () { avDialog.showModal(); } );
 			}
 
-			// ── Name group (DOM-moved text fields) ──
-			if ( textFields.length ) {
-				var textGroup = document.createElement( 'div' );
-				textGroup.className = 'memdir-header-modal__group memdir-header-modal__group--text';
-				var textLabel = document.createElement( 'p' );
-				textLabel.className = 'memdir-header-modal__group-label';
-				textLabel.textContent = 'Name';
-				textGroup.appendChild( textLabel );
-				textFields.forEach( function ( f ) { textGroup.appendChild( f ); } );
-				body.appendChild( textGroup );
-			}
-
-			// ── Categories group (DOM-moved taxonomy fields) ──
-			if ( taxonomyFields.length ) {
-				var taxoGroup = document.createElement( 'div' );
-				taxoGroup.className = 'memdir-header-modal__group memdir-header-modal__group--taxonomy';
-				var taxoLabel = document.createElement( 'p' );
-				taxoLabel.className = 'memdir-header-modal__group-label';
-				taxoLabel.textContent = 'Categories';
-				taxoGroup.appendChild( taxoLabel );
-				taxonomyFields.forEach( function ( f ) { taxoGroup.appendChild( f ); } );
-				body.appendChild( taxoGroup );
-			}
-
-			// ── Social Links group (DOM-moved social URL fields) ──
-			if ( socialFields.length ) {
-				var socialGroup = document.createElement( 'div' );
-				socialGroup.className = 'memdir-header-modal__group memdir-header-modal__group--social';
-				var socialLabel = document.createElement( 'p' );
-				socialLabel.className = 'memdir-header-modal__group-label';
-				socialLabel.textContent = 'Social Links';
-				socialGroup.appendChild( socialLabel );
-				socialFields.forEach( function ( f ) { socialGroup.appendChild( f ); } );
-				body.appendChild( socialGroup );
-			}
-
-			dialog.appendChild( body );
-
-			// Save button.
-			var modalSave = document.createElement( 'button' );
-			modalSave.type = 'button';
-			modalSave.className = 'memdir-modal-save';
-			modalSave.textContent = 'Save';
-			dialog.appendChild( modalSave );
-
-			// Append inside fieldContent so saveSection() can still find all fields.
-			fieldContent.appendChild( dialog );
-
-			// ── Pencil trigger on the header ──
-			var trigger = document.createElement( 'button' );
-			trigger.type = 'button';
-			trigger.className = 'memdir-header-modal__trigger';
-			trigger.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>';
-
-			if ( headerWrap ) {
-				var headerEl = headerWrap.querySelector( '.memdir-header' );
-				if ( headerEl ) {
-					headerEl.appendChild( trigger );
-				}
-			}
-
-			// ── Empty-state pulse animation ──
-			function checkEmpty() {
-				var avatarEmpty = ! avatarImg || ! avatarImg.src || avatarImg.src === window.location.href;
-				var textEmpty = textFields.every( function ( f ) {
-					var inp = f.querySelector( 'input' );
-					return ! inp || ! inp.value.trim();
-				} );
-				var taxoEmpty = taxonomyFields.every( function ( f ) {
-					var sel = f.querySelector( 'select' );
-					if ( ! sel ) { return true; }
-					var selected = Array.from( sel.selectedOptions ).filter( function ( o ) {
-						return o.value && o.value !== '';
-					} );
-					return selected.length === 0;
-				} );
-				var socialEmpty = socialFields.every( function ( f ) {
-					var inp = f.querySelector( 'input' );
-					return ! inp || ! inp.value.trim();
-				} );
-
-				var allEmpty = avatarEmpty && textEmpty && taxoEmpty && socialEmpty;
-				trigger.classList.toggle( 'memdir-header-modal__trigger--pulse', allEmpty );
-			}
-
-			checkEmpty();
-
-			// ── Wire events ──
-			trigger.addEventListener( 'click', function () {
-				dialog.showModal();
-
-				// Fix select2 dropdowns inside dialog (they render behind the backdrop).
-				if ( typeof jQuery !== 'undefined' && jQuery.fn.select2 ) {
-					jQuery( dialog ).find( '.acf-field[data-type="taxonomy"] select' ).each( function () {
-						var $sel = jQuery( this );
-						if ( $sel.data( 'select2' ) ) {
-							$sel.select2( 'destroy' );
+			// ========================================
+			// Name — pencil next to title + modal
+			// ========================================
+			if ( textFields.length && headerText ) {
+				var nameDialog = createMiniModal( 'Edit Name', textFields, {
+					modifier: 'name',
+					onSave: function () {
+						if ( headerTitle && textFields[ 0 ] ) {
+							var inp = textFields[ 0 ].querySelector( 'input' );
+							if ( inp && inp.value.trim() ) {
+								headerTitle.textContent = inp.value.trim();
+							}
 						}
-						$sel.select2( { dropdownParent: jQuery( dialog ) } );
+						checkNameEmpty();
+					}
+				} );
+
+				var namePencil = createPencil();
+				headerText.appendChild( namePencil );
+
+				function checkNameEmpty() {
+					var empty = textFields.every( function ( f ) {
+						var inp = f.querySelector( 'input' );
+						return ! inp || ! inp.value.trim();
 					} );
+					namePencil.classList.toggle( 'memdir-hdr-edit--pulse', empty );
 				}
-			} );
+				checkNameEmpty();
 
-			closeBtn.addEventListener( 'click', function () { dialog.close(); } );
+				namePencil.addEventListener( 'click', function () { nameDialog.showModal(); } );
+				nameDialog.addEventListener( 'close', function () { checkNameEmpty(); } );
+			}
 
-			dialog.addEventListener( 'click', function ( e ) {
-				if ( e.target === dialog ) { dialog.close(); }
-			} );
+			// ========================================
+			// Categories — pencil next to badges + modal
+			// ========================================
+			if ( taxonomyFields.length && headerTaxo ) {
+				var taxoDialog = createMiniModal( 'Edit Categories', taxonomyFields, {
+					modifier: 'categories',
+					onSave: function () {
+						checkTaxoEmpty();
+					}
+				} );
 
-			dialog.addEventListener( 'close', function () {
-				checkEmpty();
-			} );
+				var taxoPencil = createPencil();
+				headerTaxo.appendChild( taxoPencil );
 
-			modalSave.addEventListener( 'click', function () {
-				var sBtn = section.querySelector( '.memdir-section-save' );
-				var ban  = section.querySelector( '.memdir-unsaved-banner' );
-				if ( sBtn ) { saveSection( section, sBtn, ban ); }
-				dialog.close();
-			} );
+				function checkTaxoEmpty() {
+					var empty = taxonomyFields.every( function ( f ) {
+						var sel = f.querySelector( 'select' );
+						if ( ! sel ) { return true; }
+						var selected = Array.from( sel.selectedOptions ).filter( function ( o ) {
+							return o.value && o.value !== '';
+						} );
+						return selected.length === 0;
+					} );
+					taxoPencil.classList.toggle( 'memdir-hdr-edit--pulse', empty );
+				}
+				checkTaxoEmpty();
 
-			// ── Hide the "Header" tab button ──
+				taxoPencil.addEventListener( 'click', function () {
+					taxoDialog.showModal();
+
+					// Fix select2 dropdowns inside dialog
+					if ( typeof jQuery !== 'undefined' && jQuery.fn.select2 ) {
+						jQuery( taxoDialog ).find( '.acf-field[data-type="taxonomy"] select' ).each( function () {
+							var $sel = jQuery( this );
+							if ( $sel.data( 'select2' ) ) {
+								$sel.select2( 'destroy' );
+							}
+							$sel.select2( { dropdownParent: jQuery( taxoDialog ) } );
+						} );
+					}
+				} );
+
+				taxoDialog.addEventListener( 'close', function () { checkTaxoEmpty(); } );
+			}
+
+			// ========================================
+			// Social Links — pencil next to icons + modal
+			// ========================================
+			if ( socialFields.length && headerSocial ) {
+				var socialDialog = createMiniModal( 'Edit Social Links', socialFields, {
+					modifier: 'social',
+					onSave: function () {
+						checkSocialEmpty();
+					}
+				} );
+
+				var socialPencil = createPencil();
+				headerSocial.appendChild( socialPencil );
+
+				function checkSocialEmpty() {
+					var empty = socialFields.every( function ( f ) {
+						var inp = f.querySelector( 'input' );
+						return ! inp || ! inp.value.trim();
+					} );
+					socialPencil.classList.toggle( 'memdir-hdr-edit--pulse', empty );
+				}
+				checkSocialEmpty();
+
+				socialPencil.addEventListener( 'click', function () { socialDialog.showModal(); } );
+				socialDialog.addEventListener( 'close', function () { checkSocialEmpty(); } );
+			}
+
+			// Hide the "Header" tab button from the sidebar
 			headerTabBtn.style.display = 'none';
 
 			if ( headerTabBtn.classList.contains( 'is-active' ) ) {
@@ -1704,7 +1793,7 @@
 		initSectionPmp();
 		relocateFieldInstructions();
 		initFieldPmp();           // inject field PMP controls after section PMP is wired
-		initHeaderModal();        // move all header fields into unified modal
+		initHeaderEditing();  // per-element header pencils + modals
 		hideEmptySectionPills();  // hide pills for PHP-dropped empty/PMP-blocked sections
 		restoreState();
 		syncControlsTop();
