@@ -178,8 +178,9 @@ class Plugin {
 			'member-directory',
 			'mdAjax',
 			[
-				'ajaxurl' => admin_url( 'admin-ajax.php' ),
-				'nonce'   => wp_create_nonce( 'md_save_nonce' ),
+				'ajaxurl'      => admin_url( 'admin-ajax.php' ),
+				'nonce'        => wp_create_nonce( 'md_save_nonce' ),
+				'search_nonce' => wp_create_nonce( 'memdir_search_terms' ),
 			]
 		);
 	}

@@ -1442,20 +1442,31 @@
 			// Debounce timer
 			var debounceTimer = null;
 
-			// AJAX search for taxonomy terms via ACF endpoint
+			// Read the taxonomy slug from ACF's field config
+			var taxonomySlug = '';
+			var acfFieldData = acfField.querySelector( '[data-taxonomy]' );
+			if ( acfFieldData ) {
+				taxonomySlug = acfFieldData.dataset.taxonomy || '';
+			}
+			// Fallback: try to find it from select name
+			if ( ! taxonomySlug && selectElement.name ) {
+				var nameMatch = selectElement.name.match( /acf[.*?]/ );
+				if ( ! nameMatch ) { taxonomySlug = selectElement.dataset.taxonomy || ''; }
+			}
+
+			// Search terms via our own AJAX endpoint (no ACF nonce issues)
 			function searchTerms( query ) {
 				results.innerHTML = '<div class="memdir-taxo-search__no-results">Searching…</div>';
 				results.style.display = 'block';
 
-				var ajaxUrl = ( typeof acf !== 'undefined' && acf.get ) ? acf.get( 'ajaxurl' ) : ( window.ajaxurl || '/wp-admin/admin-ajax.php' );
-				var nonce   = ( typeof acf !== 'undefined' && acf.get ) ? acf.get( 'nonce' ) : '';
+				var ajaxUrl = ( typeof mdAjax !== 'undefined' ) ? mdAjax.ajaxurl : '/wp-admin/admin-ajax.php';
+				var nonce   = ( typeof mdAjax !== 'undefined' ) ? mdAjax.search_nonce : '';
 
 				var formData = new FormData();
-				formData.append( 'action', 'acf/fields/taxonomy/query' );
-				formData.append( 'field_key', fieldKey );
-				formData.append( 's', query );
-				formData.append( 'nonce', nonce );
-				formData.append( 'paged', '1' );
+				formData.append( 'action', 'memdir_search_taxonomy_terms' );
+				formData.append( 'taxonomy', taxonomySlug );
+				formData.append( 'search', query );
+				formData.append( '_wpnonce', nonce );
 
 				fetch( ajaxUrl, {
 					method: 'POST',

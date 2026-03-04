@@ -63,6 +63,7 @@ class AcfFormHelper {
 		add_action( 'wp_ajax_memdir_ajax_save_section_pmp',       [ self::class, 'handle_save_section_pmp' ] );
 		add_action( 'wp_ajax_memdir_ajax_save_field_pmp',         [ self::class, 'handle_save_field_pmp' ] );
 		add_action( 'wp_ajax_memdir_ajax_upload_avatar',          [ self::class, 'handle_avatar_upload' ] );
+		add_action( 'wp_ajax_memdir_search_taxonomy_terms',       [ self::class, 'handle_search_taxonomy_terms' ] );
 	}
 
 	// -----------------------------------------------------------------------
@@ -493,5 +494,56 @@ class AcfFormHelper {
 		$url = wp_get_attachment_image_url( $attachment_id, 'thumbnail' );
 
 		wp_send_json_success( [ 'url' => $url, 'id' => $attachment_id ] );
+	}
+
+	// -----------------------------------------------------------------------
+	// AJAX: Search taxonomy terms
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Search taxonomy terms by name.
+	 *
+	 * POST params:
+	 *   taxonomy  (string) — taxonomy slug (e.g. mp2t_instruments)
+	 *   search    (string) — search query
+	 *   _wpnonce  (string) — nonce from memdir_vars.search_nonce
+	 *
+	 * Returns JSON { results: [ { id, text }, ... ] }
+	 */
+	public static function handle_search_taxonomy_terms(): void {
+		check_ajax_referer( 'memdir_search_terms', '_wpnonce' );
+
+		$taxonomy = sanitize_text_field( wp_unslash( $_POST['taxonomy'] ?? '' ) );
+		$search   = sanitize_text_field( wp_unslash( $_POST['search']   ?? '' ) );
+
+		if ( ! $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
+			wp_send_json_error( 'Invalid taxonomy' );
+		}
+
+		$terms = get_terms( [
+			'taxonomy'   => $taxonomy,
+			'search'     => $search,
+			'hide_empty' => false,
+			'number'     => 25,
+			'orderby'    => 'name',
+			'order'      => 'ASC',
+		] );
+
+		if ( is_wp_error( $terms ) ) {
+			wp_send_json_error( $terms->get_error_message() );
+		}
+
+		$results = [];
+		foreach ( $terms as $term ) {
+			$results[] = [
+				'id'   => $term->term_id,
+				'text' => $term->name,
+			];
+		}
+
+		// Shuffle for variety
+		shuffle( $results );
+
+		wp_send_json( [ 'results' => $results ] );
 	}
 }
