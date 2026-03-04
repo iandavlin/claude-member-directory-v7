@@ -1158,8 +1158,11 @@ dialog.memdir-header-modal {
   border: none;
   border-radius: 12px;
   padding: 0;
-  max-width: 440px;
+  max-width: 520px;
   width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   background: var(--md-white);
 }
@@ -1212,8 +1215,9 @@ dialog.memdir-header-modal::backdrop {
 
 .memdir-header-modal__body {
   padding: 16px 20px 20px;
-  max-height: 70vh;
+  flex: 1;
   overflow-y: auto;
+  min-height: 0;
 }
 
 /* ACF fields inside the modal — tighten spacing */
@@ -1263,6 +1267,42 @@ dialog.memdir-header-modal::backdrop {
 /* Select2 dropdown inside dialog — must render above backdrop */
 dialog.memdir-header-modal .select2-container--open .select2-dropdown {
   z-index: 100001 !important;
+}
+
+/* Style select2 as text input with placeholder (no dropdown UI) */
+dialog.memdir-header-modal .select2-container {
+  width: 100% !important;
+}
+
+dialog.memdir-header-modal .select2-selection--single {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  height: auto;
+  padding: 8px 12px;
+  background: var(--md-white);
+}
+
+/* Hide the dropdown arrow */
+dialog.memdir-header-modal .select2-selection--single .select2-selection__arrow {
+  display: none;
+}
+
+/* Style search input to look like placeholder text */
+dialog.memdir-header-modal .select2-selection--single .select2-selection__rendered {
+  padding: 0;
+  color: #666;
+}
+
+dialog.memdir-header-modal .select2-search__field {
+  padding: 0;
+  border: none;
+  font-family: inherit;
+  font-size: 14px;
+  color: var(--md-text);
+}
+
+dialog.memdir-header-modal .select2-search__field::placeholder {
+  color: #999;
 }
 
 /* ─────────────────────────────────────────────────────────────
