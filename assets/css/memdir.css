@@ -1164,6 +1164,11 @@ dialog.memdir-header-modal {
   background: var(--md-white);
 }
 
+/* Ensure closed dialogs stay hidden (no display by default) */
+dialog.memdir-header-modal:not([open]) {
+  display: none !important;
+}
+
 dialog.memdir-header-modal::backdrop {
   background: rgba(0, 0, 0, 0.4);
 }
