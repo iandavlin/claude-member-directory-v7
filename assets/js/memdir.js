@@ -361,6 +361,11 @@
 					return;
 				}
 
+				// Skip custom taxonomy search inputs -- the hidden select holds the real value.
+				if ( input.dataset && input.dataset.memdirSkip ) {
+					return;
+				}
+
 				// Append using ACF's name convention acf[field_key].
 				formData.append( 'acf[' + fieldKey + ']', input.value );
 			} );
@@ -1419,6 +1424,7 @@
 			var input = document.createElement( 'input' );
 			input.type = 'text';
 			input.className = 'memdir-taxo-search__input';
+			input.dataset.memdirSkip = '1';
 			input.placeholder = 'Type to search…';
 
 			var results = document.createElement( 'div' );
