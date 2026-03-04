@@ -64,6 +64,7 @@ class AcfFormHelper {
 		add_action( 'wp_ajax_memdir_ajax_save_field_pmp',         [ self::class, 'handle_save_field_pmp' ] );
 		add_action( 'wp_ajax_memdir_ajax_upload_avatar',          [ self::class, 'handle_avatar_upload' ] );
 		add_action( 'wp_ajax_memdir_search_taxonomy_terms',       [ self::class, 'handle_search_taxonomy_terms' ] );
+		add_action( 'wp_ajax_memdir_ajax_import_social',          [ self::class, 'handle_import_social' ] );
 	}
 
 	// -----------------------------------------------------------------------
@@ -545,5 +546,180 @@ class AcfFormHelper {
 		shuffle( $results );
 
 		wp_send_json( [ 'results' => $results ] );
+	}
+
+	// -----------------------------------------------------------------------
+	// AJAX: Import social links from another section
+	// -----------------------------------------------------------------------
+
+	/** Social URL suffixes that identify platform-specific URL fields. */
+	private const SOCIAL_SUFFIXES = [
+		'_website', '_linkedin', '_instagram', '_twitter', '_facebook',
+		'_youtube', '_tiktok', '_vimeo', '_linktree',
+	];
+
+	/**
+	 * Extract header-tab content fields from a section's ACF group.
+	 *
+	 * Walks the field list, finds the tab whose label contains "header",
+	 * and returns all non-system, non-PMP fields under that tab.
+	 *
+	 * @param string $acf_group_key  ACF field group key.
+	 * @return array<int, array>     ACF field definition arrays.
+	 */
+	private static function get_header_fields( string $acf_group_key ): array {
+		$raw = acf_get_fields( $acf_group_key );
+		if ( empty( $raw ) || ! is_array( $raw ) ) {
+			return [];
+		}
+
+		$in_header = false;
+		$fields    = [];
+
+		foreach ( $raw as $f ) {
+			if ( ( $f['type'] ?? '' ) === 'tab' ) {
+				$in_header = ( stripos( $f['label'] ?? '', 'header' ) !== false );
+				continue;
+			}
+			if ( $in_header ) {
+				if ( SectionRegistry::is_system_field( $f ) ) {
+					continue;
+				}
+				// Also skip PMP companion fields.
+				if ( str_contains( $f['key'] ?? '', '_pmp_' ) ) {
+					continue;
+				}
+				$fields[] = $f;
+			}
+		}
+
+		return $fields;
+	}
+
+	/**
+	 * Return the social suffix for a field name, or empty string.
+	 *
+	 * e.g. 'member_directory_profile_instagram' → '_instagram'
+	 */
+	private static function get_social_suffix( string $field_name ): string {
+		foreach ( self::SOCIAL_SUFFIXES as $s ) {
+			if ( str_ends_with( $field_name, $s ) ) {
+				return $s;
+			}
+		}
+		return '';
+	}
+
+	/**
+	 * Check whether a section has at least one non-empty social URL field
+	 * in its header tab.
+	 *
+	 * @param string $acf_group_key  ACF field group key.
+	 * @param int    $post_id        Member-directory post ID.
+	 * @return bool
+	 */
+	public static function section_has_social_data( string $acf_group_key, int $post_id ): bool {
+		$fields = self::get_header_fields( $acf_group_key );
+		foreach ( $fields as $f ) {
+			if ( ( $f['type'] ?? '' ) !== 'url' ) {
+				continue;
+			}
+			if ( self::get_social_suffix( $f['name'] ?? '' ) === '' ) {
+				continue;
+			}
+			$value = get_field( $f['name'], $post_id );
+			if ( ! empty( $value ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * AJAX handler: import social link URL values from one section to another.
+	 *
+	 * Reads all social URL fields from the source section's header tab,
+	 * maps them by suffix (_instagram, _facebook, etc.) to the target
+	 * section's header fields, and writes the values via update_field().
+	 * Skips empty source values so existing target data is preserved.
+	 *
+	 * Expects $_POST:
+	 *   nonce        — wp_create_nonce( 'md_save_nonce' )
+	 *   post_id      — int, the member-directory post being edited
+	 *   source_key   — string, section key to copy FROM (e.g. 'profile')
+	 *   target_key   — string, section key to copy TO (e.g. 'business')
+	 *
+	 * Action: wp_ajax_memdir_ajax_import_social
+	 */
+	public static function handle_import_social(): void {
+		if ( ! check_ajax_referer( 'md_save_nonce', 'nonce', false ) ) {
+			wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+		}
+
+		$post_id    = isset( $_POST['post_id'] )    ? absint( $_POST['post_id'] )                                          : 0;
+		$source_key = isset( $_POST['source_key'] ) ? sanitize_text_field( wp_unslash( $_POST['source_key'] ) ) : '';
+		$target_key = isset( $_POST['target_key'] ) ? sanitize_text_field( wp_unslash( $_POST['target_key'] ) ) : '';
+
+		if ( ! $post_id || get_post_type( $post_id ) !== 'member-directory' ) {
+			wp_send_json_error( [ 'message' => 'Invalid post.' ], 400 );
+		}
+
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+		}
+
+		$source = SectionRegistry::get_section( $source_key );
+		$target = SectionRegistry::get_section( $target_key );
+
+		if ( ! $source || ! $target ) {
+			wp_send_json_error( [ 'message' => 'Invalid section.' ], 400 );
+		}
+
+		if ( empty( $source['can_be_primary'] ) || empty( $target['can_be_primary'] ) ) {
+			wp_send_json_error( [ 'message' => 'Both sections must be primary-capable.' ], 400 );
+		}
+
+		// --- Build source social map: suffix → value ---
+		$source_fields = self::get_header_fields( $source['acf_group_key'] );
+		$source_social = []; // e.g. '_instagram' => 'https://...'
+
+		foreach ( $source_fields as $f ) {
+			if ( ( $f['type'] ?? '' ) !== 'url' ) {
+				continue;
+			}
+			$suffix = self::get_social_suffix( $f['name'] ?? '' );
+			if ( $suffix === '' ) {
+				continue;
+			}
+			$value = get_field( $f['name'], $post_id );
+			if ( ! empty( $value ) ) {
+				$source_social[ $suffix ] = $value;
+			}
+		}
+
+		if ( empty( $source_social ) ) {
+			wp_send_json_error( [ 'message' => 'Source section has no social links.' ], 400 );
+		}
+
+		// --- Walk target fields and write matching values ---
+		$target_fields = self::get_header_fields( $target['acf_group_key'] );
+		$imported      = 0;
+
+		foreach ( $target_fields as $tf ) {
+			if ( ( $tf['type'] ?? '' ) !== 'url' ) {
+				continue;
+			}
+			$suffix = self::get_social_suffix( $tf['name'] ?? '' );
+			if ( $suffix === '' || ! isset( $source_social[ $suffix ] ) ) {
+				continue;
+			}
+			update_field( $tf['key'], $source_social[ $suffix ], $post_id );
+			$imported++;
+		}
+
+		wp_send_json_success( [
+			'imported' => $imported,
+			'message'  => $imported . ' social link' . ( $imported === 1 ? '' : 's' ) . ' imported.',
+		] );
 	}
 }

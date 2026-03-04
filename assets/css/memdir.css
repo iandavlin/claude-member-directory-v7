@@ -1153,6 +1153,39 @@ a.memdir-field-value:hover {
   background: var(--md-green-dark);
 }
 
+/* Import social links button (inside social modal) */
+.memdir-import-social-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  font-family: var(--md-font);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--md-green-dark);
+  background: rgba(151, 169, 124, 0.08);
+  border: 1px dashed var(--md-green-sage);
+  border-radius: var(--md-radius);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.memdir-import-social-btn:hover {
+  background: rgba(151, 169, 124, 0.16);
+  border-color: var(--md-green-dark);
+}
+
+.memdir-import-social-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.memdir-import-social-btn svg {
+  flex-shrink: 0;
+}
+
 /* Dialog shell — sized for per-element modals */
 dialog.memdir-header-modal {
   border: none;

@@ -1998,6 +1998,56 @@
 				checkSocialEmpty();
 
 				socialPencil.addEventListener( 'click', function () { socialDialog.showModal(); } );
+
+				// --- Import social links from other primary section(s) ---
+				var socialSources = ( window.mdAjax && window.mdAjax.socialSources ) || {};
+				var importSvg = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+				Object.keys( socialSources ).forEach( function ( srcKey ) {
+					if ( srcKey === sectionKey ) { return; }
+					var srcLabel = socialSources[ srcKey ];
+
+					var importBtn = document.createElement( 'button' );
+					importBtn.type = 'button';
+					importBtn.className = 'memdir-import-social-btn';
+					importBtn.innerHTML = importSvg + ' Import from ' + srcLabel;
+
+					// Insert at the top of the modal body
+					var modalBody = socialDialog.querySelector( '.memdir-header-modal__body' );
+					if ( modalBody ) {
+						modalBody.insertBefore( importBtn, modalBody.firstChild );
+					}
+
+					importBtn.addEventListener( 'click', function () {
+						importBtn.disabled = true;
+						importBtn.textContent = 'Importing\u2026';
+
+						var fd = new FormData();
+						fd.append( 'action',     'memdir_ajax_import_social' );
+						fd.append( 'nonce',      window.mdAjax.nonce );
+						fd.append( 'post_id',    postId );
+						fd.append( 'source_key', srcKey );
+						fd.append( 'target_key', sectionKey );
+
+						fetch( window.mdAjax.ajaxurl, { method: 'POST', body: fd } )
+							.then( function ( r ) { return r.json(); } )
+							.then( function ( res ) {
+								if ( res.success ) {
+									window.onbeforeunload = null;
+									window.location.reload();
+								} else {
+									alert( 'Import failed: ' + ( res.data && res.data.message ? res.data.message : 'Unknown error.' ) );
+									importBtn.disabled = false;
+									importBtn.innerHTML = importSvg + ' Import from ' + srcLabel;
+								}
+							} )
+							.catch( function () {
+								alert( 'Network error. Please try again.' );
+								importBtn.disabled = false;
+								importBtn.innerHTML = importSvg + ' Import from ' + srcLabel;
+							} );
+					} );
+				} );
+
 				socialDialog.addEventListener( 'close', function () { checkSocialEmpty(); } );
 			}
 

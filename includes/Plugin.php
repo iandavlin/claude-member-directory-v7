@@ -173,14 +173,33 @@ class Plugin {
 			true      // Load in footer.
 		);
 
+		// Build social import sources: other primary-capable sections that have
+		// filled-in social URL fields in their header tab.
+		$social_sources = [];
+		if ( is_singular( 'member-directory' ) ) {
+			$md_post_id = get_queried_object_id();
+			$viewer     = PmpResolver::resolve_viewer( $md_post_id );
+			if ( $md_post_id && AcfFormHelper::is_edit_mode( $md_post_id, $viewer ) ) {
+				foreach ( SectionRegistry::get_sections() as $sec ) {
+					if ( empty( $sec['can_be_primary'] ) ) {
+						continue;
+					}
+					if ( AcfFormHelper::section_has_social_data( $sec['acf_group_key'], $md_post_id ) ) {
+						$social_sources[ $sec['key'] ] = $sec['label'] ?? ucfirst( $sec['key'] );
+					}
+				}
+			}
+		}
+
 		// Pass AJAX URL and nonce to JS so the save handler can POST securely.
 		wp_localize_script(
 			'member-directory',
 			'mdAjax',
 			[
-				'ajaxurl'      => admin_url( 'admin-ajax.php' ),
-				'nonce'        => wp_create_nonce( 'md_save_nonce' ),
-				'search_nonce' => wp_create_nonce( 'memdir_search_terms' ),
+				'ajaxurl'       => admin_url( 'admin-ajax.php' ),
+				'nonce'         => wp_create_nonce( 'md_save_nonce' ),
+				'search_nonce'  => wp_create_nonce( 'memdir_search_terms' ),
+				'socialSources' => (object) $social_sources,
 			]
 		);
 	}
