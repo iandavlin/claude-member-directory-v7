@@ -1403,7 +1403,7 @@
 	}
 
 	
-		// Helper: Create custom taxonomy search box (replaces select2)
+	// Helper: Create custom taxonomy search box (replaces select2)
 		function createTaxonomySearch( acfField ) {
 			var selectElement = acfField.querySelector( 'select' );
 			if ( ! selectElement ) { return; }
@@ -1430,17 +1430,30 @@
 			var results = document.createElement( 'div' );
 			results.className = 'memdir-taxo-search__results';
 
+			// Selected term badge (visual confirmation)
+			var badge = document.createElement( 'div' );
+			badge.className = 'memdir-taxo-search__badge';
+			badge.style.display = 'none';
+
 			wrapper.appendChild( input );
 			wrapper.appendChild( results );
+			wrapper.appendChild( badge );
 			acfField.appendChild( wrapper );
 
-			// Show currently selected value (read from existing <option>)
+			// Show currently selected value with badge
 			function updateSelectedDisplay() {
 				var selectedOpt = selectElement.querySelector( 'option:checked' );
 				if ( selectedOpt && selectedOpt.value ) {
-					input.value = selectedOpt.textContent.trim();
-				} else {
+					var name = selectedOpt.textContent.trim();
+					badge.textContent = '✓ ' + name;
+					badge.style.display = 'block';
 					input.value = '';
+					input.placeholder = 'Change selection…';
+				} else {
+					badge.textContent = '';
+					badge.style.display = 'none';
+					input.value = '';
+					input.placeholder = 'Type to search…';
 				}
 			}
 			updateSelectedDisplay();
@@ -1497,7 +1510,15 @@
 						item.textContent = term.text || term.name || '';
 						item.dataset.id = term.id || '';
 
+						// Prevent mousedown from stealing focus — stops blur from hiding results
+						item.addEventListener( 'mousedown', function ( e ) {
+							e.preventDefault();
+						} );
+
 						item.addEventListener( 'click', function () {
+							// Deselect all existing options first
+							Array.from( selectElement.options ).forEach( function ( o ) { o.selected = false; } );
+
 							// Set the select value
 							var existing = selectElement.querySelector( 'option[value="' + term.id + '"]' );
 							if ( ! existing ) {
@@ -1510,9 +1531,11 @@
 								existing.selected = true;
 							}
 							selectElement.dispatchEvent( new Event( 'change', { bubbles: true } ) );
-							input.value = term.text || term.name || '';
+
+							// Close results and show badge
 							results.innerHTML = '';
 							results.style.display = 'none';
+							updateSelectedDisplay();
 						} );
 
 						results.appendChild( item );
@@ -1542,11 +1565,11 @@
 				}, 250 );
 			} );
 
-			// Close results on blur (delay so click can register)
+			// Close results on blur (fallback; mousedown preventDefault is primary guard)
 			input.addEventListener( 'blur', function () {
 				setTimeout( function () {
 					results.style.display = 'none';
-				}, 200 );
+				}, 300 );
 			} );
 
 			return wrapper;

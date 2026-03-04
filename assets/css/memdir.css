@@ -1328,6 +1328,17 @@ dialog.memdir-header-modal::backdrop {
   font-size: 13px;
 }
 
+.memdir-taxo-search__badge {
+  margin-top: 8px;
+  padding: 6px 14px;
+  background: var(--md-green-sage, #7aa060);
+  color: #fff;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  display: inline-block;
+}
+
 /* ─────────────────────────────────────────────────────────────
    RESPONSIVE
 ───────────────────────────────────────────────────────────── */
