@@ -1310,6 +1310,7 @@ dialog.memdir-header-modal::backdrop {
   padding: 10px 12px;
   border-bottom: 1px solid #f0f0f0;
   color: var(--md-text);
+  cursor: pointer;
   transition: background 0.1s;
 }
 
