@@ -36,24 +36,30 @@ Default value: `member` (set in GlobalFields field definition).
 
 ### Section PMP
 
-Each section has two fields using `{section_key}` as the interpolated key:
+Each section has a **single 4-state field** using `{section_key}` as the interpolated key:
 
 | ACF field name | Values | Purpose |
 |---------------|--------|---------|
-| `member_directory_{section_key}_privacy_mode` | `inherit` \| `custom` | Whether section overrides global |
-| `member_directory_{section_key}_privacy_level` | `public` \| `member` \| `private` | The override value (only read when mode = `custom`) |
+| `member_directory_{section_key}_privacy_mode` | `inherit` \| `public` \| `member` \| `private` | Section visibility override; `inherit` defers to global PMP |
 
 Examples for the `profile` section:
-- `member_directory_profile_privacy_mode`
-- `member_directory_profile_privacy_level`
+- `member_directory_profile_privacy_mode` → `'inherit'` (default) or `'public'` / `'member'` / `'private'`
+
+**Read:** `get_field( 'member_directory_' . $section_key . '_privacy_mode', $post_id ) ?: 'inherit'`
+**Write (AJAX `memdir_ajax_save_section_pmp`):** `update_field( 'field_md_{section_key}_privacy_mode', $pmp, $post_id )`
 
 ### Field-level PMP
 
+Each content field has a companion PMP field. The companion name is built from the content field's name by stripping the `member_directory_` prefix and prepending `member_directory_field_pmp_`:
+
 | ACF field name | Values |
 |---------------|--------|
-| `member_directory_field_pmp_{field_key}` | `public` \| `member` \| `private` \| `inherit` |
+| `member_directory_field_pmp_{section}_{suffix}` | `public` \| `member` \| `private` \| `inherit` |
 
-Example: `member_directory_field_pmp_field_md_profile_bio`
+Example: content field `member_directory_business_name` → companion `member_directory_field_pmp_business_name`
+
+**Read:** `get_field( 'member_directory_field_pmp_' . $field_name_suffix, $post_id ) ?: 'inherit'`
+**Write (AJAX `memdir_ajax_save_field_pmp`):** `update_field( $companion_name, $pmp, $post_id )`
 
 ### Section enabled toggle
 
@@ -144,20 +150,20 @@ if (isset($_GET['view_as']) && $is_privileged) {
 }
 ```
 
-`$is_privileged` is passed to `profile-header.php` so header badges and the right panel remain visible to the author even while previewing a spoofed viewer. The `$viewer` passed to section rendering is the spoofed one — so field PMP resolves as the spoofed viewer would see it.
+`$is_privileged` is passed to `header-section.php` so header badges and the right panel remain visible to the author even while previewing a spoofed viewer. The `$viewer` passed to section rendering is the spoofed one — so field PMP resolves as the spoofed viewer would see it.
 
 ---
 
-## Not Yet Built
+## Edit-Mode PMP Controls
 
-The following parts of the PMP system exist in PHP/HTML but have no JS counterpart yet:
+### Section PMP (left panel)
+`initSectionPmp()` in memdir.js renders 4-state button groups (inherit/public/member/private) in the section controls panel. Clicking a button fires `memdir_ajax_save_section_pmp` to persist the value. The active button reflects the stored value; a status label shows the effective resolved PMP (after waterfall).
 
-| Gap | Location | Status |
-|-----|----------|--------|
-| **Field-level PMP controls** in edit form | Would render per-field inside `section-edit.php` | UI not built; field-level PMP fields exist in naming convention but no ACF fields are registered for them |
-| **Section Override button** JS handler | Override button renders in `section-view.php` | No click handler in `memdir.js` |
-| **Global Default AJAX** | `.memdir-panel__global-btn` in `right-panel.php` | Buttons render; no click handler in `memdir.js` |
-| **Section privacy_mode / privacy_level conditional UI** | Section-level override logic | PHP reads these fields in `section-view.php`; no UI to set them in edit mode |
+### Field PMP (per-field)
+`initFieldPmp()` in memdir.js injects small visibility button groups next to each content field in edit mode. Clicking a button fires `memdir_ajax_save_field_pmp`. Only non-system, non-PMP-companion fields get controls.
+
+### Global PMP (right panel)
+`initRightPanel()` in memdir.js wires `.memdir-panel__global-btn` buttons. Clicking fires `memdir_ajax_save_global_pmp` to persist the global default. Updates section PMP status labels after save.
 
 ---
 
@@ -184,10 +190,11 @@ The following parts of the PMP system exist in PHP/HTML but have no JS counterpa
 
 ```php
 $global_pmp  = get_field('member_directory_global_pmp', $post_id) ?: 'public';
-$section_pmp = get_field('member_directory_' . $section_key . '_privacy_level', $post_id) ?: 'inherit';
+$section_pmp = get_field('member_directory_' . $section_key . '_privacy_mode', $post_id) ?: 'inherit';
 
 foreach ($fields as $field) {
-    $field_pmp = get_field('member_directory_field_pmp_' . $field['key'], $post_id) ?: 'inherit';
+    $field_name_suffix = preg_replace( '/^member_directory_/', '', $field['name'] );
+    $field_pmp = get_field('member_directory_field_pmp_' . $field_name_suffix, $post_id) ?: 'inherit';
 
     if (!PmpResolver::can_view([
         'field_pmp'   => $field_pmp,

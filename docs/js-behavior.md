@@ -2,20 +2,28 @@
 
 Documents what `assets/js/memdir.js` actually does. All code runs inside a self-executing anonymous function `(function() { 'use strict'; ... }())` with no global exports.
 
+**⚠ File has CRLF line endings.** The Edit tool fails on this file. Use the Write tool (read full file first, write whole thing back) or Node.js inline scripts for edits.
+
 ---
 
 ## Initialization Order
 
-On `DOMContentLoaded`, six functions are called in this order:
+On `DOMContentLoaded`, these functions are called in order:
 
 ```js
 document.addEventListener('DOMContentLoaded', function () {
-    initTabNav();          // 1. Wire tab nav for all edit sections
-    initPillNav();         // 2. Wire pill click handlers
-    initPillCheckboxes();  // 3. Sort disabled pills; wire checkbox handlers
-    initSectionSave();     // 4. Wire save buttons and unsaved-state tracking
-    initRightPanel();      // 5. Wire Primary Section AJAX buttons
-    restoreStateFromUrl(); // 6. Restore active pill from URL params
+    initTabNav();              // 1. Wire tab nav for all edit sections
+    initPillNav();             // 2. Wire pill click handlers
+    initPillCheckboxes();      // 3. Sort disabled pills; wire checkbox handlers
+    initSectionSave();         // 4. Wire save buttons and unsaved-state tracking
+    initRightPanel();          // 5. Wire Primary Section + Global PMP AJAX buttons
+    initSectionPmp();          // 6. Wire section-level PMP button groups
+    relocateFieldInstructions(); // 7. Move ACF instruction text below fields
+    initFieldPmp();            // 8. Inject per-field PMP controls (after section PMP wired)
+    initHeaderEditing();       // 9. Per-element header pencils + modals
+    hideEmptySectionPills();   // 10. Hide pills for empty/PMP-blocked sections
+    restoreState();            // 11. Restore active pill + tab from URL params
+    syncControlsTop();         // 12. Align section controls with sticky header
 });
 ```
 
@@ -49,6 +57,7 @@ Each tab button carries a JSON array of ACF field keys:
 2. Adds `is-active` class to `activeBtn`; removes it from all other tab buttons.
 3. Iterates all `.memdir-field-content .acf-field[data-key]` within the section.
 4. Sets `style.display = ''` if the field's `data-key` is in the key array; `style.display = 'none'` otherwise.
+5. **Dialog guard:** skips fields inside a `<dialog>` element (header modal fields).
 
 ACF renders each field as `<div class="acf-field" data-key="{field_key}">`.
 
@@ -68,7 +77,7 @@ The checkbox guard prevents section switching when the user clicks a pill's enab
 
 ### `activatePill(sectionKey)`
 
-Called by both `initPillNav()` and `restoreStateFromUrl()`.
+Called by both `initPillNav()` and `restoreState()`.
 
 ```
 activatePill('profile')    → shows only .memdir-section[data-section="profile"]
@@ -157,7 +166,7 @@ Adds class `has-unsaved` to the section element and sets `banner.style.display =
 
 ### `saveSection(section, saveBtn, banner)`
 
-**What gets collected:** All `.acf-field[data-key]` elements within `.memdir-field-content`, **regardless of tab visibility**. Hidden-tab fields are still included in the save payload. For each field, all `input`, `textarea`, and `select` descendants are iterated; unchecked checkboxes and radios are skipped.
+**What gets collected:** All `.acf-field[data-key]` elements within `.memdir-field-content`, **regardless of tab visibility**. Hidden-tab fields are still included in the save payload. For each field, all `input`, `textarea`, and `select` descendants are iterated; unchecked checkboxes and radios are skipped. Inputs with `data-memdir-skip` attribute are skipped (used by the custom taxonomy search input).
 
 **FormData payload:**
 ```
@@ -170,7 +179,7 @@ acf[{key}]:   {value}   (one entry per form control per field)
 **On success:**
 - Removes `has-unsaved` from section; hides banner.
 - Shows "Saved ✓" on the button for 2 seconds, then restores original text.
-- **`field_md_profile_page_name` special case:** if that field's `<input>` is present in the payload, JS updates `.memdir-header__title` text content in place — no page reload needed.
+- **Title update special case:** if a profile or business name field was in the payload, JS updates `.memdir-header__title` text content in place — no page reload needed.
 
 **On error (HTTP success but `data.success === false`):**
 - Adds `memdir-section-save--error` to the button for 3 seconds.
@@ -179,19 +188,13 @@ acf[{key}]:   {value}   (one entry per form control per field)
 
 ---
 
-## 5. State Restoration — `restoreStateFromUrl()`
-
-Reads `active_section` from `URLSearchParams`. If present, calls `activatePill(activeSection)`.
-
-This runs **after** `initTabNav()`, which has already restored the tab state independently. Together they handle the full state restore after a save-triggered page reload.
-
----
-
-## 6. Right Panel — `initRightPanel()`
+## 5. Right Panel — `initRightPanel()`
 
 ### What it does
 
-Wires click handlers on `.memdir-panel__primary-btn` buttons only. Nothing else in the right panel has a JS click handler.
+Wires click handlers on:
+- `.memdir-panel__primary-btn` — Primary Section AJAX save
+- `.memdir-panel__global-btn` — Global PMP AJAX save
 
 ### Primary Section save flow
 
@@ -206,6 +209,22 @@ On click of `.memdir-panel__primary-btn`:
    section_key: {sectionKey}
    ```
 3. On success: moves `is-active` class among primary-btn siblings, then calls `updatePrimarySection(sectionKey)`.
+
+### Global PMP save flow
+
+On click of `.memdir-panel__global-btn`:
+
+1. Reads `btn.dataset.pmp` and captures the previous active PMP value.
+2. Optimistically updates the active class on all global buttons.
+3. POSTs to `memdir_ajax_save_global_pmp`:
+   ```
+   action:  memdir_ajax_save_global_pmp
+   nonce:   window.mdAjax.nonce
+   post_id: {postId}
+   pmp:     {pmp}
+   ```
+4. On success: updates all section PMP status labels to reflect the new global default.
+5. On failure: reverts the active class to the previous value.
 
 ### `updatePrimarySection(newPrimaryKey)`
 
@@ -226,26 +245,126 @@ Updates the pill nav DOM when the primary section changes:
 
 ---
 
+## 6. Section PMP — `initSectionPmp()`
+
+### What it does
+
+For every `.memdir-section--edit`, renders a 4-state PMP button group (inherit / public / member / private) in the section controls panel. Shows a status label with the effective resolved PMP after waterfall.
+
+On button click:
+1. Optimistically updates active state.
+2. POSTs to `memdir_ajax_save_section_pmp`:
+   ```
+   action:      memdir_ajax_save_section_pmp
+   nonce:       window.mdAjax.nonce
+   post_id:     {postId}
+   section_key: {sectionKey}
+   pmp:         {inherit|public|member|private}
+   ```
+3. Updates the status label to show the new effective PMP.
+
+---
+
+## 7. Field PMP — `initFieldPmp()`
+
+### What it does
+
+Injects per-field visibility button groups into each content field in edit mode. Only non-system, non-PMP-companion fields get controls (filters using field type and key patterns).
+
+Each field gets a small 4-button row (inherit / public / member / private). The active button reflects the stored companion field value.
+
+On button click:
+1. Optimistically updates active state.
+2. POSTs to `memdir_ajax_save_field_pmp`:
+   ```
+   action:         memdir_ajax_save_field_pmp
+   nonce:          window.mdAjax.nonce
+   post_id:        {postId}
+   companion_name: member_directory_field_pmp_{section}_{suffix}
+   pmp:            {inherit|public|member|private}
+   ```
+
+---
+
+## 8. Header Editing — `initHeaderEditing()`
+
+### What it does
+
+For every `.memdir-section--edit` that has a "Header" tab, creates per-element editing overlays on the sticky header. Finds header field keys from the tab button's `data-field-keys` attribute and classifies them by type.
+
+### Field classification
+
+| Type | Detected by | UI element |
+|------|------------|------------|
+| Image | `data-type="image"` (first only) | Camera overlay on avatar |
+| Text | `data-type="text"` | Pencil icon next to title |
+| Taxonomy | `data-type="taxonomy"` | Pencil icon next to category badges |
+| Social URL | `data-type="url"` + social suffix match | Pencil icon next to social icons |
+
+Social suffix detection uses `SOCIAL_SUFFIXES`: `_website`, `_linkedin`, `_instagram`, `_twitter`, `_facebook`, `_youtube`, `_tiktok`, `_vimeo`, `_linktree`.
+
+### Mini-modals
+
+All modals are created by `createMiniModal(title, fields, opts)`:
+- Builds a native `<dialog>` element with header, body, and optional save button
+- Appends inside `.memdir-field-content` so `saveSection()` can still find the ACF fields
+- Handles close on × button, backdrop click, and Escape key
+- On save: calls `saveSection()` then closes the dialog
+
+### Avatar modal
+
+- Custom content (not ACF fields): preview image + "Choose New Photo" button + "Delete Photo" button
+- Upload: hidden file input → AJAX POST to `memdir_ajax_upload_avatar` → returns new thumbnail URL
+- Delete: AJAX POST to `md_save_section` with empty value for the image field key
+- Delete button auto-hides when no photo is set, reappears after upload
+
+### Categories modal (custom taxonomy search)
+
+`createTaxonomySearch(acfField)`:
+- Destroys select2 and hides the `.acf-input` wrapper
+- Creates a text input with debounced search (250ms)
+- Searches via AJAX POST to `memdir_search_taxonomy_terms` (our own endpoint, not ACF's)
+- Result items use `mousedown` with `preventDefault()` to keep focus on the input (prevents blur from hiding results before click registers)
+- On selection: creates/selects an `<option>` on the hidden `<select>`, dispatches change event
+- Shows a green checkmark badge (`✓ Term Name`) below the input for visual confirmation
+- Search input has `data-memdir-skip="1"` so `saveSection()` skips it (the hidden select holds the real value)
+
+### Social links modal
+
+- Standard ACF URL fields moved into the dialog body
+- **Import from other sections:** reads `mdAjax.socialSources` (map of section key → label for other primary-capable sections with social data). For each source, renders an "Import from [Section]" button at the top of the modal body. On click: AJAX POST to `memdir_ajax_import_social` → page reload on success.
+
+### Empty-state pulse
+
+Pencil icons pulse with a gold glow animation (`memdir-hdr-edit--pulse`) when all fields of that type are empty. Pulse stops after the modal is closed with filled values.
+
+---
+
+## 9. State Restoration — `restoreState()`
+
+Reads `active_section` from `URLSearchParams`. If present, calls `activatePill(activeSection)`.
+
+This runs **after** `initTabNav()`, which has already restored the tab state independently. Together they handle the full state restore after a save-triggered page reload.
+
+---
+
 ## AJAX Actions Reference
 
 | Action | JS Trigger | PHP Handler |
 |--------|------------|-------------|
-| `md_save_section` | Save button click / Enter key in text input | `AcfFormHelper::handle_ajax_save` |
+| `md_save_section` | Save button click / Enter key / modal save | `AcfFormHelper::handle_ajax_save` |
 | `memdir_ajax_save_section_enabled` | Pill checkbox `change` event | `AcfFormHelper::handle_save_section_enabled` |
+| `memdir_ajax_save_section_pmp` | Section PMP button click | `AcfFormHelper::handle_save_section_pmp` |
+| `memdir_ajax_save_field_pmp` | Field PMP button click | `AcfFormHelper::handle_save_field_pmp` |
+| `memdir_ajax_upload_avatar` | File input change in avatar modal | `AcfFormHelper::handle_avatar_upload` |
+| `memdir_search_taxonomy_terms` | Debounced text input in taxonomy search | `AcfFormHelper::handle_search_taxonomy_terms` |
+| `memdir_ajax_import_social` | "Import from [Section]" button click | `AcfFormHelper::handle_import_social` |
 | `memdir_ajax_save_primary_section` | `.memdir-panel__primary-btn` click | `GlobalFields::handle_save_primary_section` |
+| `memdir_ajax_save_global_pmp` | `.memdir-panel__global-btn` click | `GlobalFields::handle_save_global_pmp` |
 
 All actions use:
-- Nonce key: `md_save_nonce`
-- Nonce value localized via `window.mdAjax.nonce`
+- Nonce key: `md_save_nonce` (except `memdir_search_taxonomy_terms` which uses `memdir_search_terms`)
+- Nonce value localized via `window.mdAjax.nonce` / `window.mdAjax.search_nonce`
 - AJAX URL: `window.mdAjax.ajaxurl` (falls back to `/wp-admin/admin-ajax.php`)
 
-`window.mdAjax` is enqueued by `Plugin::enqueue_scripts()` via `wp_localize_script()`.
-
----
-
-## Not Yet Wired
-
-| Element | Expected behavior | Status |
-|---------|------------------|--------|
-| `.memdir-panel__global-btn` | Save global PMP via AJAX | ❌ No click handler |
-| Override button in `section-view.php` | Engage section-level PMP editing | ❌ No click handler |
+`window.mdAjax` is enqueued by `Plugin::enqueue_assets()` via `wp_localize_script()`. It also includes `socialSources` (map of section keys with social data, for the import feature).

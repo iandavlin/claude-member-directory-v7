@@ -1,6 +1,6 @@
 # Member Directory — Frontend Layout Implementation Reference
 
-This document describes what is **actually built** in the Member Directory plugin as of Feb 2026. It is the authoritative reference for CSS and JS development. For the original design specification see git history.
+This document describes what is **actually built** in the Member Directory plugin as of Mar 2026. It is the authoritative reference for CSS and JS development. For the original design specification see git history.
 
 ---
 
@@ -90,66 +90,103 @@ These are **load-bearing** — without them BuddyBoss caps the container width a
 
 ## Header
 
+### Overview
+
+The header is rendered by `templates/parts/header-section.php` — a **generic, data-driven** partial. It scans the primary section's ACF field group for a tab whose label contains "header" (case-insensitive), then maps the fields under that tab to display slots by type:
+
+| Field type | Slot | Matching rule |
+|-----------|------|---------------|
+| `text` (first found) | Title (`<h1>`) | First text field with a value |
+| `image` (first found) | Avatar (circular) | First image field with a value |
+| `taxonomy` | Category badge pills | All taxonomy fields |
+| `url` | Social icon links | Matched by field name suffix to platform SVGs |
+
+Social platform suffixes: `_website`, `_linkedin`, `_instagram`, `_twitter`, `_facebook`, `_youtube`, `_tiktok`, `_vimeo`, `_linktree`.
+
+The header variant class (`memdir-header--{section_key}`) comes from the primary section key. The title falls back to `get_the_title()` if no text field has a value.
+
 ### DOM structure
 
 ```html
-<header class="memdir-header memdir-header--{profile|business}">
+<header class="memdir-header memdir-header--{section_key}">
 
-  <div class="memdir-header__identity">         <!-- always present -->
-    <p class="memdir-header__eyebrow">...</p>
-    <h1 class="memdir-header__title">...</h1>
-    <div class="memdir-header__subline"></div>  <!-- always in DOM, always empty -->
-    <div class="memdir-header__social"></div>   <!-- always in DOM, always empty -->
-  </div>
+  <div class="memdir-header__body">
 
-  <!-- Only rendered for author/admin ($show_badges = true) -->
-  <div class="memdir-header__badges">
-    <div class="memdir-header__badge memdir-header__badge--edit">Edit mode</div>
-    <div class="memdir-header__badge memdir-header__badge--viewing">Viewing: {label}</div>
+    <div class="memdir-header__identity">
+      <!-- Avatar (only if image field has value or section has default_avatar) -->
+      <div class="memdir-header__avatar-wrap">
+        <img class="memdir-header__avatar" src="..." alt="...">
+      </div>
+
+      <div class="memdir-header__text">
+        <h1 class="memdir-header__title">Name</h1>
+        <p class="memdir-header__eyebrow">SECTION LABEL</p>
+      </div>
+    </div>
+
+    <!-- Meta block: taxonomy badges + social icons (only if data exists) -->
+    <div class="memdir-header__meta">
+      <div class="memdir-header__taxo">
+        <span class="memdir-header__taxo-badge">Category</span>
+      </div>
+      <span class="memdir-header__divider" aria-hidden="true"></span>
+      <div class="memdir-header__social">
+        <a class="memdir-social-link memdir-social-link--instagram" href="..." target="_blank">
+          <!-- inline SVG -->
+        </a>
+      </div>
+    </div>
+
   </div>
 
 </header>
 ```
 
-Note: `.memdir-header__identity` is a wrapper `<div>` in the DOM (not in the original spec). The `subline` and `social` divs **always render empty** — they are DOM placeholders for future content.
+### Edit-mode overlays (JS-injected)
 
-### Two header variants
+In edit mode, `initHeaderEditing()` adds per-element editing controls on top of the sticky header:
 
-The `$variant` is determined once on page load by reading `member_directory_primary_section` from `get_field()`. It does **not** change as the user navigates between pills.
+| Element | Overlay | Modal contents |
+|---------|---------|---------------|
+| Avatar | Camera icon overlay on the image | Preview + "Choose New Photo" + "Delete Photo" buttons |
+| Title | Pencil icon next to name | ACF text field for the name |
+| Category badges | Pencil icon next to badges | Custom taxonomy search (debounced AJAX, `mousedown` focus guard) |
+| Social icons | Pencil icon next to social row | ACF URL fields + "Import from [Section]" buttons |
 
-**Profile header** (`memdir-header--profile`):
-- Eyebrow: `MEMBER PROFILE`
-- Title: `get_field('member_directory_profile_page_name', $post_id)` — falls back to `get_the_title()` if empty
+All modals use native `<dialog>` elements created by `createMiniModal()`. They are appended inside `.memdir-field-content` so `saveSection()` can find the ACF fields within them. See `docs/js-behavior.md` for full details.
 
-**Business header** (`memdir-header--business`):
-- Eyebrow: `BUSINESS PROFILE`
-- Title: **⚠ TODO** — field `field_md_business_name` exists in `business.json` but `profile-header.php` has this as a placeholder comment. The title falls back to `get_the_title()`. Fix: replace the TODO comment with `get_field('member_directory_business_name', $post_id)`.
-
-### Subline and Social — not implemented
-
-Both `<div class="memdir-header__subline">` and `<div class="memdir-header__social">` always render empty. Field sources are TBD (see Open Items).
-
-### Badges
-
-Only rendered when `$show_badges` is true (author or admin, based on the **real** viewer captured before any View As spoof). This ensures badges remain visible to the author even while previewing as Member or Public.
-
-- **Edit mode badge** — shown when `AcfFormHelper::is_edit_mode()` returns true (edit mode, no `?view_as`)
-- **Viewing badge** — shows `$active_section_label` (e.g. "All sections", "Profile")
+**Empty-state pulse:** Pencil icons pulse with a gold glow animation (`memdir-hdr-edit--pulse`) when all fields of that type are empty. Pulse stops after the modal is closed with filled values.
 
 ### CSS classes
 ```
 .memdir-header
-.memdir-header--profile
-.memdir-header--business
+.memdir-header--{section_key}
+.memdir-header__body
 .memdir-header__identity
+.memdir-header__avatar-wrap
+.memdir-header__avatar
+.memdir-header__text
 .memdir-header__eyebrow
 .memdir-header__title
-.memdir-header__subline
+.memdir-header__meta
+.memdir-header__taxo
+.memdir-header__taxo-badge
+.memdir-header__divider
 .memdir-header__social
-.memdir-header__badges
-.memdir-header__badge
-.memdir-header__badge--edit
-.memdir-header__badge--viewing
+.memdir-social-link
+.memdir-social-link--{platform}
+.memdir-hdr-edit
+.memdir-hdr-edit--pulse
+.memdir-header-modal
+.memdir-header-modal__body
+.memdir-header-modal__avatar-btn
+.memdir-header-modal__avatar-btn--delete
+.memdir-taxo-search
+.memdir-taxo-search__input
+.memdir-taxo-search__results
+.memdir-taxo-search__result-item
+.memdir-taxo-search__badge
+.memdir-import-social-btn
 ```
 
 ---
@@ -256,7 +293,8 @@ Each section renders as:
 ```html
 <div class="memdir-section memdir-section--{edit|view}"
      data-section="{section_key}"
-     data-post-id="{post_id}">
+     data-post-id="{post_id}"
+     data-field-pmp="{JSON object}">
 
   <div class="memdir-section-controls">   <!-- left column, ~280px -->
     ...
@@ -269,6 +307,8 @@ Each section renders as:
 </div>
 ```
 
+The `data-field-pmp` attribute (edit mode only) carries a JSON object mapping each content field's ACF key to its companion PMP key, companion name, and stored PMP value. This is read by `initFieldPmp()` to inject per-field visibility controls.
+
 **Section card treatment:** border-radius 12px, `box-shadow: 0 1px 4px rgba(0,0,0,0.06)`, clean 1px border.
 
 ---
@@ -278,25 +318,25 @@ Each section renders as:
 White background (`--md-white`). Contains:
 
 1. **Section title** — all-caps, small, bold
-2. **PMP control row** — three icon buttons (Public / Members / Private). Currently renders as placeholders. The Override button exists in `section-view.php` but **has no JS click handler** — it is not yet wired.
+2. **Unsaved banner** — `.memdir-unsaved-banner` — coral background, white text. Shown on any `input`/`change` event inside `.memdir-field-content`. Hidden on successful save.
 3. **Tab nav** — one button per ACF tab group in the section. Rendered as mini-cards:
    - Resting: `--md-bg` background, 1px border, `border-radius: 8px`, subtle shadow
    - Active (`is-active`): `--md-green-pale` background, `--md-border` border, bold text, slightly stronger shadow
 4. **Save button** (edit mode only)
-5. **Unsaved banner** — `.memdir-unsaved-banner` — inside the section controls div (LEFT column, not right). Coral background, white text. Shown on any `input`/`change` event inside `.memdir-field-content`. Hidden on successful save.
+5. **Section PMP controls** (edit mode only) — heading "Section Default Visibility", 4-state button group (inherit / public / member / private), and a status label showing the effective resolved PMP after waterfall. Wired via `initSectionPmp()` in JS.
 
 ### CSS classes
 ```
 .memdir-section-controls
 .memdir-section-controls__title
+.memdir-section-controls__pmp-heading
 .memdir-section-controls__pmp
 .memdir-section-controls__pmp-btn
-.memdir-section-controls__pmp-btn--active
+.memdir-section-controls__pmp-btn--inherit
 .memdir-section-controls__pmp-btn--public
 .memdir-section-controls__pmp-btn--member
 .memdir-section-controls__pmp-btn--private
-.memdir-section-controls__override
-.memdir-section-controls__override--active
+.memdir-section-controls__pmp-status
 .memdir-section-controls__tabs
 .memdir-section-controls__tab-item
 .memdir-unsaved-banner
@@ -322,6 +362,10 @@ White background (`--md-white`), padding 24px.
 </div>
 ```
 
+### Per-field PMP controls (edit mode)
+
+`initFieldPmp()` injects a small 4-button visibility row (inherit / public / member / private) next to each content field. Only non-system, non-PMP-companion fields get controls. Clicking a button fires `memdir_ajax_save_field_pmp` to persist the value.
+
 ### Edit mode tab navigation
 
 JS uses `data-field-keys` (a JSON array of ACF field keys) on each tab button to drive show/hide of `.acf-field[data-key]` elements:
@@ -334,20 +378,20 @@ JS uses `data-field-keys` (a JSON array of ACF field keys) on each tab button to
 </button>
 ```
 
-On tab activation, `activateTab()` sets `display: none` on all `.acf-field[data-key]` elements not in the current tab's key list, and clears `display` on those that are. Fields on hidden tabs are still collected on save.
+On tab activation, `activateTab()` sets `display: none` on all `.acf-field[data-key]` elements not in the current tab's key list, and clears `display` on those that are. Fields inside `<dialog>` elements (header modals) are skipped. Fields on hidden tabs are still collected on save.
 
 ### Section save AJAX
 
 - **Action:** `md_save_section`
 - **Nonce:** `md_save_nonce`, localized via `window.mdAjax.nonce`
 - **Trigger:** Save button click, or Enter key in any non-textarea input
-- **Payload:** All `.acf-field[data-key]` elements collected **regardless of tab visibility** (hidden tab fields are still saved)
-- **Post-save:** If `field_md_profile_page_name` was in the payload, JS updates `.memdir-header__title` in place without a page reload
+- **Payload:** All `.acf-field[data-key]` elements collected **regardless of tab visibility** (hidden tab fields are still saved). Inputs with `data-memdir-skip` are excluded (used by custom taxonomy search input).
+- **Post-save:** If a profile or business name field was in the payload, JS updates `.memdir-header__title` in place without a page reload
 - **URL params on reload:** `?active_section={key}&active_tab={label}` — restores pill and tab state after a full-page reload
 
 ### View mode
 
-Rendered HTML from `FieldRenderer::render()`. Fields hidden by PMP render **zero HTML** — no wrappers, no placeholders. FieldRenderer supports: text, email, number, textarea, url, image, gallery, file, google_map, wysiwyg, true_false, taxonomy, checkbox, radio. **`select` type is not handled** — falls through with no output.
+Rendered HTML from `FieldRenderer::render()`. Fields hidden by PMP render **zero HTML** — no wrappers, no placeholders. FieldRenderer supports: text, email, number, textarea, url, image, gallery, file, google_map, wysiwyg, true_false, taxonomy, checkbox, radio, select.
 
 ### CSS classes
 ```
@@ -361,11 +405,12 @@ Rendered HTML from `FieldRenderer::render()`. Fields hidden by PMP render **zero
 .memdir-wysiwyg
 .memdir-gallery
 .memdir-field-list
-.memdir-unsaved-banner
-.memdir-section-save
-.memdir-section-save--saving
-.memdir-section-save--saved
-.memdir-section-save--error
+.memdir-field-pmp
+.memdir-field-pmp__btn
+.memdir-field-pmp__btn--inherit
+.memdir-field-pmp__btn--public
+.memdir-field-pmp__btn--member
+.memdir-field-pmp__btn--private
 ```
 
 ---
@@ -401,12 +446,12 @@ Renders three buttons for Public / Members / Private global PMP:
 
 ```html
 <div class="memdir-panel__label">GLOBAL DEFAULT</div>
-<button class="memdir-panel__global-btn {is-active?}" data-pmp="public">🌐 Public</button>
-<button class="memdir-panel__global-btn" data-pmp="member">👥 Members</button>
-<button class="memdir-panel__global-btn" data-pmp="private">🔒 Private</button>
+<button class="memdir-panel__global-btn {is-active?}" data-pmp="public">Public</button>
+<button class="memdir-panel__global-btn" data-pmp="member">Members</button>
+<button class="memdir-panel__global-btn" data-pmp="private">Private</button>
 ```
 
-**⚠ NOT WIRED IN JS** — the buttons render but clicking them does nothing. No click handler exists in `memdir.js` for `.memdir-panel__global-btn`. This is a known gap.
+Wired via `initRightPanel()` in JS. Clicking fires `memdir_ajax_save_global_pmp` AJAX. On success, updates all section PMP status labels to reflect the new global default. On failure, reverts the active class.
 
 ### Primary Section block
 
@@ -416,7 +461,7 @@ Renders three buttons for Public / Members / Private global PMP:
 <button class="memdir-panel__primary-btn" data-section-key="business">Business</button>
 ```
 
-**IS wired and working.** Clicking fires `memdir_ajax_save_primary_section` AJAX, then calls `updatePrimarySection()` to reorder pills and update the nav DOM.
+Wired via `initRightPanel()` in JS. Clicking fires `memdir_ajax_save_primary_section` AJAX, then calls `updatePrimarySection()` to reorder pills and update the nav DOM.
 
 ### Notes block
 
@@ -452,11 +497,10 @@ Field naming conventions (exact ACF field names):
 | Level | ACF field name | Values |
 |-------|---------------|--------|
 | Global | `member_directory_global_pmp` | `public` \| `member` \| `private` |
-| Section mode | `member_directory_{section_key}_privacy_mode` | `inherit` \| `custom` |
-| Section level | `member_directory_{section_key}_privacy_level` | `public` \| `member` \| `private` |
-| Field level | `member_directory_field_pmp_{field_key}` | `public` \| `member` \| `private` \| `inherit` |
+| Section | `member_directory_{section_key}_privacy_mode` | `inherit` \| `public` \| `member` \| `private` |
+| Field | `member_directory_field_pmp_{section}_{suffix}` | `inherit` \| `public` \| `member` \| `private` |
 
-Resolution order: **field → section → global**. The lowest explicit override wins. See `docs/pmp-system.md` for full details.
+Resolution order: **field → section → global**. The lowest explicit override wins. `inherit` causes the waterfall to continue upward. Global can never be `inherit`. See `docs/pmp-system.md` for full details.
 
 ---
 
@@ -474,19 +518,21 @@ All JS lives in `assets/js/memdir.js`. See `docs/js-behavior.md` for full docume
 | Section save AJAX | Save button / Enter | ✅ wired |
 | Header title in-place update | Save success | ✅ wired |
 | Primary Section save + pill reorder | Click primary btn | ✅ wired |
+| Global Default PMP save | Click global btn | ✅ wired |
+| Section PMP save | Click section PMP btn | ✅ wired |
+| Field PMP save | Click field PMP btn | ✅ wired |
+| Header editing (avatar/title/taxo/social) | Pencil/camera click | ✅ wired |
+| Custom taxonomy search in modal | Debounced input | ✅ wired |
+| Avatar upload + delete | Modal buttons | ✅ wired |
+| Import social links from other section | Modal button | ✅ wired |
 | State restore from URL params | Page load | ✅ wired |
-| Global Default PMP save | Click global btn | ❌ not wired |
-| Section PMP override engage | Click Override btn | ❌ not wired |
+| Hide pills for empty/PMP-blocked sections | Page load | ✅ wired |
+| Sync controls top offset with sticky header | Page load | ✅ wired |
+| Relocate ACF field instructions | Page load | ✅ wired |
 
 ---
 
 ## Open Items
 
-- **Header subline** — field sources for both profile and business variants are TBD
-- **Social links** — global social fields: source and display format TBD
-- **Global Default AJAX** — `.memdir-panel__global-btn` click handler not yet written in JS
-- **Section PMP Override** — Override button exists in `section-view.php` but has no JS click handler
-- **FieldRenderer coverage** — `select`, `image` (partial), `url` (no link wrapping), `taxonomy` (no term links), `repeater` not fully implemented
-- **Business header title** — `profile-header.php` has a TODO where `field_md_business_name` should be read
 - **Sticky header WP admin bar offset** — on dev, admin bar is 32px; `.memdir-sticky { top: 0 }` may need to be `top: 32px` in admin context
 - **Responsive** — no breakpoints defined yet; right panel and section columns do not reflow below 768px

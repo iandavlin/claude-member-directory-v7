@@ -12,20 +12,34 @@ WordPress plugin: section-based member profile and directory system powered by A
 - `PmpResolver` — PMP waterfall resolution + viewer context + view-as spoofing
 - `FieldRenderer` — field-to-HTML rendering for view mode (text, textarea, url, wysiwyg, image, gallery, file, google_map, true_false, checkbox, radio, taxonomy, select)
 - `GlobalFields` — ACF group for global PMP + primary section controls (**⚠ debug code present — see Known Issues**)
-- `AcfFormHelper` — `acf_form_head()` guard + edit-mode detection + `acf_form()` rendering + AJAX handlers for section save, section enabled, section PMP
+- `AcfFormHelper` — `acf_form_head()` guard + edit-mode detection + `acf_form()` rendering + AJAX handlers (section save, enabled toggle, section PMP, field PMP, avatar upload, taxonomy search, social import)
 - `templates/single-member-directory.php` — full edit/view mode branching
 - `templates/parts/section-edit.php` — edit partial (left controls panel + ACF form)
 - `templates/parts/section-view.php` — view partial (PMP waterfall + FieldRenderer per field)
 - `templates/parts/right-panel.php` — author/admin panel: View As button group, Global Default block, Primary Section block, Notes block
-- `templates/parts/header-section.php` — generic data-driven sticky header (scans for ACF tab with "header" in label)
+- `templates/parts/header-section.php` — generic data-driven sticky header (scans for ACF tab with "header" in label; maps fields to slots: text→title, image→avatar, taxonomy→badges, url→social icons)
 - `templates/parts/pill-nav.php` — pill navigation row; All Sections + per-section pills with enable/disable checkboxes
 - `sections/profile.json` — lean section pointer (Profile)
 - `sections/business.json` — lean section pointer (Business)
 - `sections/discovery.json` — lean section pointer (Discovery)
+- Header editing system — per-element pencil/camera overlays with mini-modals:
+  - Avatar modal (upload + delete photo via AJAX)
+  - Name modal (inline text editing)
+  - Categories modal (custom taxonomy search replacing select2, AJAX-backed)
+  - Social Links modal (inline URL editing + import from other primary sections)
+- Section PMP controls — 4-state button group in edit mode left panel (inherit/public/member/private)
+- Field PMP controls — per-field visibility buttons injected into edit mode
+- Global PMP controls — right panel buttons wired with AJAX save
+- Custom taxonomy search — replaces select2 with debounced AJAX search, selection badge, mousedown focus guard
+- Social link import — cross-section import for primary-capable sections (matched by URL field suffix)
 - AJAX handlers wired:
   - `md_save_section` → `AcfFormHelper::handle_ajax_save`
   - `memdir_ajax_save_section_enabled` → `AcfFormHelper::handle_save_section_enabled`
   - `memdir_ajax_save_section_pmp` → `AcfFormHelper::handle_save_section_pmp`
+  - `memdir_ajax_save_field_pmp` → `AcfFormHelper::handle_save_field_pmp`
+  - `memdir_ajax_upload_avatar` → `AcfFormHelper::handle_avatar_upload`
+  - `memdir_search_taxonomy_terms` → `AcfFormHelper::handle_search_taxonomy_terms`
+  - `memdir_ajax_import_social` → `AcfFormHelper::handle_import_social`
   - `memdir_ajax_save_primary_section` → `GlobalFields::handle_save_primary_section`
   - `memdir_ajax_save_global_pmp` → `GlobalFields::handle_save_global_pmp`
 
@@ -67,6 +81,8 @@ member-directory.php              Entry point. ACF dependency check. Boots Plugi
 member-directory-architecture.html Primary design reference. Read this when starting work on any new feature.
 includes/
   Plugin.php                  Bootstrap. Registers CPT + hooks. Calls each class init().
+                              enqueue_assets() passes mdAjax to JS (ajaxurl, nonce,
+                              search_nonce, socialSources).
   SectionRegistry.php         Section metadata store. sync() = sections/*.json → merge with DB option.
                               JSON files are immutable (acf_group_key only); mutable metadata
                               (label, can_be_primary, order) lives in the DB option only.
@@ -76,7 +92,10 @@ includes/
   GlobalFields.php            ACF group: global_pmp + primary_section. ⚠ Has temporary debug code.
   AcfFormHelper.php           maybe_render_form_head(), is_edit_mode(), render_edit_form().
                               acf_form() scoped to content field keys from acf_get_fields().
-                              AJAX: section save, enabled toggle, section PMP.
+                              AJAX: section save, enabled toggle, section PMP, field PMP,
+                              avatar upload, taxonomy term search, social link import.
+                              Helpers: get_header_fields(), get_social_suffix(),
+                              section_has_social_data().
   AdminSync.php               Admin page + nonce-protected handler that calls SectionRegistry::sync().
                               Section editor UI: rename label, reorder, toggle can_be_primary, delete.
                               Add Section form for creating new section pointers inline.
@@ -97,11 +116,16 @@ templates/
                               in label; maps fields to slots by type (text→title, image→avatar,
                               taxonomy→badges, url→social icons).
     pill-nav.php              Pill navigation. All Sections pill + one pill per section with enable/disable checkbox.
-    section-edit.php          Edit partial. Left controls (PMP buttons, tab list, save button) + ACF form.
+    section-edit.php          Edit partial. Left controls (section PMP buttons, tab list, save button) + ACF form.
                               Tab list derived from acf_get_fields( $section['acf_group_key'] ).
     section-view.php          View partial. Resolves PMP waterfall per field, calls FieldRenderer.
                               Field list derived from acf_get_fields( $section['acf_group_key'] ).
     right-panel.php           Author/admin panel. View As buttons, Global Default block, Primary Section block.
+assets/
+  css/memdir.css              All plugin styles. Scoped to .memdir-profile. Includes modal,
+                              header editing, taxonomy search, import button, and PMP control styles.
+  js/memdir.js                All frontend JS. ⚠ CRLF line endings — use Write tool or Node.js
+                              scripts for edits (Edit tool fails on this file).
 tools/
   acf-field-prep.md           Claude skill: enrich a bare ACF field group export with full
                               iPMP apparatus (section system fields + per-field PMP companions)
@@ -189,6 +213,19 @@ Every content field has a companion `button_group` field with 4 choices:
 field_pmp → section_pmp → global_pmp
 ```
 Any level set to `inherit` passes through to the next. Global is always explicit. `PmpResolver::can_view()` is the single authoritative check.
+
+## Header Editing System
+
+In edit mode, `initHeaderEditing()` in memdir.js creates per-element editing overlays on the sticky header:
+
+- **Avatar** — camera overlay on the avatar image → "Update Photo" modal (upload + delete photo via AJAX to `memdir_ajax_upload_avatar`)
+- **Name** — pencil icon next to the title → "Edit Name" modal (text input, saves via `saveSection()`)
+- **Categories** — pencil icon next to badges → "Edit Categories" modal (custom taxonomy search with AJAX to `memdir_search_taxonomy_terms`, replaces select2)
+- **Social Links** — pencil icon next to social icons → "Edit Social Links" modal (URL inputs + "Import from [Section]" button for cross-section import via `memdir_ajax_import_social`)
+
+All modals use native `<dialog>` elements with `showModal()`. Fields are DOM-moved into the dialog body but remain inside `.memdir-field-content` so `saveSection()` can still find them.
+
+**CSS guard for closed dialogs:** `dialog.memdir-header-modal:not([open]) { display: none !important; }` — required because `display: flex` on the dialog interferes with native `<dialog>` closed state.
 
 ## Section JSON Schema
 
