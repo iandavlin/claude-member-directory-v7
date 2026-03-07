@@ -45,12 +45,38 @@ if ( $group_key ) {
 		? $cached_acf_fields[ $group_key ]
 		: ( acf_get_fields( $group_key ) ?: [] );
 }
-$all_fields = array_values( array_filter( $raw_fields, static function ( array $f ): bool {
+// ---------------------------------------------------------------------------
+// Identify header-tab field keys so they can be excluded from the content
+// area below. These fields are already rendered in the sticky header
+// (header-section.php), so showing them again in the section body would
+// duplicate visible content for member/public viewers.
+//
+// Uses the same tab-scanning logic as header-section.php: walk raw_fields,
+// flip a flag when a tab labelled "header" is found, collect keys until
+// the next tab (or end of list).
+//
+// Revert: remove $header_field_keys and the in_array() check in the filter.
+// ---------------------------------------------------------------------------
+$header_field_keys = [];
+$_in_hdr_tab = false;
+foreach ( $raw_fields as $_f ) {
+	if ( ( $_f['type'] ?? '' ) === 'tab' ) {
+		$_in_hdr_tab = ( stripos( $_f['label'] ?? '', 'header' ) !== false );
+		continue;
+	}
+	if ( $_in_hdr_tab && ! empty( $_f['key'] ) ) {
+		$header_field_keys[] = $_f['key'];
+	}
+}
+unset( $_in_hdr_tab, $_f );
+
+$all_fields = array_values( array_filter( $raw_fields, static function ( array $f ) use ( $header_field_keys ): bool {
 	$type = $f['type'] ?? '';
 	$key  = $f['key']  ?? '';
 	if ( $type === 'tab' )          return false; // Structural divider — no value.
 	if ( $type === 'button_group' ) return false; // PMP companions and system selectors.
 	if ( preg_match( '/_(enabled|privacy_mode|privacy_level)$/', $key ) ) return false;
+	if ( in_array( $key, $header_field_keys, true ) ) return false; // Already in sticky header.
 	return true;
 } ) );
 
