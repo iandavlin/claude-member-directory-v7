@@ -15,6 +15,12 @@
  *                         key, label, field_groups[], acf_group.
  *   @var int    $post_id  The member-directory post ID being edited.
  *   @var array  $viewer   Viewer context from PmpResolver::resolve_viewer().
+ *
+ * Optional (perf: set by caller to avoid redundant DB reads):
+ *
+ *   @var array  $all_post_meta    Pre-fetched get_post_meta($post_id) array.
+ *                                 Used for batch field-PMP lookups.
+ *   @var array  $cached_acf_fields  Map of acf_group_key => acf_get_fields().
  */
 
 use MemberDirectory\AcfFormHelper;
@@ -24,12 +30,19 @@ defined( 'ABSPATH' ) || exit;
 $section_key    = $section['key']   ?? '';
 $section_label  = $section['label'] ?? '';
 
-// Derive tab groups directly from ACF — any field added to the group and synced
-// is reflected in the tab list automatically. Section-level system fields are
-// excluded. Content fields and their per-field PMP companions are both included
-// so the JS tab filter controls them together.
+// ---------------------------------------------------------------------------
+// PERF: Use cached ACF fields if the parent template pre-fetched them.
+// Avoids a duplicate acf_get_fields() call when the same group was already
+// loaded for header-tab scanning in single-member-directory.php.
+// Revert: remove $cached_acf_fields references; restore direct acf_get_fields().
+// ---------------------------------------------------------------------------
 $group_key     = $section['acf_group_key'] ?? '';
-$raw_fields    = $group_key ? ( acf_get_fields( $group_key ) ?: [] ) : [];
+$raw_fields    = [];
+if ( $group_key ) {
+	$raw_fields = ( isset( $cached_acf_fields[ $group_key ] ) )
+		? $cached_acf_fields[ $group_key ]
+		: ( acf_get_fields( $group_key ) ?: [] );
+}
 $field_groups  = [];
 $current_tab   = 'General';
 $current_keys  = [];
@@ -60,7 +73,25 @@ if ( ! empty( $current_keys ) ) {
 // For each content field, derive the companion ACF field key and read the
 // currently stored PMP value. Passed to JS via data-field-pmp on the wrapper
 // so initFieldPmp() can inject icon-button controls after each ACF field.
+//
+// PERF: PMP values are read from a batch post-meta map instead of calling
+// get_field() once per content field. This eliminates N individual DB queries
+// (one per field) and replaces them with a single get_post_meta() call.
+// WordPress caches get_post_meta() internally, so even repeated calls to this
+// partial across sections share the same cached result.
+//
+// Revert: replace $pmp_meta_map lookups with get_field( $companion_name, $post_id ).
 // ---------------------------------------------------------------------------
+
+if ( ! isset( $all_post_meta ) ) {
+	$all_post_meta = get_post_meta( $post_id );
+}
+$pmp_meta_map = [];
+foreach ( $all_post_meta as $meta_key => $meta_values ) {
+	if ( str_starts_with( $meta_key, 'member_directory_field_pmp_' ) ) {
+		$pmp_meta_map[ $meta_key ] = $meta_values[0] ?? 'inherit';
+	}
+}
 
 $field_name_to_key = [];
 foreach ( $raw_fields as $f ) {
@@ -91,8 +122,8 @@ foreach ( $raw_fields as $f ) {
 	$companion_name = 'member_directory_field_pmp_' . $suffix;
 	$companion_key  = $field_name_to_key[ $companion_name ] ?? '';
 
-	// Read the field's currently stored PMP.
-	$stored_pmp = (string) ( get_field( $companion_name, $post_id ) ?: 'inherit' );
+	// PERF: Read the stored PMP from the batch map (no per-field DB query).
+	$stored_pmp = (string) ( $pmp_meta_map[ $companion_name ] ?? 'inherit' );
 
 	$field_pmp_data[ $fkey ] = [
 		'companionKey'  => $companion_key,
@@ -110,7 +141,11 @@ foreach ( $raw_fields as $f ) {
 
 $section_pmp = (string) ( get_field( 'member_directory_' . $section_key . '_privacy_mode', $post_id ) ?: 'inherit' );
 
-$global_pmp  = get_field( 'member_directory_global_pmp', $post_id ) ?: 'public';
+// PERF: $global_pmp may already be set by the parent template.
+// Revert: remove the isset() guard; always call get_field() directly.
+if ( ! isset( $global_pmp ) ) {
+	$global_pmp = get_field( 'member_directory_global_pmp', $post_id ) ?: 'public';
+}
 $pmp_labels  = [ 'public' => 'Public', 'member' => 'Members only', 'private' => 'Private' ];
 
 $pmp_status_text = ( $section_pmp === 'inherit' )

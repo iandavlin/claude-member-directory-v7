@@ -77,27 +77,34 @@ class FieldRenderer {
 			return;
 		}
 
-		// ── true_false ────────────────────────────────────────────────────
+		// -- Fetch value once for all types ------------------------------------
+		// PERF: A single get_field() call serves every type below, including
+		// true_false and wysiwyg which previously read it again inside their
+		// own renderers. The pre-fetched $value is passed through so no
+		// type-specific renderer needs its own DB round-trip.
+		//
+		// Revert: remove $value here; restore get_field() calls inside
+		// render_true_false() and render_wysiwyg().
+		// ---------------------------------------------------------------------
+		$value = get_field( $key, $post_id );
+
+		// -- true_false -------------------------------------------------------
 		// false (0) is a meaningful value ("No") and must always render.
 		// Bypasses the standard empty-value guard used by all other types.
 		if ( $type === 'true_false' ) {
-			self::render_true_false( $key, $label, $post_id );
+			self::render_true_false( $value, $label );
 			return;
 		}
 
-		// ── wysiwyg ───────────────────────────────────────────────────────
-		// ACF's the_field() must be used for output — it applies wpautop
+		// -- wysiwyg ----------------------------------------------------------
+		// ACF's the_field() must be used for output -- it applies wpautop
 		// and shortcode expansion that get_field() would bypass.
-		// get_field() is still called first to check for emptiness.
+		// The $value fetched above is only used for the emptiness check;
+		// the_field() still handles final output.
 		if ( $type === 'wysiwyg' ) {
-			self::render_wysiwyg( $key, $label, $post_id );
+			self::render_wysiwyg( $value, $key, $label, $post_id );
 			return;
 		}
-
-		// ── All other types ───────────────────────────────────────────────
-		// Fetch via get_field() and bail early if nothing is saved.
-		// This prevents empty wrappers from cluttering the DOM.
-		$value = get_field( $key, $post_id );
 
 		if ( self::is_empty( $value ) ) {
 			return;
@@ -207,8 +214,12 @@ class FieldRenderer {
 	 *
 	 * get_field() is called first solely to check whether anything is saved.
 	 */
-	private static function render_wysiwyg( string $key, string $label, int $post_id ): void {
-		if ( self::is_empty( get_field( $key, $post_id ) ) ) {
+	// PERF: $value is passed in from render() -- no second get_field() call.
+	// the_field() is still used for final output (applies wpautop + shortcodes).
+	// Revert: change signature back to (string $key, string $label, int $post_id)
+	//         and replace is_empty($value) with is_empty(get_field($key,$post_id)).
+	private static function render_wysiwyg( mixed $value, string $key, string $label, int $post_id ): void {
+		if ( self::is_empty( $value ) ) {
 			return;
 		}
 
@@ -315,9 +326,10 @@ class FieldRenderer {
 	 * absent one — so this renderer always outputs something and does not
 	 * apply the standard is_empty() guard. The wrapper always renders.
 	 */
-	private static function render_true_false( string $key, string $label, int $post_id ): void {
-		$value = get_field( $key, $post_id );
-
+	// PERF: $value is passed in from render() -- no second get_field() call.
+	// Revert: change signature back to (string $key, string $label, int $post_id)
+	//         and add  $value = get_field( $key, $post_id );  as the first line.
+	private static function render_true_false( mixed $value, string $label ): void {
 		self::open_wrapper( 'true_false', $label );
 		echo '<p class="memdir-field-value">' . ( $value ? 'Yes' : 'No' ) . '</p>';
 		self::close_wrapper();

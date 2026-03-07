@@ -77,8 +77,15 @@ $social_platforms = [
 	],
 ];
 
-// Fetch all raw fields for this section's ACF group.
-$raw_fields = acf_get_fields( $acf_group_key );
+// ---------------------------------------------------------------------------
+// PERF: Use cached ACF fields if the parent template pre-fetched them.
+// Avoids a duplicate acf_get_fields() call — the same group was already
+// loaded by single-member-directory.php for the header-tab scan.
+// Revert: replace with  $raw_fields = acf_get_fields( $acf_group_key );
+// ---------------------------------------------------------------------------
+$raw_fields = ( isset( $cached_acf_fields[ $acf_group_key ] ) )
+	? $cached_acf_fields[ $acf_group_key ]
+	: acf_get_fields( $acf_group_key );
 
 if ( empty( $raw_fields ) || ! is_array( $raw_fields ) ) {
 	return;

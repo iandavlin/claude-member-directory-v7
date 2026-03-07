@@ -59,6 +59,37 @@ $is_edit = AcfFormHelper::is_edit_mode( $post_id, $viewer );
 $sections        = SectionRegistry::get_sections();
 $primary_section = get_field( 'member_directory_primary_section', $post_id ) ?: 'profile';
 
+// ---------------------------------------------------------------------------
+// PERF: Pre-fetch shared data used by multiple partials.
+//
+// 1. $cached_acf_fields — acf_get_fields() per section group, fetched once
+//    and reused by header-section.php, section-view.php, and section-edit.php.
+//    Without this, the same group is loaded 2-3x per section per page load.
+//
+// 2. $all_post_meta — get_post_meta($post_id) fetched once and shared with
+//    section-view.php and section-edit.php for batch field-PMP companion
+//    lookups. Replaces N individual get_field() calls (one per content field)
+//    with a single query. WordPress caches this internally too, but building
+//    it here makes the intent explicit and primes the cache early.
+//
+// 3. $global_pmp — the profile-wide PMP default, read once and passed into
+//    every section-view.php render instead of re-reading from ACF per section.
+//
+// Revert: delete these three variables; each partial will fall back to its
+// own ACF/get_post_meta calls (functionally identical, just slower).
+// ---------------------------------------------------------------------------
+$cached_acf_fields = [];
+foreach ( $sections as $_sec ) {
+	$_gk = $_sec['acf_group_key'] ?? '';
+	if ( $_gk && ! isset( $cached_acf_fields[ $_gk ] ) ) {
+		$cached_acf_fields[ $_gk ] = acf_get_fields( $_gk ) ?: [];
+	}
+}
+unset( $_sec, $_gk );
+
+$all_post_meta = get_post_meta( $post_id );
+$global_pmp    = get_field( 'member_directory_global_pmp', $post_id ) ?: 'public';
+
 ?>
 <div class="memdir-profile">
 	<div class="memdir-profile__main">
@@ -67,12 +98,17 @@ $primary_section = get_field( 'member_directory_primary_section', $post_id ) ?: 
 			<?php
 			// Render one header-wrap per section that declares a "header" tab in its ACF group.
 			// JS shows the one matching the active pill; all others are hidden.
+			//
+			// PERF: Uses $cached_acf_fields instead of calling acf_get_fields()
+			// again. The cache was built above — one call per group, shared with
+			// section-view.php and section-edit.php partials.
+			// Revert: replace $cached_acf_fields[$_hdr_group] with acf_get_fields($_hdr_group).
 			foreach ( $sections as $section ) {
 				$_hdr_group = $section['acf_group_key'] ?? '';
 				if ( empty( $_hdr_group ) ) {
 					continue;
 				}
-				$_hdr_fields = acf_get_fields( $_hdr_group );
+				$_hdr_fields = $cached_acf_fields[ $_hdr_group ] ?? [];
 				if ( empty( $_hdr_fields ) || ! is_array( $_hdr_fields ) ) {
 					continue;
 				}

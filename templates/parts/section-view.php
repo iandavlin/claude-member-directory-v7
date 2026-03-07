@@ -12,6 +12,16 @@
  *   @var int    $post_id  The member-directory post ID being viewed.
  *   @var array  $viewer   Viewer context from PmpResolver::resolve_viewer()
  *                         or PmpResolver::spoof_viewer() for View As mode.
+ *
+ * Optional (perf: set by caller to avoid redundant DB reads):
+ *
+ *   @var string $global_pmp       Pre-fetched global PMP value. If unset,
+ *                                 this partial reads it from ACF.
+ *   @var array  $all_post_meta    Pre-fetched get_post_meta($post_id) array.
+ *                                 Used for batch field-PMP lookups instead
+ *                                 of one get_field() per content field.
+ *   @var array  $cached_acf_fields  Map of acf_group_key => acf_get_fields()
+ *                                   result, built once in the parent template.
  */
 
 use MemberDirectory\FieldRenderer;
@@ -22,11 +32,19 @@ defined( 'ABSPATH' ) || exit;
 $section_key    = $section['key']   ?? '';
 $section_label  = $section['label'] ?? '';
 
-// Derive content fields directly from ACF — any field added to the group and
-// synced appears here automatically. Tab dividers, button_group fields (PMP
-// companions and system selectors), and section-level system fields are excluded.
+// ---------------------------------------------------------------------------
+// PERF: Use cached ACF fields if the parent template pre-fetched them.
+// Avoids a duplicate acf_get_fields() call when the same group was already
+// loaded for header-tab scanning in single-member-directory.php.
+// Revert: remove $cached_acf_fields references; restore direct acf_get_fields().
+// ---------------------------------------------------------------------------
 $group_key  = $section['acf_group_key'] ?? '';
-$raw_fields = $group_key ? ( acf_get_fields( $group_key ) ?: [] ) : [];
+$raw_fields = [];
+if ( $group_key ) {
+	$raw_fields = ( isset( $cached_acf_fields[ $group_key ] ) )
+		? $cached_acf_fields[ $group_key ]
+		: ( acf_get_fields( $group_key ) ?: [] );
+}
 $all_fields = array_values( array_filter( $raw_fields, static function ( array $f ): bool {
 	$type = $f['type'] ?? '';
 	$key  = $f['key']  ?? '';
@@ -52,9 +70,15 @@ $section_pmp = (string) ( get_field( 'member_directory_' . $section_key . '_priv
 //
 // Profile-wide default. Cannot itself be 'inherit' — top of the waterfall.
 // Default to 'public' so fields are visible when the global PMP field is unset.
+//
+// PERF: $global_pmp may already be set by the parent template to avoid
+// one get_field() call per section render. Falls back to ACF read if unset.
+// Revert: remove the isset() guard; always call get_field() directly.
 // ---------------------------------------------------------------------------
 
-$global_pmp    = get_field( 'member_directory_global_pmp', $post_id ) ?: 'public';
+if ( ! isset( $global_pmp ) ) {
+	$global_pmp = get_field( 'member_directory_global_pmp', $post_id ) ?: 'public';
+}
 $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 
 ?>
@@ -63,10 +87,38 @@ $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 	<div class="memdir-field-content">
 		<h2 class="memdir-section-title"><?php echo esc_html( $section_label ); ?></h2>
 
+		<?php
+		// -----------------------------------------------------------------
+		// PERF: Batch field-PMP lookup from cached post meta.
+		//
+		// Instead of calling get_field() once per content field to read its
+		// PMP companion value, we pull ALL post meta in one query and filter
+		// for the 'member_directory_field_pmp_' prefix. This turns N queries
+		// (one per field) into a single get_post_meta() call.
+		//
+		// $all_post_meta is optionally pre-fetched by the parent template.
+		// WordPress caches get_post_meta($id) internally, so even without
+		// the parent cache the first call primes WP's object cache and
+		// subsequent calls are free.
+		//
+		// Revert: remove $pmp_meta_map and restore per-field get_field()
+		// calls inside the foreach loop below.
+		// -----------------------------------------------------------------
+		if ( ! isset( $all_post_meta ) ) {
+			$all_post_meta = get_post_meta( $post_id );
+		}
+		$pmp_meta_map = [];
+		foreach ( $all_post_meta as $meta_key => $meta_values ) {
+			if ( str_starts_with( $meta_key, 'member_directory_field_pmp_' ) ) {
+				$pmp_meta_map[ $meta_key ] = $meta_values[0] ?? 'inherit';
+			}
+		}
+		?>
+
 		<?php foreach ( $all_fields as $field ) : ?>
 			<?php
 			// -----------------------------------------------------------------
-			// Resolve field-level PMP.
+			// Resolve field-level PMP from the batch map (no per-field query).
 			//
 			// Each content field has its own stored PMP override. ACF field
 			// name: member_directory_field_pmp_{field_name_suffix}
@@ -78,7 +130,8 @@ $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 			// Field name:  member_directory_business_name
 			// Companion:   member_directory_field_pmp_business_name
 			$field_name_suffix = preg_replace( '/^member_directory_/', '', $field['name'] ?? '' );
-			$field_pmp = get_field( 'member_directory_field_pmp_' . $field_name_suffix, $post_id );
+			$companion_meta_key = 'member_directory_field_pmp_' . $field_name_suffix;
+			$field_pmp = $pmp_meta_map[ $companion_meta_key ] ?? 'inherit';
 
 			if ( empty( $field_pmp ) ) {
 				$field_pmp = 'inherit';
