@@ -191,6 +191,13 @@ body.single-member-directory .select2-dropdown--above {
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--md-green-sage);
+  margin: 0 0 2px;
+}
+
+.memdir-header__location {
+  font-family: var(--md-font);
+  font-size: 13px;
+  color: var(--md-text-muted);
   margin: 2px 0 0;
 }
 

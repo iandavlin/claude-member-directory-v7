@@ -230,8 +230,18 @@ $has_meta = ! empty( $badge_names ) || ! empty( $social_links );
 			<?php endif; ?>
 
 			<div class="memdir-header__text">
-				<h1 class="memdir-header__title"><?php echo esc_html( $title_value ); ?></h1>
 				<p class="memdir-header__eyebrow"><?php echo esc_html( strtoupper( $section_label ) ); ?></p>
+				<h1 class="memdir-header__title"><?php echo esc_html( $title_value ); ?></h1>
+				<?php
+				// Location subtitle — pulled from the Location section's google_map field.
+				$loc_value     = get_field( 'member_directory_location_location', $post_id );
+				$loc_precision = get_field( 'member_directory_location_display_precision', $post_id ) ?: 'city';
+				if ( is_array( $loc_value ) && ! empty( $loc_value['address'] ) ) {
+					$loc_display = \MemberDirectory\FieldRenderer::format_location( $loc_value, $loc_precision );
+					if ( ! empty( $loc_display ) ) :
+				?>
+				<p class="memdir-header__location"><?php echo esc_html( $loc_display ); ?></p>
+				<?php endif; } ?>
 			</div>
 
 		</div>

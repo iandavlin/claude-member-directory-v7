@@ -382,7 +382,7 @@ class FieldRenderer {
 	 * @param string $precision One of: address, city, state, country.
 	 * @return string
 	 */
-	private static function format_location( array $value, string $precision ): string {
+	public static function format_location( array $value, string $precision ): string {
 		$city          = $value['city']          ?? '';
 		$state         = $value['state_short']   ?? ( $value['state'] ?? '' );
 		$country       = $value['country']       ?? '';
