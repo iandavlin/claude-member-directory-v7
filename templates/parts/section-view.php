@@ -70,13 +70,40 @@ foreach ( $raw_fields as $_f ) {
 }
 unset( $_in_hdr_tab, $_f );
 
-$all_fields = array_values( array_filter( $raw_fields, static function ( array $f ) use ( $header_field_keys ): bool {
+// ---------------------------------------------------------------------------
+// Conditional tabs: [if:section_key] in a tab label.
+//
+// When a tab label contains [if:business] (for example), all fields under
+// that tab are hidden when the Business section is disabled for this post.
+// Uses the same walk-and-flag pattern as the header tab scan above.
+//
+// Revert: remove $conditional_excluded_keys and the in_array() check below.
+// ---------------------------------------------------------------------------
+$conditional_excluded_keys = [];
+$_cond_active = true;
+foreach ( $raw_fields as $_f ) {
+	if ( ( $_f['type'] ?? '' ) === 'tab' ) {
+		$_cond_active = true;
+		if ( preg_match( '/\[if:([a-z0-9_-]+)\]/i', $_f['label'] ?? '', $_cm ) ) {
+			$ref_enabled  = get_field( 'member_directory_' . $_cm[1] . '_enabled', $post_id );
+			$_cond_active = ! empty( $ref_enabled );
+		}
+		continue;
+	}
+	if ( ! $_cond_active && ! empty( $_f['key'] ) ) {
+		$conditional_excluded_keys[] = $_f['key'];
+	}
+}
+unset( $_cond_active, $_cm, $_f );
+
+$all_fields = array_values( array_filter( $raw_fields, static function ( array $f ) use ( $header_field_keys, $conditional_excluded_keys ): bool {
 	$type = $f['type'] ?? '';
 	$key  = $f['key']  ?? '';
 	if ( $type === 'tab' )          return false; // Structural divider — no value.
 	if ( $type === 'button_group' ) return false; // PMP companions and system selectors.
 	if ( preg_match( '/_(enabled|privacy_mode|privacy_level)$/', $key ) ) return false;
 	if ( in_array( $key, $header_field_keys, true ) ) return false; // Already in sticky header.
+	if ( in_array( $key, $conditional_excluded_keys, true ) ) return false; // Disabled conditional tab.
 	return true;
 } ) );
 

@@ -158,10 +158,13 @@ class AcfFormHelper {
 	 * On submission, ACF saves the rendered fields and redirects back
 	 * to the profile permalink.
 	 *
-	 * @param array $section  The section array from SectionRegistry.
-	 * @param int   $post_id  The member-directory post ID.
+	 * @param array    $section        The section array from SectionRegistry.
+	 * @param int      $post_id        The member-directory post ID.
+	 * @param string[] $excluded_keys  Optional field keys to exclude (e.g. from
+	 *                                 disabled conditional tabs). Computed by
+	 *                                 section-edit.php and passed in.
 	 */
-	public static function render_edit_form( array $section, int $post_id ): void {
+	public static function render_edit_form( array $section, int $post_id, array $excluded_keys = [] ): void {
 		$field_group_key = $section['acf_group_key'] ?? '';
 
 		if ( empty( $field_group_key ) ) {
@@ -184,6 +187,10 @@ class AcfFormHelper {
 			}
 			if ( str_contains( $f['key'] ?? '', '_pmp_' ) ) {
 				continue; // Per-field PMP companions — rendered by custom JS controls, not ACF.
+			}
+			// Skip fields under disabled conditional tabs (passed from section-edit.php).
+			if ( ! empty( $excluded_keys ) && in_array( $f['key'] ?? '', $excluded_keys, true ) ) {
+				continue;
 			}
 			$field_keys[] = $f['key'];
 		}

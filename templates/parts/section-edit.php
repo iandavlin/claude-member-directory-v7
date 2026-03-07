@@ -47,6 +47,20 @@ $field_groups  = [];
 $current_tab   = 'General';
 $current_keys  = [];
 
+// ---------------------------------------------------------------------------
+// Conditional tabs: [if:section_key] in a tab label.
+//
+// When a tab label contains [if:business] (for example), that tab and all
+// its fields are only shown when the Business section is enabled for this
+// post. If the referenced section is disabled, the tab button is omitted
+// and its field keys are collected in $conditional_excluded_keys so they
+// can be excluded from PMP data and from acf_form().
+//
+// Convention: the marker is stripped from the displayed tab name.
+// ---------------------------------------------------------------------------
+$conditional_excluded_keys = [];
+$_cond_tab_active = true;
+
 foreach ( $raw_fields as $f ) {
 	$fkey  = $f['key']  ?? '';
 	$ftype = $f['type'] ?? '';
@@ -54,18 +68,35 @@ foreach ( $raw_fields as $f ) {
 		continue; // Section-level system fields — managed by sidebar controls.
 	}
 	if ( $ftype === 'tab' ) {
-		if ( ! empty( $current_keys ) ) {
+		// Flush the previous tab group (only if it was active).
+		if ( $_cond_tab_active && ! empty( $current_keys ) ) {
 			$field_groups[] = [ 'tab' => $current_tab, 'field_keys' => $current_keys ];
 		}
-		$current_tab  = $f['label'] ?? 'Tab';
+
+		$tab_label        = $f['label'] ?? 'Tab';
+		$_cond_tab_active = true;
+
+		// Check for [if:section_key] conditional marker.
+		if ( preg_match( '/\[if:([a-z0-9_-]+)\]/i', $tab_label, $_cm ) ) {
+			$ref_enabled      = get_field( 'member_directory_' . $_cm[1] . '_enabled', $post_id );
+			$_cond_tab_active = ! empty( $ref_enabled );
+			$tab_label        = trim( preg_replace( '/\s*\[if:[a-z0-9_-]+\]/i', '', $tab_label ) );
+		}
+
+		$current_tab  = $tab_label;
 		$current_keys = [];
 	} else {
-		$current_keys[] = $fkey;
+		if ( $_cond_tab_active ) {
+			$current_keys[] = $fkey;
+		} else {
+			$conditional_excluded_keys[] = $fkey;
+		}
 	}
 }
-if ( ! empty( $current_keys ) ) {
+if ( $_cond_tab_active && ! empty( $current_keys ) ) {
 	$field_groups[] = [ 'tab' => $current_tab, 'field_keys' => $current_keys ];
 }
+unset( $_cond_tab_active, $_cm );
 
 // ---------------------------------------------------------------------------
 // Build per-field PMP data for JS injection of custom PMP controls.
@@ -114,6 +145,10 @@ foreach ( $raw_fields as $f ) {
 		continue;
 	}
 	if ( str_contains( $fkey, '_pmp_' ) ) {
+		continue;
+	}
+	// Skip fields under disabled conditional tabs.
+	if ( in_array( $fkey, $conditional_excluded_keys, true ) ) {
 		continue;
 	}
 
@@ -198,7 +233,7 @@ $pmp_mode_attr = ( $section_pmp === 'inherit' ) ? 'inherit' : 'override';
 	<div class="memdir-field-content">
 		<h2 class="memdir-section-title"><?php echo esc_html( $section_label ); ?></h2>
 		<p class="memdir-section-subtitle">Edit surface mirrors live layout; fields update immediately.</p>
-		<?php AcfFormHelper::render_edit_form( $section, $post_id ); ?>
+		<?php AcfFormHelper::render_edit_form( $section, $post_id, $conditional_excluded_keys ); ?>
 	</div>
 
 </div><?php

@@ -189,6 +189,7 @@ tools/
 | Per-field PMP companion | `member_directory_field_pmp_{section}_{suffix}` | `field_md_{section}_pmp_{suffix}` |
 | Global PMP | `member_directory_global_pmp` | `field_md_global_pmp` |
 | Primary section | `member_directory_primary_section` | `field_md_primary_section` |
+| Display precision | `member_directory_{section}_display_precision` | `field_md_{section}_display_precision` |
 
 **Note on field PMP companion lookup in `section-view.php`:**
 ```php
@@ -225,6 +226,32 @@ Every content field has a companion `button_group` field with 4 choices:
 field_pmp → section_pmp → global_pmp
 ```
 Any level set to `inherit` passes through to the next. Global is always explicit. `PmpResolver::can_view()` is the single authoritative check.
+
+## Conditional Tabs
+
+ACF tab labels can include a `[if:section_key]` marker to make the tab and all its fields conditional on another section being enabled.
+
+### Convention
+Tab label: `Storefront [if:business]`
+- The `[if:business]` part is parsed and stripped from the display label
+- When the Business section is disabled for the post, the entire tab (button + fields) is hidden
+- When enabled, the tab appears normally with label "Storefront"
+
+### How it works
+All three rendering paths detect the marker using the same walk-and-flag pattern:
+1. **`section-edit.php`** — Parses tab labels during field group building. Disabled conditional tabs are excluded from tab buttons, field PMP data, and the `acf_form()` call (via `$conditional_excluded_keys` passed to `render_edit_form()`).
+2. **`section-view.php`** — Scans for conditional tabs after the header tab scan. Excluded field keys are added to the content filter alongside header field keys.
+3. **`AcfFormHelper::render_edit_form()`** — Accepts optional `$excluded_keys` parameter from the edit template to filter fields out of the ACF form.
+
+### Condition check
+```php
+$ref_enabled = get_field( 'member_directory_' . $ref_key . '_enabled', $post_id );
+$is_active   = ! empty( $ref_enabled ); // false/0/null → not active
+```
+The `_enabled` field defaults to `1` (enabled), so a section that has never been toggled is treated as enabled.
+
+### Use case
+In the Location section, parking details, accessibility details, and a storefront image sit under a tab labelled `Storefront [if:business]`. These fields only appear when the member has their Business section enabled.
 
 ## Header Editing System
 
