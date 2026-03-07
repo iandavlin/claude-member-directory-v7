@@ -2009,7 +2009,8 @@
 					var importBtn = document.createElement( 'button' );
 					importBtn.type = 'button';
 					importBtn.className = 'memdir-import-social-btn';
-					importBtn.innerHTML = importSvg + ' Import from ' + srcLabel;
+					importBtn.innerHTML = importSvg;
+					importBtn.appendChild(document.createTextNode(' Import from ' + srcLabel));
 
 					// Insert at the top of the modal body
 					var modalBody = socialDialog.querySelector( '.memdir-header-modal__body' );
@@ -2037,13 +2038,15 @@
 								} else {
 									alert( 'Import failed: ' + ( res.data && res.data.message ? res.data.message : 'Unknown error.' ) );
 									importBtn.disabled = false;
-									importBtn.innerHTML = importSvg + ' Import from ' + srcLabel;
+									importBtn.innerHTML = importSvg;
+									importBtn.appendChild(document.createTextNode(' Import from ' + srcLabel));
 								}
 							} )
 							.catch( function () {
 								alert( 'Network error. Please try again.' );
 								importBtn.disabled = false;
-								importBtn.innerHTML = importSvg + ' Import from ' + srcLabel;
+								importBtn.innerHTML = importSvg;
+								importBtn.appendChild(document.createTextNode(' Import from ' + srcLabel));
 							} );
 					} );
 				} );
