@@ -1506,7 +1506,7 @@ dialog.memdir-header-modal::backdrop {
 
 /* Wider max-width for media modals */
 dialog.memdir-header-modal--media {
-  max-width: 560px;
+  max-width: 720px;
 }
 
 /* --- Shared button styles (used by both image + gallery modals) --- */
@@ -1602,7 +1602,7 @@ dialog.memdir-header-modal--media {
 
 .memdir-gallery-modal__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 8px;
   margin-bottom: 10px;
 }
@@ -1669,6 +1669,34 @@ dialog.memdir-header-modal--media {
 
 .memdir-gallery-modal__caption::placeholder {
   color: var(--md-text-muted);
+}
+
+/* --- Media modal footer (Save & Close) --- */
+
+.memdir-media-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 20px;
+  border-top: 1px solid var(--md-border);
+  background: var(--md-bg);
+  border-radius: 0 0 12px 12px;
+}
+
+.memdir-media-footer__save {
+  padding: 10px 24px;
+  font-family: var(--md-font);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--md-white);
+  background: var(--md-green-sage);
+  border: none;
+  border-radius: var(--md-radius);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.memdir-media-footer__save:hover {
+  background: var(--md-green-dark);
 }
 
 /* ─────────────────────────────────────────────────────────────

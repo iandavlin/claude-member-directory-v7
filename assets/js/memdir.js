@@ -2148,7 +2148,19 @@
 		body.className = 'memdir-header-modal__body';
 		dialog.appendChild( body );
 
-		return { dialog: dialog, body: body };
+		// Footer with Save & Close button.
+		var footer = document.createElement( 'div' );
+		footer.className = 'memdir-media-footer';
+
+		var saveBtn = document.createElement( 'button' );
+		saveBtn.type = 'button';
+		saveBtn.className = 'memdir-media-footer__save';
+		saveBtn.textContent = 'Save \u0026 Close';
+		saveBtn.addEventListener( 'click', function () { dialog.close(); } );
+		footer.appendChild( saveBtn );
+		dialog.appendChild( footer );
+
+		return { dialog: dialog, body: body, footer: footer, saveBtn: saveBtn };
 	}
 
 	/**
