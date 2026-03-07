@@ -208,29 +208,31 @@ $has_meta = ! empty( $badge_names ) || ! empty( $social_links );
 
 		<div class="memdir-header__identity">
 
-			<?php if ( $image_value ) : ?>
-			<div class="memdir-header__avatar-wrap">
-				<?php if ( is_array( $image_value ) ) : ?>
-					<img
-						class="memdir-header__avatar"
-						src="<?php echo esc_url( $image_value['sizes']['thumbnail'] ?? $image_value['url'] ?? '' ); ?>"
-						alt="<?php echo esc_attr( $image_value['alt'] ?? '' ); ?>"
-					>
-				<?php else : ?>
-					<?php $img_src = wp_get_attachment_image_url( (int) $image_value, 'thumbnail' ); ?>
-					<?php if ( $img_src ) : ?>
-					<img
-						class="memdir-header__avatar"
-						src="<?php echo esc_url( $img_src ); ?>"
-						alt="<?php echo esc_attr( $title_value ); ?>"
-					>
+			<div class="memdir-header__avatar-col">
+				<?php if ( $image_value ) : ?>
+				<div class="memdir-header__avatar-wrap">
+					<?php if ( is_array( $image_value ) ) : ?>
+						<img
+							class="memdir-header__avatar"
+							src="<?php echo esc_url( $image_value['sizes']['thumbnail'] ?? $image_value['url'] ?? '' ); ?>"
+							alt="<?php echo esc_attr( $image_value['alt'] ?? '' ); ?>"
+						>
+					<?php else : ?>
+						<?php $img_src = wp_get_attachment_image_url( (int) $image_value, 'thumbnail' ); ?>
+						<?php if ( $img_src ) : ?>
+						<img
+							class="memdir-header__avatar"
+							src="<?php echo esc_url( $img_src ); ?>"
+							alt="<?php echo esc_attr( $title_value ); ?>"
+						>
+						<?php endif; ?>
 					<?php endif; ?>
+				</div>
 				<?php endif; ?>
+				<p class="memdir-header__eyebrow"><?php echo esc_html( strtoupper( $section_label ) ); ?></p>
 			</div>
-			<?php endif; ?>
 
 			<div class="memdir-header__text">
-				<p class="memdir-header__eyebrow"><?php echo esc_html( strtoupper( $section_label ) ); ?></p>
 				<h1 class="memdir-header__title"><?php echo esc_html( $title_value ); ?></h1>
 				<?php
 				// Location subtitle — pulled from the Location section's google_map field.
