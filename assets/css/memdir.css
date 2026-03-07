@@ -141,14 +141,12 @@ body.single-member-directory .select2-dropdown--above {
   gap: 24px;
 }
 
-/* Identity cluster: avatar on top, text below */
+/* Identity cluster: avatar left, text (eyebrow + name + location) right */
 .memdir-header__identity {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 14px;
   flex-shrink: 0;
-  text-align: center;
 }
 
 .memdir-header__avatar-wrap {
@@ -182,7 +180,6 @@ body.single-member-directory .select2-dropdown--above {
   line-height: 1.2;
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 4px;
   white-space: nowrap;
 }
