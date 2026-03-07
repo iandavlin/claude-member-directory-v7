@@ -2120,8 +2120,41 @@
 	}
 
 	/**
-	 * Replace ACF’s native image uploader with a custom inline UI
-	 * that does “image in, image out” (delete old attachment on upload).
+	 * Lightweight modal factory for image/gallery editing dialogs.
+	 * Reuses memdir-header-modal CSS (incl. CSS-var redeclarations).
+	 * Returns { dialog, body }.
+	 */
+	function createMediaModal( title ) {
+		var dialog = document.createElement( 'dialog' );
+		dialog.className = 'memdir-header-modal memdir-header-modal--media';
+
+		var header = document.createElement( 'div' );
+		header.className = 'memdir-header-modal__header';
+
+		var h3 = document.createElement( 'h3' );
+		h3.className = 'memdir-header-modal__title';
+		h3.textContent = title;
+		header.appendChild( h3 );
+
+		var closeBtn = document.createElement( 'button' );
+		closeBtn.type = 'button';
+		closeBtn.className = 'memdir-header-modal__close';
+		closeBtn.innerHTML = '&times;';
+		closeBtn.addEventListener( 'click', function () { dialog.close(); } );
+		header.appendChild( closeBtn );
+		dialog.appendChild( header );
+
+		var body = document.createElement( 'div' );
+		body.className = 'memdir-header-modal__body';
+		dialog.appendChild( body );
+
+		return { dialog: dialog, body: body };
+	}
+
+	/**
+	 * Replace ACF’s native image uploader with a compact inline preview
+	 * and a modal dialog for upload/replace/delete + caption editing.
+	 * All saves are instant via AJAX (no reliance on saveSection).
 	 */
 	function replaceImageUploader( field, fieldKey, postId ) {
 		var acfUploader = field.querySelector( '.acf-image-uploader' );
@@ -2132,65 +2165,94 @@
 		var currentId   = hiddenInput ? ( hiddenInput.value || '' ) : '';
 		var currentImg  = acfUploader.querySelector( '.show-if-value img' );
 		var currentSrc  = currentImg ? ( currentImg.getAttribute( 'src' ) || '' ) : '';
-		var currentCap  = '';
 
 		// Hide ACF native uploader.
 		acfUploader.style.display = 'none';
 
-		// Build custom UI.
-		var wrap = document.createElement( 'div' );
-		wrap.className = 'memdir-image-upload';
+		// --- Inline display ---
+		var inline = document.createElement( 'div' );
+		inline.className = 'memdir-image-inline';
 
-		// Preview image.
-		var preview = document.createElement( 'img' );
-		preview.className = 'memdir-image-upload__preview';
-		preview.src = currentSrc;
-		preview.alt = 'Current image';
-		if ( ! currentSrc ) { preview.style.display = 'none'; }
-		wrap.appendChild( preview );
+		var inlinePreview = document.createElement( 'img' );
+		inlinePreview.className = 'memdir-image-inline__preview';
+		inlinePreview.src = currentSrc;
+		inlinePreview.alt = 'Current image';
+		if ( ! currentSrc ) { inlinePreview.style.display = 'none'; }
+		inline.appendChild( inlinePreview );
+
+		var inlineCaption = document.createElement( 'p' );
+		inlineCaption.className = 'memdir-image-inline__caption';
+		inlineCaption.style.display = 'none';
+		inline.appendChild( inlineCaption );
+
+		var editBtn = document.createElement( 'button' );
+		editBtn.type = 'button';
+		editBtn.className = 'memdir-image-inline__edit';
+		editBtn.textContent = currentSrc ? 'Edit Image' : 'Upload Image';
+		inline.appendChild( editBtn );
+
+		acfUploader.parentNode.insertBefore( inline, acfUploader.nextSibling );
+
+		// --- Modal ---
+		var labelEl = field.querySelector( '.acf-label label' );
+		var modalTitle = labelEl ? labelEl.textContent.trim() : 'Image';
+		var modal = createMediaModal( modalTitle );
+
+		// Modal preview.
+		var modalPreview = document.createElement( 'img' );
+		modalPreview.className = 'memdir-image-modal__preview';
+		modalPreview.src = currentSrc;
+		modalPreview.alt = 'Image preview';
+		if ( ! currentSrc ) { modalPreview.style.display = 'none'; }
+		modal.body.appendChild( modalPreview );
 
 		// Caption input.
 		var captionInput = document.createElement( 'input' );
 		captionInput.type = 'text';
-		captionInput.className = 'memdir-image-upload__caption';
-		captionInput.placeholder = 'Add a caption…';
-		captionInput.value = currentCap;
-		captionInput.dataset.memdirSkip = '1';
+		captionInput.className = 'memdir-media-caption';
+		captionInput.placeholder = 'Add a caption\u2026';
+		captionInput.value = '';
 		if ( ! currentId ) { captionInput.style.display = 'none'; }
-		wrap.appendChild( captionInput );
+		modal.body.appendChild( captionInput );
 
 		// Status.
 		var status = document.createElement( 'p' );
-		status.className = 'memdir-image-upload__status';
-		wrap.appendChild( status );
+		status.className = 'memdir-media-status';
+		modal.body.appendChild( status );
 
 		// Hidden file input.
 		var fileInput = document.createElement( 'input' );
 		fileInput.type = 'file';
 		fileInput.accept = 'image/*';
 		fileInput.style.display = 'none';
-		wrap.appendChild( fileInput );
+		modal.body.appendChild( fileInput );
 
 		// Buttons.
 		var btnRow = document.createElement( 'div' );
-		btnRow.className = 'memdir-image-upload__actions';
+		btnRow.className = 'memdir-image-modal__actions';
 
 		var uploadBtn = document.createElement( 'button' );
 		uploadBtn.type = 'button';
-		uploadBtn.className = 'memdir-image-upload__btn';
+		uploadBtn.className = 'memdir-media-btn';
 		uploadBtn.textContent = currentSrc ? 'Replace Image' : 'Upload Image';
 		btnRow.appendChild( uploadBtn );
 
 		var deleteBtn = document.createElement( 'button' );
 		deleteBtn.type = 'button';
-		deleteBtn.className = 'memdir-image-upload__btn memdir-image-upload__btn--delete';
-		deleteBtn.textContent = 'Remove';
+		deleteBtn.className = 'memdir-media-btn memdir-media-btn--delete';
+		deleteBtn.textContent = 'Delete';
 		if ( ! currentId ) { deleteBtn.style.display = 'none'; }
 		btnRow.appendChild( deleteBtn );
 
-		wrap.appendChild( btnRow );
+		modal.body.appendChild( btnRow );
 
-		acfUploader.parentNode.insertBefore( wrap, acfUploader.nextSibling );
+		// Append dialog to document.body (stays there; never collected by saveSection).
+		document.body.appendChild( modal.dialog );
+
+		// Open modal on inline edit click.
+		editBtn.addEventListener( 'click', function () {
+			modal.dialog.showModal();
+		} );
 
 		// --- Upload handler ---
 		uploadBtn.addEventListener( 'click', function () { fileInput.click(); } );
@@ -2217,14 +2279,28 @@
 				.then( function ( r ) { return r.json(); } )
 				.then( function ( res ) {
 					if ( res.success && res.data ) {
-						preview.src = res.data.url;
-						preview.style.display = '';
+						// Update modal.
+						modalPreview.src = res.data.url;
+						modalPreview.style.display = '';
+						captionInput.style.display = '';
+						deleteBtn.style.display = '';
+						uploadBtn.textContent = 'Replace Image';
+						status.textContent = 'Image saved.';
+
+						// Update inline display.
+						inlinePreview.src = res.data.url;
+						inlinePreview.style.display = '';
+						editBtn.textContent = 'Edit Image';
+
+						// Sync ACF hidden input.
 						currentId = String( res.data.id );
 						if ( hiddenInput ) { hiddenInput.value = currentId; }
-						captionInput.style.display = '';
-						status.textContent = 'Image updated.';
-						uploadBtn.textContent = 'Replace Image';
-						deleteBtn.style.display = '';
+
+						// Update inline caption text.
+						if ( res.data.caption ) {
+							inlineCaption.textContent = res.data.caption;
+							inlineCaption.style.display = '';
+						}
 					} else {
 						status.textContent = 'Error: ' + ( res.data && res.data.message ? res.data.message : 'Upload failed.' );
 					}
@@ -2258,15 +2334,25 @@
 				.then( function ( r ) { return r.json(); } )
 				.then( function ( res ) {
 					if ( res.success ) {
-						preview.src = '';
-						preview.style.display = 'none';
-						currentId = '';
-						if ( hiddenInput ) { hiddenInput.value = ''; }
+						// Update modal.
+						modalPreview.src = '';
+						modalPreview.style.display = 'none';
 						captionInput.value = '';
 						captionInput.style.display = 'none';
-						status.textContent = 'Image removed.';
-						uploadBtn.textContent = 'Upload Image';
 						deleteBtn.style.display = 'none';
+						uploadBtn.textContent = 'Upload Image';
+						status.textContent = 'Image removed.';
+
+						// Update inline display.
+						inlinePreview.src = '';
+						inlinePreview.style.display = 'none';
+						inlineCaption.textContent = '';
+						inlineCaption.style.display = 'none';
+						editBtn.textContent = 'Upload Image';
+
+						// Sync ACF hidden input.
+						currentId = '';
+						if ( hiddenInput ) { hiddenInput.value = ''; }
 					} else {
 						status.textContent = 'Error: ' + ( res.data && res.data.message ? res.data.message : 'Remove failed.' );
 					}
@@ -2289,17 +2375,24 @@
 			fd.append( 'post_id',       postId );
 			fd.append( 'attachment_id', currentId );
 			fd.append( 'caption',       captionInput.value.trim() );
-			fetch( window.mdAjax.ajaxurl, { method: 'POST', body: fd } ).catch( function () {} );
+			fetch( window.mdAjax.ajaxurl, { method: 'POST', body: fd } )
+				.then( function () {
+					// Update inline caption text.
+					var cap = captionInput.value.trim();
+					inlineCaption.textContent = cap;
+					inlineCaption.style.display = cap ? '' : 'none';
+				} )
+				.catch( function () {} );
 		} );
 	}
 
 	/**
-	 * Add a single thumbnail item to a gallery grid.
+	 * Add a single thumbnail item to a gallery modal grid.
 	 * Returns the created item element.
 	 */
-	function addGalleryThumb( grid, attachmentId, src, caption, fieldKey, postId, statusEl ) {
+	function addGalleryThumb( grid, attachmentId, src, caption, fieldKey, postId, statusEl, inlineGrid, acfField ) {
 		var item = document.createElement( 'div' );
-		item.className = 'memdir-gallery-upload__item';
+		item.className = 'memdir-gallery-modal__item';
 		item.dataset.attachmentId = attachmentId;
 
 		var img = document.createElement( 'img' );
@@ -2309,7 +2402,7 @@
 
 		var removeBtn = document.createElement( 'button' );
 		removeBtn.type = 'button';
-		removeBtn.className = 'memdir-gallery-upload__remove';
+		removeBtn.className = 'memdir-gallery-modal__remove';
 		removeBtn.innerHTML = '&times;';
 		removeBtn.title = 'Remove image';
 		item.appendChild( removeBtn );
@@ -2317,10 +2410,9 @@
 		// Per-image caption.
 		var capInput = document.createElement( 'input' );
 		capInput.type = 'text';
-		capInput.className = 'memdir-gallery-upload__caption';
+		capInput.className = 'memdir-gallery-modal__caption';
 		capInput.placeholder = 'Caption';
 		capInput.value = caption || '';
-		capInput.dataset.memdirSkip = '1';
 		item.appendChild( capInput );
 
 		grid.appendChild( item );
@@ -2345,8 +2437,10 @@
 					if ( res.success ) {
 						item.remove();
 						statusEl.textContent = 'Image removed.';
-						var acfField = grid.closest( '.acf-field' );
-						if ( acfField ) { syncGalleryHiddenInputs( acfField, fieldKey, grid ); }
+						if ( acfField ) {
+							syncGalleryHiddenInputs( acfField, fieldKey, grid );
+						}
+						if ( inlineGrid ) { rebuildInlineGallery( inlineGrid, grid ); }
 					} else {
 						statusEl.textContent = 'Error: ' + ( res.data && res.data.message ? res.data.message : 'Remove failed.' );
 						removeBtn.disabled = false;
@@ -2377,22 +2471,43 @@
 	 * collects the correct gallery array.
 	 */
 	function syncGalleryHiddenInputs( field, fieldKey, grid ) {
-		field.querySelectorAll( 'input.memdir-gallery-sync' ).forEach( function ( el ) {
-			el.remove();
-		} );
-		grid.querySelectorAll( '.memdir-gallery-upload__item' ).forEach( function ( item ) {
-			var input = document.createElement( 'input' );
-			input.type      = 'hidden';
-			input.className = 'memdir-gallery-sync';
-			input.name      = 'acf[' + fieldKey + '][]';
-			input.value     = item.dataset.attachmentId;
-			field.appendChild( input );
+		// Remove old sync inputs.
+		field.querySelectorAll( '.memdir-gallery-sync' ).forEach( function ( el ) { el.remove(); } );
+
+		// Create new ones from current grid state.
+		grid.querySelectorAll( '.memdir-gallery-modal__item' ).forEach( function ( item ) {
+			var id = item.dataset.attachmentId || '';
+			if ( ! id ) { return; }
+			var inp = document.createElement( 'input' );
+			inp.type  = 'hidden';
+			inp.className = 'memdir-gallery-sync';
+			inp.name  = 'acf[' + fieldKey + '][]';
+			inp.value = id;
+			field.appendChild( inp );
 		} );
 	}
 
 	/**
-	 * Replace ACF’s native gallery uploader with a custom grid UI.
-	 * Each image has a remove button and caption input.
+	 * Rebuild the read-only inline gallery grid from the modal grid state.
+	 */
+	function rebuildInlineGallery( inlineGrid, modalGrid ) {
+		inlineGrid.innerHTML = '';
+		modalGrid.querySelectorAll( '.memdir-gallery-modal__item' ).forEach( function ( item ) {
+			var src = item.querySelector( 'img' ) ? item.querySelector( 'img' ).src : '';
+			if ( ! src ) { return; }
+			var thumb = document.createElement( 'div' );
+			thumb.className = 'memdir-gallery-inline__item';
+			var img = document.createElement( 'img' );
+			img.src = src;
+			img.alt = 'Gallery image';
+			thumb.appendChild( img );
+			inlineGrid.appendChild( thumb );
+		} );
+	}
+
+	/**
+	 * Replace ACF’s native gallery with a compact inline preview
+	 * and a modal dialog for add/remove + caption editing.
 	 */
 	function replaceGalleryUploader( field, fieldKey, postId ) {
 		var acfGallery = field.querySelector( '.acf-gallery' );
@@ -2416,39 +2531,80 @@
 		// Hide ACF native gallery.
 		acfGallery.style.display = 'none';
 
-		// Build custom UI.
-		var wrap = document.createElement( 'div' );
-		wrap.className = 'memdir-gallery-upload';
+		// --- Inline display ---
+		var inline = document.createElement( 'div' );
+		inline.className = 'memdir-gallery-inline';
 
-		var grid = document.createElement( 'div' );
-		grid.className = 'memdir-gallery-upload__grid';
-		wrap.appendChild( grid );
+		var inlineGrid = document.createElement( 'div' );
+		inlineGrid.className = 'memdir-gallery-inline__grid';
+		inline.appendChild( inlineGrid );
+
+		// Populate inline thumbs.
+		existingItems.forEach( function ( item ) {
+			var thumb = document.createElement( 'div' );
+			thumb.className = 'memdir-gallery-inline__item';
+			var img = document.createElement( 'img' );
+			img.src = item.src;
+			img.alt = 'Gallery image';
+			thumb.appendChild( img );
+			inlineGrid.appendChild( thumb );
+		} );
+
+		var editGalleryBtn = document.createElement( 'button' );
+		editGalleryBtn.type = 'button';
+		editGalleryBtn.className = 'memdir-gallery-inline__edit';
+		editGalleryBtn.textContent = existingItems.length ? 'Edit Gallery (' + existingItems.length + ')' : 'Add Images';
+		inline.appendChild( editGalleryBtn );
+
+		acfGallery.parentNode.insertBefore( inline, acfGallery.nextSibling );
+
+		// --- Modal ---
+		var labelEl = field.querySelector( '.acf-label label' );
+		var modalTitle = labelEl ? labelEl.textContent.trim() : 'Gallery';
+		var modal = createMediaModal( modalTitle );
+
+		var modalGrid = document.createElement( 'div' );
+		modalGrid.className = 'memdir-gallery-modal__grid';
+		modal.body.appendChild( modalGrid );
 
 		var status = document.createElement( 'p' );
-		status.className = 'memdir-gallery-upload__status';
-		wrap.appendChild( status );
+		status.className = 'memdir-media-status';
+		modal.body.appendChild( status );
 
 		var fileInput = document.createElement( 'input' );
 		fileInput.type   = 'file';
 		fileInput.accept = 'image/*';
 		fileInput.style.display = 'none';
-		wrap.appendChild( fileInput );
+		modal.body.appendChild( fileInput );
 
 		var addBtn = document.createElement( 'button' );
 		addBtn.type      = 'button';
-		addBtn.className = 'memdir-gallery-upload__add';
+		addBtn.className = 'memdir-media-btn';
 		addBtn.textContent = 'Add Image';
-		wrap.appendChild( addBtn );
+		modal.body.appendChild( addBtn );
 
-		acfGallery.parentNode.insertBefore( wrap, acfGallery.nextSibling );
+		// Append dialog to document.body.
+		document.body.appendChild( modal.dialog );
 
-		// Render existing items (captions loaded async).
+		// Render existing items in modal grid.
 		existingItems.forEach( function ( item ) {
-			addGalleryThumb( grid, item.id, item.src, '', fieldKey, postId, status );
+			addGalleryThumb( modalGrid, item.id, item.src, '', fieldKey, postId, status, inlineGrid, field );
 		} );
 
 		// Sync hidden inputs for initial state.
-		syncGalleryHiddenInputs( field, fieldKey, grid );
+		syncGalleryHiddenInputs( field, fieldKey, modalGrid );
+
+		// Open modal.
+		editGalleryBtn.addEventListener( 'click', function () {
+			modal.dialog.showModal();
+		} );
+
+		// Update inline count + grid when modal closes.
+		modal.dialog.addEventListener( 'close', function () {
+			var count = modalGrid.querySelectorAll( '.memdir-gallery-modal__item' ).length;
+			editGalleryBtn.textContent = count ? 'Edit Gallery (' + count + ')' : 'Add Images';
+			rebuildInlineGallery( inlineGrid, modalGrid );
+		} );
 
 		// --- Add handler ---
 		addBtn.addEventListener( 'click', function () { fileInput.click(); } );
@@ -2471,8 +2627,9 @@
 				.then( function ( r ) { return r.json(); } )
 				.then( function ( res ) {
 					if ( res.success && res.data ) {
-						addGalleryThumb( grid, String( res.data.id ), res.data.url, '', fieldKey, postId, status );
-						syncGalleryHiddenInputs( field, fieldKey, grid );
+						addGalleryThumb( modalGrid, String( res.data.id ), res.data.url, '', fieldKey, postId, status, inlineGrid, field );
+						syncGalleryHiddenInputs( field, fieldKey, modalGrid );
+						rebuildInlineGallery( inlineGrid, modalGrid );
 						status.textContent = 'Image added.';
 					} else {
 						status.textContent = 'Error: ' + ( res.data && res.data.message ? res.data.message : 'Upload failed.' );
@@ -2490,7 +2647,7 @@
 
 	/**
 	 * Scan all edit-mode sections for image and gallery fields,
-	 * replace ACF’s native uploaders with custom inline UIs.
+	 * replace ACF’s native uploaders with modal-based UIs.
 	 * Skips fields owned by the header editing system.
 	 */
 	function initImageUploaders() {

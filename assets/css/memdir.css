@@ -1406,62 +1406,112 @@ dialog.memdir-header-modal::backdrop {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   CUSTOM IMAGE UPLOAD (replaces ACF native image uploader)
+   IMAGE / GALLERY — INLINE DISPLAY (compact, in-form previews)
 ───────────────────────────────────────────────────────────── */
 
-.memdir-image-upload {
+/* --- Single-image inline display --- */
+
+.memdir-image-inline {
   padding: 8px 0;
+  position: relative;
 }
 
-.memdir-image-upload__preview {
+.memdir-image-inline__preview {
   display: block;
-  max-width: 260px;
-  max-height: 260px;
-  margin: 0 0 8px;
+  max-width: 180px;
+  max-height: 180px;
   border-radius: var(--md-radius);
   object-fit: cover;
   border: 1px solid var(--md-border);
 }
 
-.memdir-image-upload__caption {
+.memdir-image-inline__caption {
+  font-family: var(--md-font);
+  font-size: 12px;
+  color: var(--md-text-muted);
+  margin-top: 4px;
+  max-width: 180px;
+}
+
+.memdir-image-inline__edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 6px 14px;
+  font-family: var(--md-font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--md-white);
+  background: var(--md-green-sage);
+  border: none;
+  border-radius: var(--md-radius);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.memdir-image-inline__edit:hover {
+  background: var(--md-green-dark);
+}
+
+/* --- Gallery inline display --- */
+
+.memdir-gallery-inline {
+  padding: 8px 0;
+}
+
+.memdir-gallery-inline__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.memdir-gallery-inline__item {
+  border-radius: var(--md-radius);
+  overflow: hidden;
+  border: 1px solid var(--md-border);
+}
+
+.memdir-gallery-inline__item img {
   display: block;
   width: 100%;
-  max-width: 260px;
-  padding: 6px 10px;
-  margin: 0 0 8px;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.memdir-gallery-inline__edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
   font-family: var(--md-font);
   font-size: 13px;
-  color: var(--md-text);
-  background: var(--md-white);
-  border: 1px solid var(--md-border);
+  font-weight: 600;
+  color: var(--md-white);
+  background: var(--md-green-sage);
+  border: none;
   border-radius: var(--md-radius);
-  transition: border-color 0.15s;
+  cursor: pointer;
+  transition: background 0.15s;
 }
 
-.memdir-image-upload__caption:focus {
-  outline: none;
-  border-color: var(--md-green-sage);
+.memdir-gallery-inline__edit:hover {
+  background: var(--md-green-dark);
 }
 
-.memdir-image-upload__caption::placeholder {
-  color: var(--md-text-muted);
+/* ─────────────────────────────────────────────────────────────
+   IMAGE / GALLERY — MODAL INTERIORS (inside <dialog>)
+───────────────────────────────────────────────────────────── */
+
+/* Wider max-width for media modals */
+dialog.memdir-header-modal--media {
+  max-width: 560px;
 }
 
-.memdir-image-upload__status {
-  font-family: var(--md-font);
-  font-size: 13px;
-  color: var(--md-text-muted);
-  margin: 0 0 8px;
-  min-height: 1.3em;
-}
+/* --- Shared button styles (used by both image + gallery modals) --- */
 
-.memdir-image-upload__actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.memdir-image-upload__btn {
+.memdir-media-btn {
   padding: 8px 16px;
   font-family: var(--md-font);
   font-size: 13px;
@@ -1474,56 +1524,104 @@ dialog.memdir-header-modal::backdrop {
   transition: background 0.15s;
 }
 
-.memdir-image-upload__btn:hover {
+.memdir-media-btn:hover {
   background: var(--md-green-dark);
 }
 
-.memdir-image-upload__btn:disabled {
+.memdir-media-btn:disabled {
   opacity: 0.6;
   cursor: wait;
 }
 
-.memdir-image-upload__btn--delete {
+.memdir-media-btn--delete {
   background: transparent;
   color: #b91c1c;
   border: 1px solid #b91c1c;
 }
 
-.memdir-image-upload__btn--delete:hover {
+.memdir-media-btn--delete:hover {
   background: #b91c1c;
   color: #fff;
 }
 
-/* ─────────────────────────────────────────────────────────────
-   CUSTOM GALLERY UPLOAD (replaces ACF native gallery uploader)
-───────────────────────────────────────────────────────────── */
-
-.memdir-gallery-upload {
-  padding: 8px 0;
+.memdir-media-btn--delete:disabled {
+  opacity: 0.6;
+  cursor: wait;
 }
 
-.memdir-gallery-upload__grid {
+.memdir-media-status {
+  font-family: var(--md-font);
+  font-size: 13px;
+  color: var(--md-text-muted);
+  margin: 0 0 8px;
+  min-height: 1.3em;
+}
+
+.memdir-media-caption {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  margin: 0 0 8px;
+  font-family: var(--md-font);
+  font-size: 13px;
+  color: var(--md-text);
+  background: var(--md-white);
+  border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
+  transition: border-color 0.15s;
+}
+
+.memdir-media-caption:focus {
+  outline: none;
+  border-color: var(--md-green-sage);
+}
+
+.memdir-media-caption::placeholder {
+  color: var(--md-text-muted);
+}
+
+/* --- Single-image modal interior --- */
+
+.memdir-image-modal__preview {
+  display: block;
+  max-width: 100%;
+  max-height: 300px;
+  margin: 0 0 10px;
+  border-radius: var(--md-radius);
+  object-fit: contain;
+  border: 1px solid var(--md-border);
+}
+
+.memdir-image-modal__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* --- Gallery modal interior --- */
+
+.memdir-gallery-modal__grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   gap: 8px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
-.memdir-gallery-upload__item {
+.memdir-gallery-modal__item {
   position: relative;
   border-radius: var(--md-radius);
   overflow: hidden;
   border: 1px solid var(--md-border);
 }
 
-.memdir-gallery-upload__item img {
+.memdir-gallery-modal__item img {
   display: block;
   width: 100%;
   aspect-ratio: 1;
   object-fit: cover;
 }
 
-.memdir-gallery-upload__remove {
+.memdir-gallery-modal__remove {
   position: absolute;
   top: 4px;
   right: 4px;
@@ -1543,15 +1641,15 @@ dialog.memdir-header-modal::backdrop {
   transition: opacity 0.15s, background 0.15s;
 }
 
-.memdir-gallery-upload__item:hover .memdir-gallery-upload__remove {
+.memdir-gallery-modal__item:hover .memdir-gallery-modal__remove {
   opacity: 1;
 }
 
-.memdir-gallery-upload__remove:hover {
+.memdir-gallery-modal__remove:hover {
   background: #b91c1c;
 }
 
-.memdir-gallery-upload__caption {
+.memdir-gallery-modal__caption {
   display: block;
   width: 100%;
   padding: 4px 6px;
@@ -1564,43 +1662,13 @@ dialog.memdir-header-modal::backdrop {
   transition: background 0.15s;
 }
 
-.memdir-gallery-upload__caption:focus {
+.memdir-gallery-modal__caption:focus {
   outline: none;
   background: #f9f9f6;
 }
 
-.memdir-gallery-upload__caption::placeholder {
+.memdir-gallery-modal__caption::placeholder {
   color: var(--md-text-muted);
-}
-
-.memdir-gallery-upload__status {
-  font-family: var(--md-font);
-  font-size: 13px;
-  color: var(--md-text-muted);
-  margin: 0 0 8px;
-  min-height: 1.3em;
-}
-
-.memdir-gallery-upload__add {
-  padding: 8px 16px;
-  font-family: var(--md-font);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--md-white);
-  background: var(--md-green-sage);
-  border: none;
-  border-radius: var(--md-radius);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.memdir-gallery-upload__add:hover {
-  background: var(--md-green-dark);
-}
-
-.memdir-gallery-upload__add:disabled {
-  opacity: 0.6;
-  cursor: wait;
 }
 
 /* ─────────────────────────────────────────────────────────────

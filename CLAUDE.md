@@ -10,18 +10,17 @@ WordPress plugin: section-based member profile and directory system powered by A
 - `TemplateLoader` — routes `member-directory` single/archive to plugin templates
 - `AdminSync` — admin page that triggers `SectionRegistry::sync()`; section editor UI (rename, reorder, toggle primary, delete); Add Section form
 - `PmpResolver` — PMP waterfall resolution + viewer context + view-as spoofing
-- `FieldRenderer` — field-to-HTML rendering for view mode (text, textarea, url, wysiwyg, image, gallery, file, google_map, true_false, checkbox, radio, taxonomy, select)
+- `FieldRenderer` — field-to-HTML rendering for view mode (text, textarea, url, wysiwyg, image, gallery, file, google_map, true_false, checkbox, radio, taxonomy, select). Images/galleries render with GLightbox links + `<figcaption>` captions.
 - `GlobalFields` — ACF group for global PMP + primary section controls (**⚠ debug code present — see Known Issues**)
-- `AcfFormHelper` — `acf_form_head()` guard + edit-mode detection + `acf_form()` rendering + AJAX handlers (section save, enabled toggle, section PMP, field PMP, avatar upload, taxonomy search, social import)
+- `AcfFormHelper` — `acf_form_head()` guard + edit-mode detection + `acf_form()` rendering + AJAX handlers (section save, enabled toggle, section PMP, field PMP, avatar upload, image upload/delete, gallery upload/remove, caption update, taxonomy search, social import)
 - `templates/single-member-directory.php` — full edit/view mode branching
 - `templates/parts/section-edit.php` — edit partial (left controls panel + ACF form)
 - `templates/parts/section-view.php` — view partial (PMP waterfall + FieldRenderer per field)
 - `templates/parts/right-panel.php` — author/admin panel: View As button group, Global Default block, Primary Section block, Notes block
 - `templates/parts/header-section.php` — generic data-driven sticky header (scans for ACF tab with "header" in label; maps fields to slots: text→title, image→avatar, taxonomy→badges, url→social icons)
 - `templates/parts/pill-nav.php` — pill navigation row; All Sections + per-section pills with enable/disable checkboxes
-- `sections/profile.json` — lean section pointer (Profile)
-- `sections/business.json` — lean section pointer (Business)
-- `sections/discovery.json` — lean section pointer (Discovery)
+- Custom image/gallery uploaders — "image in, image out" pattern for all image and gallery fields in edit mode. Replaces ACF's native media library UI with inline upload/remove buttons + caption inputs. Old attachments auto-deleted on replace/remove. Galleries use thumbnail grid with per-image captions.
+- GLightbox integration — view-mode images and galleries open in a lightbox with captions. Galleries support prev/next navigation. Initialized via `initLightbox()` in JS boot sequence. GLightbox 3.3.0 loaded from jsDelivr CDN.
 - Header editing system — per-element pencil/camera overlays with mini-modals:
   - Avatar modal (upload + delete photo via AJAX)
   - Name modal (inline text editing)
@@ -40,6 +39,11 @@ WordPress plugin: section-based member profile and directory system powered by A
   - `memdir_ajax_upload_avatar` → `AcfFormHelper::handle_avatar_upload`
   - `memdir_search_taxonomy_terms` → `AcfFormHelper::handle_search_taxonomy_terms`
   - `memdir_ajax_import_social` → `AcfFormHelper::handle_import_social`
+  - `memdir_ajax_upload_image` → `AcfFormHelper::handle_image_upload`
+  - `memdir_ajax_delete_image` → `AcfFormHelper::handle_delete_image`
+  - `memdir_ajax_gallery_upload` → `AcfFormHelper::handle_gallery_upload`
+  - `memdir_ajax_gallery_remove` → `AcfFormHelper::handle_gallery_remove`
+  - `memdir_ajax_update_caption` → `AcfFormHelper::handle_update_caption`
   - `memdir_ajax_save_primary_section` → `GlobalFields::handle_save_primary_section`
   - `memdir_ajax_save_global_pmp` → `GlobalFields::handle_save_global_pmp`
 
@@ -64,7 +68,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 
 3. **ACF is the field source of truth.** Field groups live entirely in ACF's own database. The plugin never registers, overrides, or caches field groups — no `acf-json/` folder, no `load_json`/`save_json` hooks. Templates call `acf_get_fields( $section['acf_group_key'] )` directly. Editing a field group in ACF admin and clicking Save is all that's needed — changes are live on the next page load.
 
-4. **Section JSON files are immutable registration-only pointers.** `sections/*.json` contains only `acf_group_key`. The section key is derived from the filename. Mutable metadata (`label`, `can_be_primary`, order) lives in the `member_directory_sections` DB option only, managed through the AdminSync UI. JSON files are never written back to after creation. Field definitions live in ACF's database only.
+4. **Section JSON files are immutable registration-only pointers (gitignored).** `sections/*.json` contains only `acf_group_key`. The section key is derived from the filename. Mutable metadata (`label`, `can_be_primary`, order) lives in the `member_directory_sections` DB option only, managed through the AdminSync UI. JSON files are never written back to after creation. Field definitions live in ACF's database only. **The `sections/` directory is gitignored** — section pointers are created per-environment via AdminSync or manually.
 
 5. **PMP waterfall order: field → section → global.** `PmpResolver::can_view()` receives all three levels. Author and admin always see everything. Ghost behavior: hidden fields/sections render zero HTML — no empty wrappers.
 
@@ -93,7 +97,8 @@ includes/
   AcfFormHelper.php           maybe_render_form_head(), is_edit_mode(), render_edit_form().
                               acf_form() scoped to content field keys from acf_get_fields().
                               AJAX: section save, enabled toggle, section PMP, field PMP,
-                              avatar upload, taxonomy term search, social link import.
+                              avatar upload, image upload/delete, gallery upload/remove,
+                              caption update, taxonomy term search, social link import.
                               Helpers: get_header_fields(), get_social_suffix(),
                               section_has_social_data().
   AdminSync.php               Admin page + nonce-protected handler that calls SectionRegistry::sync().
@@ -103,11 +108,12 @@ includes/
   TemplateLoader.php          template_include filter → plugin templates for member-directory CPT.
   PmpResolver.php             resolve_viewer(), spoof_viewer(), can_view() (waterfall), is_member().
   FieldRenderer.php           render() — field definition + post_id → escaped HTML output.
+                              Images/galleries wrapped in <figure> with GLightbox <a> links,
+                              data-description for lightbox captions, <figcaption> inline.
   DirectoryQuery.php          🔜 Not yet created.
-sections/
-  profile.json                Immutable section pointer. { acf_group_key }. Key from filename.
-  discovery.json              Immutable section pointer.
-  business.json               Immutable section pointer.
+sections/                         ⚠ GITIGNORED — not tracked in git. Created per-environment.
+  *.json                      Immutable section pointers. { acf_group_key }. Key from filename.
+                              Current sections on dev: profile, discovery, business, location.
 templates/
   single-member-directory.php Single profile. Calls form_head first, then branches edit/view per section.
   archive-member-directory.php Scaffold only — no real implementation.
@@ -123,9 +129,12 @@ templates/
     right-panel.php           Author/admin panel. View As buttons, Global Default block, Primary Section block.
 assets/
   css/memdir.css              All plugin styles. Scoped to .memdir-profile. Includes modal,
-                              header editing, taxonomy search, import button, and PMP control styles.
+                              header editing, taxonomy search, import button, PMP control,
+                              image upload, gallery upload, figure/caption, and lightbox styles.
+                              CSS vars redeclared on dialog.memdir-header-modal for portaled dialogs.
   js/memdir.js                All frontend JS. ⚠ CRLF line endings — use Write tool or Node.js
                               scripts for edits (Edit tool fails on this file).
+                              Boot sequence: initHeaderEditing() → initImageUploaders() → initLightbox().
 tools/
   acf-field-prep.md           Claude skill: enrich a bare ACF field group export with full
                               iPMP apparatus (section system fields + per-field PMP companions)
@@ -136,7 +145,7 @@ tools/
 
 ### Add a new section
 1. Build the field group in ACF admin → click Save (ACF saves to its own DB)
-2. Use the **Add Section** form in WP Admin → Member Directory Sync (type `key` + `acf_group_key` as JSON), or create `sections/key.json` with just `{ "acf_group_key": "group_md_xx_key" }` and run Sync
+2. Create `sections/key.json` with just `{ "acf_group_key": "group_..." }` on the server, then use the **Add Section** form in WP Admin → Member Directory Sync, or run Sync to pick up the new JSON file
 3. Rename, toggle can_be_primary, and reorder via the Section Editor UI (DB-only, no file writes)
 4. Both edit and view surfaces are live
 
@@ -152,9 +161,9 @@ tools/
 2. Delete the section via the AdminSync UI
 
 ### Git/deploy flow
-- `sections/*.json` — committed to git (tiny, stable)
+- `sections/` is **gitignored** — section JSON pointers are created per-environment
 - ACF field groups live in the database only — no JSON files in the plugin
-- After `git pull` on server: run AdminSync only if `sections/*.json` changed
+- After `git pull` on a new server: manually create `sections/*.json` files, then run AdminSync
 - Field groups must be created/edited in ACF admin on each environment (or use ACF's own import/export)
 
 ## Coding Conventions
@@ -227,6 +236,38 @@ All modals use native `<dialog>` elements with `showModal()`. Fields are DOM-mov
 
 **CSS guard for closed dialogs:** `dialog.memdir-header-modal:not([open]) { display: none !important; }` — required because `display: flex` on the dialog interferes with native `<dialog>` closed state.
 
+**CSS variable scoping for portaled dialogs:** `showDialogSafe()` moves dialogs to `document.body` (outside `.memdir-profile` where `--md-*` custom properties are defined). All CSS variables are redeclared on `dialog.memdir-header-modal` to keep dialogs self-contained.
+
+## Image Upload System ("Image In, Image Out")
+
+In edit mode, `initImageUploaders()` replaces ACF's native media library UI for all image and gallery fields (except header-owned fields) with custom inline uploaders:
+
+### Single Image Fields
+- ACF's `.acf-image-uploader` is hidden (`display: none`)
+- Custom UI injected: preview image + caption input + Upload/Remove buttons + status text
+- Upload: POSTs to `memdir_ajax_upload_image`, auto-deletes old attachment, updates ACF hidden input
+- Remove: POSTs to `memdir_ajax_delete_image`, clears ACF hidden input
+- Caption: blur-saves to `memdir_ajax_update_caption` (stored as WP attachment `post_excerpt`)
+
+### Gallery Fields
+- ACF's `.acf-gallery` is hidden; original inputs marked with `data-memdir-skip`
+- Custom UI injected: thumbnail grid + per-image caption inputs + Add Image button + status text
+- Add: POSTs to `memdir_ajax_gallery_upload`, appends thumbnail to grid
+- Remove (× button): POSTs to `memdir_ajax_gallery_remove`, deletes attachment
+- `syncGalleryHiddenInputs()` rebuilds `input.memdir-gallery-sync` elements for `saveSection()` compatibility
+
+### Integration with `saveSection()`
+- **Single image**: uploads/deletes are instant via AJAX. ACF hidden input synced, so `saveSection()` is idempotent.
+- **Gallery**: ACF's original inputs get `data-memdir-skip` (ignored by `saveSection()`). Custom `memdir-gallery-sync` hidden inputs are collected instead.
+
+## GLightbox (View Mode)
+
+View-mode images and galleries use GLightbox 3.3.0 (loaded from jsDelivr CDN via `Plugin::enqueue_assets()`):
+- `FieldRenderer::render_image()` wraps images in `<a class="glightbox">` with `data-description` for captions
+- `FieldRenderer::render_gallery()` groups images with `data-gallery` attribute for prev/next navigation
+- Captions sourced from WP attachment `post_excerpt`, shown as `<figcaption>` inline and in lightbox overlay
+- Initialized by `initLightbox()` in JS boot sequence
+
 ## Section JSON Schema
 
 ### Immutable section pointer (`sections/*.json`)
@@ -263,17 +304,20 @@ Remove once meta box issue resolved:
 - `error_log(...)` calls in `init()` and `register()` (lines 42, 76, 98, 99)
 - `debug_filters()` static method + its call in `init()` (lines 61–69 and line 49)
 
-## Sections on Disk
+## Sections (gitignored — per-environment)
 
-| File | Key (from filename) | ACF group key |
-|------|---------------------|---------------|
-| `sections/profile.json` | `profile` | `group_md_02_profile` |
-| `sections/discovery.json` | `discovery` | `group_md_03_discovery` |
-| `sections/business.json` | `business` | `group_md_05_business` |
+The `sections/` directory is gitignored. Each environment maintains its own JSON pointer files. Current sections on dev:
+
+| Key (from filename) | ACF group key |
+|---------------------|---------------|
+| `profile` | `group_md_02_profile` |
+| `discovery` | `group_md_03_discovery` |
+| `business` | `group_md_05_business` |
+| `location` | `group_69ac2395a43da` |
 
 Label, can_be_primary, and order live in the DB option only (managed via AdminSync UI).
 
-> **After pulling on the server: run AdminSync Sync only if sections/*.json changed.**
+> **On a new server: create `sections/*.json` files manually, then run AdminSync Sync.**
 
 ---
 
