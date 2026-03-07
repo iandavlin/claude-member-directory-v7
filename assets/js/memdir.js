@@ -2574,13 +2574,14 @@
 		var fileInput = document.createElement( 'input' );
 		fileInput.type   = 'file';
 		fileInput.accept = 'image/*';
+		fileInput.multiple = true;
 		fileInput.style.display = 'none';
 		modal.body.appendChild( fileInput );
 
 		var addBtn = document.createElement( 'button' );
 		addBtn.type      = 'button';
 		addBtn.className = 'memdir-media-btn';
-		addBtn.textContent = 'Add Image';
+		addBtn.textContent = 'Add Images';
 		modal.body.appendChild( addBtn );
 
 		// Append dialog to document.body.
@@ -2610,38 +2611,57 @@
 		addBtn.addEventListener( 'click', function () { fileInput.click(); } );
 
 		fileInput.addEventListener( 'change', function () {
-			var file = fileInput.files[ 0 ];
-			if ( ! file ) { return; }
+			var files = Array.prototype.slice.call( fileInput.files );
+			if ( ! files.length ) { return; }
 
-			status.textContent = 'Uploading\u2026';
 			addBtn.disabled = true;
+			var total = files.length;
+			var done  = 0;
+			var errors = 0;
 
-			var fd = new FormData();
-			fd.append( 'action',    'memdir_ajax_gallery_upload' );
-			fd.append( 'nonce',     window.mdAjax.nonce );
-			fd.append( 'post_id',   postId );
-			fd.append( 'field_key', fieldKey );
-			fd.append( 'image',     file );
-
-			fetch( window.mdAjax.ajaxurl, { method: 'POST', body: fd } )
-				.then( function ( r ) { return r.json(); } )
-				.then( function ( res ) {
-					if ( res.success && res.data ) {
-						addGalleryThumb( modalGrid, String( res.data.id ), res.data.url, '', fieldKey, postId, status, inlineGrid, field );
-						syncGalleryHiddenInputs( field, fieldKey, modalGrid );
-						rebuildInlineGallery( inlineGrid, modalGrid );
-						status.textContent = 'Image added.';
+			function uploadNext() {
+				if ( done + errors >= total ) {
+					// All finished.
+					if ( errors ) {
+						status.textContent = done + ' added, ' + errors + ' failed.';
 					} else {
-						status.textContent = 'Error: ' + ( res.data && res.data.message ? res.data.message : 'Upload failed.' );
+						status.textContent = done === 1 ? 'Image added.' : done + ' images added.';
 					}
 					addBtn.disabled = false;
 					fileInput.value = '';
-				} )
-				.catch( function () {
-					status.textContent = 'Network error.';
-					addBtn.disabled = false;
-					fileInput.value = '';
-				} );
+					return;
+				}
+
+				var idx = done + errors;
+				status.textContent = 'Uploading ' + ( idx + 1 ) + ' of ' + total + '\u2026';
+
+				var fd = new FormData();
+				fd.append( 'action',    'memdir_ajax_gallery_upload' );
+				fd.append( 'nonce',     window.mdAjax.nonce );
+				fd.append( 'post_id',   postId );
+				fd.append( 'field_key', fieldKey );
+				fd.append( 'image',     files[ idx ] );
+
+				fetch( window.mdAjax.ajaxurl, { method: 'POST', body: fd } )
+					.then( function ( r ) { return r.json(); } )
+					.then( function ( res ) {
+						if ( res.success && res.data ) {
+							addGalleryThumb( modalGrid, String( res.data.id ), res.data.url, '', fieldKey, postId, status, inlineGrid, field );
+							syncGalleryHiddenInputs( field, fieldKey, modalGrid );
+							rebuildInlineGallery( inlineGrid, modalGrid );
+							done++;
+						} else {
+							errors++;
+						}
+						uploadNext();
+					} )
+					.catch( function () {
+						errors++;
+						uploadNext();
+					} );
+			}
+
+			uploadNext();
 		} );
 	}
 
