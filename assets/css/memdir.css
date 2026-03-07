@@ -341,24 +341,12 @@ body.single-member-directory .select2-dropdown--above {
   cursor: default;
 }
 
-/* Suppress hover highlight on disabled pills — only the checkbox is interactive. */
+/* Suppress hover highlight on disabled pills. */
 .memdir-pill--disabled:hover {
   background: var(--md-white);
   border-color: var(--md-border);
 }
 
-.memdir-pill__checkbox {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--md-green-sage);
-  cursor: pointer;
-  flex-shrink: 0;
-  margin: 0;
-}
-
-.memdir-pill__label {
-  pointer-events: none;
-}
 
 
 /* ─────────────────────────────────────────────────────────────
@@ -905,6 +893,76 @@ a.memdir-field-value:hover {
   font-weight: 600;
 }
 
+/* Section toggles */
+.memdir-panel__sections {
+  margin-bottom: 12px;
+}
+
+.memdir-panel__section-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+
+.memdir-panel__section-name {
+  font-size: 13px;
+  color: var(--md-text);
+}
+
+.memdir-panel__section-badge {
+  font-size: 11px;
+  color: var(--md-text-muted);
+  font-style: italic;
+}
+
+/* iOS-style toggle switch */
+.memdir-panel__toggle {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.memdir-panel__toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.memdir-panel__toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--md-border);
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+
+.memdir-panel__toggle-slider::before {
+  content: "";
+  position: absolute;
+  height: 16px;
+  width: 16px;
+  left: 2px;
+  bottom: 2px;
+  background: var(--md-white);
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.memdir-panel__toggle input:checked + .memdir-panel__toggle-slider {
+  background: var(--md-green-sage);
+}
+
+.memdir-panel__toggle input:checked + .memdir-panel__toggle-slider::before {
+  transform: translateX(16px);
+}
 /* Panel notes */
 .memdir-panel__notes {
   margin-top: 16px;

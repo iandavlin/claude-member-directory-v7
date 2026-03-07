@@ -34,10 +34,26 @@ $global_pmp      = get_field( 'member_directory_global_pmp',      $post_id ) ?: 
 $primary_section = get_field( 'member_directory_primary_section', $post_id ) ?: 'profile';
 
 // Build list of primary-capable sections for the PRIMARY SECTION buttons.
+$all_sections = SectionRegistry::get_sections();
 $primary_capable = array_filter(
-	SectionRegistry::get_sections(),
+	$all_sections,
 	function ( $s ) { return ! empty( $s['can_be_primary'] ); }
 );
+
+// Build section-enabled map for the SECTIONS toggles (edit mode only).
+$is_edit = ( $view_as === '' );
+$section_enabled_map = [];
+if ( $is_edit ) {
+	foreach ( $all_sections as $s ) {
+		$s_key = $s['key'] ?? '';
+		if ( $s_key === $primary_section ) {
+			$section_enabled_map[ $s_key ] = true; // Primary always on.
+			continue;
+		}
+		$val = get_field( 'member_directory_' . $s_key . '_enabled', $post_id );
+		$section_enabled_map[ $s_key ] = ( $val !== false && $val !== 0 && $val !== '0' );
+	}
+}
 
 ?>
 <div class="memdir-right-panel">
@@ -83,6 +99,40 @@ $primary_capable = array_filter(
 			type="button"
 		><?php echo esc_html( $s_label ); ?></button>
 		<?php endforeach; ?>
+		<?php endif; ?>
+
+		<?php if ( $is_edit ) : ?>
+		<p class="memdir-panel__label">SECTIONS</p>
+		<div class="memdir-panel__sections">
+			<?php
+			// Primary first, then remaining in registry order.
+			$ordered = [];
+			foreach ( $all_sections as $s ) {
+				if ( ( $s['key'] ?? '' ) === $primary_section ) {
+					array_unshift( $ordered, $s );
+				} else {
+					$ordered[] = $s;
+				}
+			}
+			foreach ( $ordered as $s ) :
+				$s_key   = $s['key']   ?? '';
+				$s_label = $s['label'] ?? '';
+				$is_primary = ( $s_key === $primary_section );
+				$is_on      = $section_enabled_map[ $s_key ] ?? true;
+			?>
+			<div class="memdir-panel__section-row">
+				<span class="memdir-panel__section-name"><?php echo esc_html( $s_label ); ?></span>
+				<?php if ( $is_primary ) : ?>
+					<span class="memdir-panel__section-badge">Primary</span>
+				<?php else : ?>
+					<label class="memdir-panel__toggle">
+						<input type="checkbox" data-section-key="<?php echo esc_attr( $s_key ); ?>" <?php checked( $is_on ); ?>>
+						<span class="memdir-panel__toggle-slider"></span>
+					</label>
+				<?php endif; ?>
+			</div>
+			<?php endforeach; ?>
+		</div>
 		<?php endif; ?>
 
 		<div class="memdir-panel__notes">

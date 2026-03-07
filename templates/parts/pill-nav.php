@@ -3,9 +3,9 @@
  * Partial: Pill Navigation.
  *
  * Renders the horizontal pill row below the sticky header. Provides All
- * Sections / single-section switching and per-section enable/disable checkboxes.
- * JS (memdir.js) handles AJAX saves and live DOM updates; this partial renders
- * the correct initial state on page load.
+ * Sections / single-section navigation. Enable/disable toggles for sections
+ * live in the right panel (right-panel.php). This partial renders the correct
+ * initial state on page load — disabled pills appear greyed out.
  *
  * Expected variables (set by the caller before include):
  *
@@ -99,7 +99,8 @@ $active_section = isset( $active_section ) ? (string) $active_section : 'all';
 
 	<?php
 	// -----------------------------------------------------------------------
-	// Non-primary section pills — in SectionRegistry order, with checkboxes.
+	// Non-primary section pills — in SectionRegistry order, no checkboxes.
+	// Enable/disable toggles live in the right panel (right-panel.php).
 	// -----------------------------------------------------------------------
 	foreach ( $sections as $section ) :
 		$key = $section['key'] ?? '';
@@ -125,16 +126,7 @@ $active_section = isset( $active_section ) ? (string) $active_section : 'all';
 		data-section="<?php echo esc_attr( $key ); ?>"
 		data-order="<?php echo esc_attr( (string) ( $section['order'] ?? 99 ) ); ?>"
 		type="button"
-		<?php if ( ! $is_on ) : ?>title="Activate Check Box"<?php endif; ?>
 	>
-		<?php if ( ! empty( $is_edit ) ) : ?>
-		<input
-			type="checkbox"
-			class="memdir-pill__checkbox"
-			data-section="<?php echo esc_attr( $key ); ?>"
-			<?php checked( $is_on ); ?>
-		>
-		<?php endif; ?>
 		<span class="memdir-pill__label"><?php echo esc_html( $label ); ?></span>
 	</button>
 

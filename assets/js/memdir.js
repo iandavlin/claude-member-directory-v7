@@ -9,7 +9,7 @@
  *   3. Header swap        -- show correct header variant based on active pill
  *   4. Section save       -- AJAX save for all fields in a section without reload
  *   5. Right panel        -- Primary Section AJAX save + pill DOM update
- *   6. Pill enable/disable -- checkbox toggles section on/off + DOM reorder
+ *   6. Section toggles     -- right-panel toggle switches enable/disable sections
  *   7. State restore      -- sessionStorage + URL param restore on page load
  *   8. Section PMP        -- 4-button inherit/public/member/private + eyebrow cascade
  *   9. Field PMP          -- per-field icon-button PMP controls injected after each ACF field
@@ -586,12 +586,56 @@
 		} );
 	}
 
+	// -----------------------------------------------------------------------
+	// Section toggles (right panel)
+	//
+	// Toggle switches in .memdir-panel__sections control whether a non-primary
+	// section is enabled. On change: update the pill disabled state, update
+	// the All Sections badge, then persist via AJAX + reload.
+	// -----------------------------------------------------------------------
+
+	function initSectionToggles() {
+		var panel = document.querySelector( '.memdir-right-panel' );
+		if ( ! panel ) {
+			return;
+		}
+
+		var nav = document.querySelector( '.memdir-pills' );
+
+		// Run badge count on init.
+		if ( nav ) {
+			updateAllSectionsBadge( nav );
+		}
+
+		panel.querySelectorAll( '.memdir-panel__toggle input[type="checkbox"]' ).forEach( function ( toggle ) {
+			toggle.addEventListener( 'change', function () {
+				var sectionKey = toggle.dataset.sectionKey || '';
+				var enabled    = toggle.checked;
+				var postId     = nav ? ( nav.dataset.postId || '' ) : '';
+
+				if ( ! sectionKey || ! postId ) {
+					return;
+				}
+
+				// Update pill disabled state.
+				if ( nav ) {
+					var pill = nav.querySelector( '.memdir-pill[data-section="' + sectionKey + '"]' );
+					if ( pill ) {
+						pill.classList.toggle( 'memdir-pill--disabled', ! enabled );
+					}
+					updateAllSectionsBadge( nav );
+				}
+
+				// Persist + reload.
+				saveSectionEnabled( postId, sectionKey, enabled );
+			} );
+		} );
+	}
+
 	/**
 	 * Update the pill nav DOM when the primary section changes.
 	 *
 	 * - Moves the new primary pill to immediately after the All Sections pill.
-	 * - Removes the checkbox from the new primary pill (primary cannot be disabled).
-	 * - Restores a checkbox on the old primary pill.
 	 * - Updates data-primary-section on the nav and on .memdir-sticky.
 	 *
 	 * @param {string} newPrimaryKey  Section key of the new primary section.
@@ -614,11 +658,7 @@
 			return;
 		}
 
-		// Remove checkbox from the new primary pill and mark it primary.
-		var newCheckbox = newPrimaryPill.querySelector( '.memdir-pill__checkbox' );
-		if ( newCheckbox ) {
-			newCheckbox.remove();
-		}
+		// Mark the new pill as primary.
 		newPrimaryPill.classList.add( 'memdir-pill--primary' );
 
 		// Always ensure the pill is visible -- hideEmptySectionPills() may have
@@ -645,18 +685,9 @@
 			updateAllSectionsBadge( nav );
 		}
 
-		// Restore checkbox on the old primary pill.
-		if ( oldPrimaryPill && ! oldPrimaryPill.querySelector( '.memdir-pill__checkbox' ) ) {
-			var checkbox             = document.createElement( 'input' );
-			checkbox.type            = 'checkbox';
-			checkbox.className       = 'memdir-pill__checkbox';
-			checkbox.dataset.section = oldPrimaryKey;
-			checkbox.checked         = true; // Enabled by default when demoted.
-			oldPrimaryPill.insertBefore( checkbox, oldPrimaryPill.firstChild );
+		// Remove primary class from the old pill.
+		if ( oldPrimaryPill ) {
 			oldPrimaryPill.classList.remove( 'memdir-pill--primary' );
-
-			// Wire the new checkbox into the enable/disable handler.
-			bindCheckbox( checkbox, nav );
 		}
 
 		// Move new primary pill to first position (right after All Sections pill).
@@ -675,150 +706,14 @@
 	}
 
 	// -----------------------------------------------------------------------
-	// 6. Pill enable/disable
+	// 6. Section toggles
 	//
-	// Checkboxes on non-primary pills toggle whether a section is shown.
-	// Unchecking a checkbox:
-	//   - Adds .memdir-pill--disabled to the pill.
-	//   - Hides the matching .memdir-section[data-section] in the content area.
-	//   - Moves the pill to the end (after enabled pills, before other disabled).
-	//   - Saves via AJAX (memdir_ajax_save_section_enabled, enabled=0).
+	// Enable/disable toggles live in the right panel (.memdir-panel__toggle).
+	// Toggling fires saveSectionEnabled() which persists via AJAX and reloads
+	// the page so conditional tabs in other sections update.
 	//
-	// Checking a checkbox:
-	//   - Removes .memdir-pill--disabled.
-	//   - Shows the matching section.
-	//   - Moves the pill before the first disabled pill (end of enabled group).
-	//   - Saves via AJAX (enabled=1).
-	//
-	// On page load: any pills that are already disabled are sorted to the end.
+	// updateAllSectionsBadge() runs on init to keep the badge accurate.
 	// -----------------------------------------------------------------------
-
-	function initPillCheckboxes() {
-		var nav = document.querySelector( '.memdir-pills' );
-		if ( ! nav ) {
-			return;
-		}
-
-		// Sort any already-disabled pills to the end on page load.
-		reorderPills( nav );
-		updateAllSectionsBadge( nav );
-
-		// Wire change events on all existing checkboxes.
-		nav.querySelectorAll( '.memdir-pill__checkbox' ).forEach( function ( checkbox ) {
-			bindCheckbox( checkbox, nav );
-		} );
-	}
-
-	/**
-	 * Attach the change handler to a single pill checkbox.
-	 *
-	 * Called on init and also when updatePrimarySection() injects a new
-	 * checkbox onto the demoted primary pill.
-	 *
-	 * @param {HTMLInputElement} checkbox  The checkbox element.
-	 * @param {Element}          nav       The .memdir-pills nav element.
-	 */
-	function bindCheckbox( checkbox, nav ) {
-		checkbox.addEventListener( 'change', function () {
-			var sectionKey = checkbox.dataset.section || '';
-			var pill       = checkbox.closest( '.memdir-pill' );
-			var postId     = nav.dataset.postId || '';
-			var enabled    = checkbox.checked;
-
-			if ( ! pill || ! sectionKey ) {
-				return;
-			}
-
-			// Toggle disabled class and tooltip on the pill.
-			pill.classList.toggle( 'memdir-pill--disabled', ! enabled );
-			if ( ! enabled ) {
-				pill.setAttribute( 'title', 'Activate Check Box' );
-			} else {
-				pill.removeAttribute( 'title' );
-			}
-
-			if ( ! enabled ) {
-				// Capture the closest enabled neighbour BEFORE reordering so the
-				// DOM order still reflects position relative to the disabled pill.
-				var closestKey = findClosestEnabledPill( pill, nav );
-
-				// Navigate to the closest still-enabled pill (reorder+badge run below).
-				activatePill( closestKey );
-			} else {
-				// Enabling: show the section only when in "all" view or its own
-				// single-section view. activatePill() owns visibility otherwise.
-				var sectionEl = document.querySelector(
-					'.memdir-section[data-section="' + sectionKey + '"]'
-				);
-				if ( sectionEl ) {
-					var activePillEl = document.querySelector( '.memdir-pill--active' );
-					var activeKeyEl  = activePillEl ? ( activePillEl.dataset.section || 'all' ) : 'all';
-					if ( activeKeyEl === 'all' || activeKeyEl === sectionKey ) {
-						sectionEl.style.display = '';
-					}
-				}
-			}
-
-			// Reorder pills: disabled pills go to the end.
-			reorderPills( nav );
-
-			// Update the All Sections badge count.
-			updateAllSectionsBadge( nav );
-
-			// Persist via AJAX (fire-and-forget -- UI is already updated).
-			if ( postId ) {
-				saveSectionEnabled( postId, sectionKey, enabled );
-			}
-		} );
-	}
-
-	/**
-	 * Reorder pills so disabled pills appear after enabled pills.
-	 *
-	 * Order: All Sections -> primary -> enabled non-primary -> disabled non-primary.
-	 * Within each group, pills are sorted by data-order (section registry order).
-	 *
-	 * @param {Element} nav  The .memdir-pills nav element.
-	 */
-	function reorderPills( nav ) {
-		var all      = Array.from( nav.querySelectorAll( '.memdir-pill' ) );
-		var allPill  = all.filter( function ( p ) {
-			return p.classList.contains( 'memdir-pill--all' );
-		} );
-		var primary  = all.filter( function ( p ) {
-			return p.classList.contains( 'memdir-pill--primary' );
-		} );
-		var enabled  = all.filter( function ( p ) {
-			return ! p.classList.contains( 'memdir-pill--all' ) &&
-			       ! p.classList.contains( 'memdir-pill--primary' ) &&
-			       ! p.classList.contains( 'memdir-pill--disabled' );
-		} );
-		var disabled = all.filter( function ( p ) {
-			return ! p.classList.contains( 'memdir-pill--all' ) &&
-			       ! p.classList.contains( 'memdir-pill--primary' ) &&
-			       p.classList.contains( 'memdir-pill--disabled' );
-		} );
-
-		// Sort enabled and disabled groups by their section registry order
-		// (data-order attribute set by PHP). This keeps pill positions stable
-		// regardless of which toggles or primary switches have been applied.
-		function byOrder( a, b ) {
-			return ( parseInt( a.dataset.order, 10 ) || 99 ) - ( parseInt( b.dataset.order, 10 ) || 99 );
-		}
-		enabled.sort( byOrder );
-		disabled.sort( byOrder );
-
-		allPill.concat( primary ).concat( enabled ).concat( disabled ).forEach( function ( p ) {
-			p.style.marginLeft = '';
-			nav.appendChild( p );
-		} );
-
-		// Push first disabled pill to far right via auto left margin.
-		if ( disabled.length ) {
-			disabled[ 0 ].style.marginLeft = 'auto';
-		}
-	}
-
 	/**
 	 * Update the count badge on the All Sections pill to reflect the number
 	 * of currently enabled sections (primary + non-primary, excluding disabled).
@@ -837,41 +732,6 @@
 		) ).filter( function ( p ) { return p.style.display !== 'none'; } ).length;
 
 		countEl.textContent = enabledCount + ' enabled';
-	}
-
-	/**
-	 * Find the pill closest (by DOM order) to a just-disabled pill that is
-	 * still enabled. Searches backwards first, then forwards. Returns the
-	 * section key, or "all" if no enabled non-all pill remains.
-	 *
-	 * @param {Element} disabledPill  The pill that was just disabled.
-	 * @param {Element} nav           The .memdir-pills nav element.
-	 * @returns {string}
-	 */
-	function findClosestEnabledPill( disabledPill, nav ) {
-		var allPills    = Array.from( nav.querySelectorAll( '.memdir-pill' ) );
-		var disabledIdx = allPills.indexOf( disabledPill );
-
-		// Search backwards (towards the first pill) for an enabled non-all pill.
-		for ( var i = disabledIdx - 1; i >= 0; i-- ) {
-			var p = allPills[ i ];
-			if ( ! p.classList.contains( 'memdir-pill--disabled' ) &&
-			     ! p.classList.contains( 'memdir-pill--all' ) ) {
-				return p.dataset.section || 'all';
-			}
-		}
-
-		// Search forwards.
-		for ( var j = disabledIdx + 1; j < allPills.length; j++ ) {
-			var q = allPills[ j ];
-			if ( ! q.classList.contains( 'memdir-pill--disabled' ) &&
-			     ! q.classList.contains( 'memdir-pill--all' ) ) {
-				return q.dataset.section || 'all';
-			}
-		}
-
-		// No enabled section pill found -- fall back to All Sections view.
-		return 'all';
 	}
 
 	/**
@@ -926,7 +786,7 @@
 	 * badge count so it only reflects actually-visible sections.
 	 *
 	 * Skips pills that are already --disabled -- those are managed by the
-	 * checkbox system and must stay visible so the author can re-enable them.
+	 * right-panel toggles and must stay visible so the author can re-enable them.
 	 */
 	function hideEmptySectionPills() {
 		var nav = document.querySelector( '.memdir-pills' );
@@ -939,7 +799,7 @@
 			if ( ! key || pill.classList.contains( 'memdir-pill--all' ) ) {
 				return;
 			}
-			// Already disabled -- managed by checkbox system, leave visible.
+			// Already disabled -- managed by right-panel toggles, leave visible.
 			if ( pill.classList.contains( 'memdir-pill--disabled' ) ) {
 				return;
 			}
@@ -2732,9 +2592,9 @@
 	document.addEventListener( 'DOMContentLoaded', function () {
 		initTabNav();
 		initPillNav();
-		initPillCheckboxes();
 		initSectionSave();
 		initRightPanel();
+		initSectionToggles();
 		initSectionPmp();
 		relocateFieldInstructions();
 		initFieldPmp();           // inject field PMP controls after section PMP is wired
