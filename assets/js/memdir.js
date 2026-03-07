@@ -1798,6 +1798,10 @@
 			if ( imageField && avatarWrap ) {
 				imageField.style.display = 'none';
 
+				// Check ACF hidden input — empty when member uses a fallback avatar.
+				var acfHiddenInput = imageField.querySelector( 'input[type="hidden"]' );
+				var hasRealImage   = acfHiddenInput && acfHiddenInput.value && acfHiddenInput.value !== '0';
+
 				var overlay = document.createElement( 'div' );
 				overlay.className = 'memdir-header__avatar-edit';
 				overlay.innerHTML = cameraSvg;
@@ -1808,9 +1812,9 @@
 
 				var avPreview = document.createElement( 'img' );
 				avPreview.className = 'memdir-header-modal__avatar-preview';
-				avPreview.src = avatarImg ? avatarImg.src : '';
+				avPreview.src = hasRealImage && avatarImg ? avatarImg.src : '';
 				avPreview.alt = 'Current photo';
-				if ( ! avatarImg || ! avatarImg.src ) { avPreview.style.display = 'none'; }
+				if ( ! hasRealImage ) { avPreview.style.display = 'none'; }
 				avFragment.appendChild( avPreview );
 
 				var avStatus = document.createElement( 'p' );
@@ -1834,7 +1838,7 @@
 				deleteBtn.type = 'button';
 				deleteBtn.className = 'memdir-header-modal__avatar-btn memdir-header-modal__avatar-btn--delete';
 				deleteBtn.textContent = 'Delete Photo';
-				if ( ! avatarImg || ! avatarImg.src ) { deleteBtn.style.display = 'none'; }
+				if ( ! hasRealImage ) { deleteBtn.style.display = 'none'; }
 				avFragment.appendChild( deleteBtn );
 
 				deleteBtn.addEventListener( 'click', function () {

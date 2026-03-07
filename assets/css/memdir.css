@@ -1186,8 +1186,28 @@ a.memdir-field-value:hover {
   flex-shrink: 0;
 }
 
-/* Dialog shell — sized for per-element modals */
+/* Dialog shell — sized for per-element modals.
+   showDialogSafe() moves dialogs to document.body before showModal(),
+   so they leave the .memdir-profile scope. Redeclare the custom
+   properties here so colours/fonts resolve correctly. */
 dialog.memdir-header-modal {
+  --md-gold:        #ECB351;
+  --md-gold-light:  #F1DE83;
+  --md-green-pale:  #D4E0B8;
+  --md-green-light: #C2D5AA;
+  --md-green-mid:   #A8BE8B;
+  --md-green-sage:  #97A97C;
+  --md-green-dark:  #87986A;
+  --md-coral:       #FE6B4F;
+  --md-text:        #1a1a1a;
+  --md-text-muted:  #6b6b6b;
+  --md-bg:          #f8f8f6;
+  --md-white:       #ffffff;
+  --md-border:      #e2e2dc;
+  --md-radius:      8px;
+  --md-radius-pill: 999px;
+  --md-font:        'Jost', sans-serif;
+
   border: none;
   border-radius: 12px;
   padding: 0;
