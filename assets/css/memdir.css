@@ -718,6 +718,21 @@ a.memdir-field-value:hover {
   background: var(--md-coral);
 }
 
+/* Pulse when section has unsaved changes */
+.has-unsaved .memdir-section-save {
+  animation: memdir-pulse 2s ease-in-out infinite;
+}
+
+.has-unsaved .memdir-section-save:hover {
+  animation: none;
+  background: var(--md-green-dark);
+}
+
+@keyframes memdir-pulse {
+  0%, 100% { background: var(--md-green-sage); }
+  50%      { background: var(--md-gold); }
+}
+
 /* ─────────────────────────────────────────────────────────────
    RIGHT PANEL (fixed, outside main container)
 ───────────────────────────────────────────────────────────── */
