@@ -902,6 +902,9 @@
 			method:      'POST',
 			credentials: 'same-origin',
 			body:        formData,
+		} ).then( function () {
+			// Reload so conditional tabs in other sections update.
+			window.location.reload();
 		} ).catch( function () {
 			// Silently fail -- UI is already updated.
 		} );
