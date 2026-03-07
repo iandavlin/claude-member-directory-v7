@@ -1,5 +1,8 @@
 # Member Directory — Claude Code Context
 
+## Workflow Rule
+**Always commit and push after every completed change.** Do not wait for the user to ask — commit and push as soon as the work is done.
+
 ## Project Summary
 WordPress plugin: section-based member profile and directory system powered by ACF Pro. Members own a CPT post (`member-directory`); each post renders sections (edit or view mode) with per-field PMP (Public/Member/Private) visibility control. No CPT UI, no Gutenberg — purely ACF Pro + PHP.
 
