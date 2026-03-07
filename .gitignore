@@ -1,5 +1,5 @@
-# Backups created by AdminSync
-sections/backups/
+# Section pointers — managed per-environment via AdminSync UI
+sections/
 
 # WordPress / PHP
 *.log
