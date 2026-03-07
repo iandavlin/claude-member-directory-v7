@@ -105,10 +105,12 @@
 		} );
 
 		// Show fields in this tab group; hide all others.
-		// Skip fields inside <dialog> — they are managed by initHeaderEditing()
-		// and must not be re-hidden when tabs switch.
+		// Skip fields inside <dialog> — they are managed by initHeaderEditing().
+		// Skip sub-fields nested inside repeaters — only the parent repeater is in fieldKeys;
+		// hiding sub-fields would make repeater rows appear empty.
 		allFields.forEach( function ( field ) {
 			if ( field.closest( 'dialog' ) ) { return; }
+			if ( field.parentElement && field.parentElement.closest( '.acf-field[data-type="repeater"], .acf-field[data-type="flexible_content"], .acf-field[data-type="group"]' ) ) { return; }
 			var key = field.dataset.key || '';
 			field.style.display = fieldKeys.includes( key ) ? '' : 'none';
 		} );
@@ -338,37 +340,35 @@
 			return;
 		}
 
-		// Collect all .acf-field[data-key] elements, including those hidden by tab switcher.
-		var acfFieldDivs = fieldContent.querySelectorAll( '.acf-field[data-key]' );
 		var formData = new FormData();
 
 		formData.set( 'action',  'md_save_section' );
 		formData.set( 'nonce',   ( window.mdAjax && window.mdAjax.nonce )   ? window.mdAjax.nonce   : '' );
 		formData.set( 'post_id', postId );
 
-		// Iterate each field and collect its input values.
-		acfFieldDivs.forEach( function ( fieldDiv ) {
-			var fieldKey = fieldDiv.dataset.key || '';
-			if ( ! fieldKey ) {
-				return;
-			}
+		// Sync any WYSIWYG (TinyMCE) editors so their textareas hold current content.
+		if ( window.tinyMCE ) { window.tinyMCE.triggerSave(); }
 
-			// Find all form controls within this field.
-			var inputs = fieldDiv.querySelectorAll( 'input, textarea, select' );
-			inputs.forEach( function ( input ) {
-				// Skip unchecked checkboxes and radios -- they shouldn't be submitted.
-				if ( ( input.type === 'checkbox' || input.type === 'radio' ) && ! input.checked ) {
-					return;
-				}
+		// Collect all form controls inside fieldContent.
+		// Use each input's own name attribute — ACF sets correct names for all
+		// field types including repeaters (acf[rep_key][row-0][sub_key]).
+		var inputs = fieldContent.querySelectorAll( 'input, textarea, select' );
+		inputs.forEach( function ( input ) {
+			var name = input.name || '';
 
-				// Skip custom taxonomy search inputs -- the hidden select holds the real value.
-				if ( input.dataset && input.dataset.memdirSkip ) {
-					return;
-				}
+			// Must start with acf[ to be an ACF-managed field.
+			if ( name.indexOf( 'acf[' ) !== 0 ) { return; }
 
-				// Append using ACF's name convention acf[field_key].
-				formData.append( 'acf[' + fieldKey + ']', input.value );
-			} );
+			// Skip file inputs — handled by AJAX uploaders, never submitted via saveSection.
+			if ( input.type === 'file' ) { return; }
+
+			// Skip unchecked checkboxes and radios.
+			if ( ( input.type === 'checkbox' || input.type === 'radio' ) && ! input.checked ) { return; }
+
+			// Skip custom-flagged inputs (taxonomy search text boxes, old ACF gallery inputs).
+			if ( input.dataset && input.dataset.memdirSkip ) { return; }
+
+			formData.append( name, input.value );
 		} );
 
 		var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
