@@ -1406,6 +1406,261 @@ dialog.memdir-header-modal::backdrop {
 }
 
 /* ─────────────────────────────────────────────────────────────
+   CUSTOM IMAGE UPLOAD (replaces ACF native image uploader)
+───────────────────────────────────────────────────────────── */
+
+.memdir-image-upload {
+  padding: 8px 0;
+}
+
+.memdir-image-upload__preview {
+  display: block;
+  max-width: 260px;
+  max-height: 260px;
+  margin: 0 0 8px;
+  border-radius: var(--md-radius);
+  object-fit: cover;
+  border: 1px solid var(--md-border);
+}
+
+.memdir-image-upload__caption {
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  padding: 6px 10px;
+  margin: 0 0 8px;
+  font-family: var(--md-font);
+  font-size: 13px;
+  color: var(--md-text);
+  background: var(--md-white);
+  border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
+  transition: border-color 0.15s;
+}
+
+.memdir-image-upload__caption:focus {
+  outline: none;
+  border-color: var(--md-green-sage);
+}
+
+.memdir-image-upload__caption::placeholder {
+  color: var(--md-text-muted);
+}
+
+.memdir-image-upload__status {
+  font-family: var(--md-font);
+  font-size: 13px;
+  color: var(--md-text-muted);
+  margin: 0 0 8px;
+  min-height: 1.3em;
+}
+
+.memdir-image-upload__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.memdir-image-upload__btn {
+  padding: 8px 16px;
+  font-family: var(--md-font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--md-white);
+  background: var(--md-green-sage);
+  border: none;
+  border-radius: var(--md-radius);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.memdir-image-upload__btn:hover {
+  background: var(--md-green-dark);
+}
+
+.memdir-image-upload__btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.memdir-image-upload__btn--delete {
+  background: transparent;
+  color: #b91c1c;
+  border: 1px solid #b91c1c;
+}
+
+.memdir-image-upload__btn--delete:hover {
+  background: #b91c1c;
+  color: #fff;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   CUSTOM GALLERY UPLOAD (replaces ACF native gallery uploader)
+───────────────────────────────────────────────────────────── */
+
+.memdir-gallery-upload {
+  padding: 8px 0;
+}
+
+.memdir-gallery-upload__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.memdir-gallery-upload__item {
+  position: relative;
+  border-radius: var(--md-radius);
+  overflow: hidden;
+  border: 1px solid var(--md-border);
+}
+
+.memdir-gallery-upload__item img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+}
+
+.memdir-gallery-upload__remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s;
+}
+
+.memdir-gallery-upload__item:hover .memdir-gallery-upload__remove {
+  opacity: 1;
+}
+
+.memdir-gallery-upload__remove:hover {
+  background: #b91c1c;
+}
+
+.memdir-gallery-upload__caption {
+  display: block;
+  width: 100%;
+  padding: 4px 6px;
+  font-family: var(--md-font);
+  font-size: 11px;
+  color: var(--md-text);
+  background: var(--md-white);
+  border: none;
+  border-top: 1px solid var(--md-border);
+  transition: background 0.15s;
+}
+
+.memdir-gallery-upload__caption:focus {
+  outline: none;
+  background: #f9f9f6;
+}
+
+.memdir-gallery-upload__caption::placeholder {
+  color: var(--md-text-muted);
+}
+
+.memdir-gallery-upload__status {
+  font-family: var(--md-font);
+  font-size: 13px;
+  color: var(--md-text-muted);
+  margin: 0 0 8px;
+  min-height: 1.3em;
+}
+
+.memdir-gallery-upload__add {
+  padding: 8px 16px;
+  font-family: var(--md-font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--md-white);
+  background: var(--md-green-sage);
+  border: none;
+  border-radius: var(--md-radius);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.memdir-gallery-upload__add:hover {
+  background: var(--md-green-dark);
+}
+
+.memdir-gallery-upload__add:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   VIEW MODE — FIGURE / CAPTION / LIGHTBOX
+───────────────────────────────────────────────────────────── */
+
+.memdir-figure {
+  margin: 0;
+}
+
+.memdir-figure .memdir-field-value {
+  cursor: zoom-in;
+  border-radius: var(--md-radius);
+  transition: opacity 0.15s;
+}
+
+.memdir-figure .memdir-field-value:hover {
+  opacity: 0.85;
+}
+
+.memdir-figure__caption {
+  font-family: var(--md-font);
+  font-size: 13px;
+  color: var(--md-text-muted);
+  margin-top: 6px;
+}
+
+.memdir-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.memdir-gallery__figure {
+  margin: 0;
+}
+
+.memdir-gallery__figure img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--md-radius);
+  cursor: zoom-in;
+  transition: opacity 0.15s;
+}
+
+.memdir-gallery__figure img:hover {
+  opacity: 0.85;
+}
+
+.memdir-gallery__caption {
+  font-family: var(--md-font);
+  font-size: 11px;
+  color: var(--md-text-muted);
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* ─────────────────────────────────────────────────────────────
    RESPONSIVE
 ───────────────────────────────────────────────────────────── */
 

@@ -234,34 +234,55 @@ class FieldRenderer {
 	 * image
 	 * ACF returns an array when the field's return_format is 'array'
 	 * (as set in the acf_group definition inside each section JSON file).
-	 * Keys used: url (required), alt, width, height.
+	 * Keys used: url (required), alt, width, height, caption.
+	 *
+	 * Wraps the image in a GLightbox-compatible link so clicking opens the
+	 * full-size image in a lightbox. The WP attachment caption is output as
+	 * both a <figcaption> and as data-description for the lightbox overlay.
 	 */
 	private static function render_image( string $label, mixed $value ): void {
 		if ( ! is_array( $value ) || empty( $value['url'] ) ) {
 			return;
 		}
 
+		$caption = $value['caption'] ?? '';
+		$alt     = $value['alt']     ?? '';
+
 		self::open_wrapper( 'image', $label );
+		echo '<figure class="memdir-figure">';
 		printf(
-			'<img class="memdir-field-value" src="%s" alt="%s" width="%s" height="%s" loading="lazy">',
+			'<a href="%s" class="glightbox" data-description="%s"><img class="memdir-field-value" src="%s" alt="%s" width="%s" height="%s" loading="lazy"></a>',
 			esc_url( $value['url'] ),
-			esc_attr( $value['alt']    ?? '' ),
+			esc_attr( $caption ),
+			esc_url( $value['sizes']['medium_large'] ?? $value['sizes']['medium'] ?? $value['url'] ),
+			esc_attr( $alt ),
 			esc_attr( (string) ( $value['width']  ?? '' ) ),
 			esc_attr( (string) ( $value['height'] ?? '' ) )
 		);
+		if ( $caption !== '' ) {
+			printf( '<figcaption class="memdir-figure__caption">%s</figcaption>', esc_html( $caption ) );
+		}
+		echo '</figure>';
 		self::close_wrapper();
 	}
 
 	/**
 	 * gallery
 	 * ACF returns an array of image arrays. Each item has the same shape as
-	 * a single image field (url, alt, width, height). Images without a url
-	 * are silently skipped rather than producing a broken <img>.
+	 * a single image field (url, alt, width, height, caption). Images without
+	 * a url are silently skipped rather than producing a broken <img>.
+	 *
+	 * All images in a gallery share a data-gallery attribute so GLightbox
+	 * groups them for prev/next navigation. Captions display in the lightbox
+	 * overlay and optionally as figcaptions below each thumbnail.
 	 */
 	private static function render_gallery( string $label, mixed $value ): void {
 		if ( ! is_array( $value ) || empty( $value ) ) {
 			return;
 		}
+
+		// Unique gallery ID so GLightbox groups only this field's images.
+		$gallery_id = 'gallery-' . wp_unique_id();
 
 		self::open_wrapper( 'gallery', $label );
 		echo '<div class="memdir-gallery">';
@@ -270,13 +291,22 @@ class FieldRenderer {
 			if ( ! is_array( $image ) || empty( $image['url'] ) ) {
 				continue;
 			}
+
+			$caption = $image['caption'] ?? '';
+
+			echo '<figure class="memdir-gallery__figure">';
 			printf(
-				'<img src="%s" alt="%s" width="%s" height="%s" loading="lazy">',
+				'<a href="%s" class="glightbox" data-gallery="%s" data-description="%s"><img src="%s" alt="%s" loading="lazy"></a>',
 				esc_url( $image['url'] ),
-				esc_attr( $image['alt']    ?? '' ),
-				esc_attr( (string) ( $image['width']  ?? '' ) ),
-				esc_attr( (string) ( $image['height'] ?? '' ) )
+				esc_attr( $gallery_id ),
+				esc_attr( $caption ),
+				esc_url( $image['sizes']['thumbnail'] ?? $image['url'] ),
+				esc_attr( $image['alt'] ?? '' )
 			);
+			if ( $caption !== '' ) {
+				printf( '<figcaption class="memdir-gallery__caption">%s</figcaption>', esc_html( $caption ) );
+			}
+			echo '</figure>';
 		}
 
 		echo '</div>';

@@ -63,6 +63,11 @@ class AcfFormHelper {
 		add_action( 'wp_ajax_memdir_ajax_save_section_pmp',       [ self::class, 'handle_save_section_pmp' ] );
 		add_action( 'wp_ajax_memdir_ajax_save_field_pmp',         [ self::class, 'handle_save_field_pmp' ] );
 		add_action( 'wp_ajax_memdir_ajax_upload_avatar',          [ self::class, 'handle_avatar_upload' ] );
+		add_action( 'wp_ajax_memdir_ajax_upload_image',           [ self::class, 'handle_image_upload' ] );
+		add_action( 'wp_ajax_memdir_ajax_delete_image',           [ self::class, 'handle_delete_image' ] );
+		add_action( 'wp_ajax_memdir_ajax_gallery_upload',         [ self::class, 'handle_gallery_upload' ] );
+		add_action( 'wp_ajax_memdir_ajax_gallery_remove',         [ self::class, 'handle_gallery_remove' ] );
+		add_action( 'wp_ajax_memdir_ajax_update_caption',         [ self::class, 'handle_update_caption' ] );
 		add_action( 'wp_ajax_memdir_search_taxonomy_terms',       [ self::class, 'handle_search_taxonomy_terms' ] );
 		add_action( 'wp_ajax_memdir_ajax_import_social',          [ self::class, 'handle_import_social' ] );
 	}
@@ -495,6 +500,244 @@ class AcfFormHelper {
 		$url = wp_get_attachment_image_url( $attachment_id, 'thumbnail' );
 
 		wp_send_json_success( [ 'url' => $url, 'id' => $attachment_id ] );
+	}
+
+	// -----------------------------------------------------------------------
+	// AJAX: Generic image upload — one in, one out
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Upload a single image, replace the ACF field value, delete the old
+	 * attachment. Same "one in, one out" pattern as handle_avatar_upload()
+	 * but returns a medium-size URL for inline preview and accepts an
+	 * optional caption.
+	 *
+	 * Action: wp_ajax_memdir_ajax_upload_image
+	 */
+	public static function handle_image_upload(): void {
+		if ( ! check_ajax_referer( 'md_save_nonce', 'nonce', false ) ) {
+			wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+		}
+
+		$post_id   = isset( $_POST['post_id'] )   ? absint( $_POST['post_id'] )                                    : 0;
+		$field_key = isset( $_POST['field_key'] )  ? sanitize_text_field( wp_unslash( $_POST['field_key'] ) )       : '';
+
+		if ( ! $post_id || get_post_type( $post_id ) !== 'member-directory' ) {
+			wp_send_json_error( [ 'message' => 'Invalid post.' ], 400 );
+		}
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+		}
+		if ( strpos( $field_key, 'field_' ) !== 0 ) {
+			wp_send_json_error( [ 'message' => 'Invalid field key.' ], 400 );
+		}
+		if ( empty( $_FILES['image'] ) ) {
+			wp_send_json_error( [ 'message' => 'No file uploaded.' ], 400 );
+		}
+
+		$old_id = (int) ( get_field( $field_key, $post_id, false ) ?: 0 );
+
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+
+		$attachment_id = media_handle_upload( 'image', $post_id );
+
+		if ( is_wp_error( $attachment_id ) ) {
+			wp_send_json_error( [ 'message' => $attachment_id->get_error_message() ], 500 );
+		}
+
+		// Optional caption.
+		$caption = isset( $_POST['caption'] ) ? sanitize_text_field( wp_unslash( $_POST['caption'] ) ) : '';
+		if ( $caption !== '' ) {
+			wp_update_post( [ 'ID' => $attachment_id, 'post_excerpt' => $caption ] );
+		}
+
+		update_field( $field_key, $attachment_id, $post_id );
+
+		if ( $old_id && $old_id !== $attachment_id ) {
+			wp_delete_attachment( $old_id, true );
+		}
+
+		$url = wp_get_attachment_image_url( $attachment_id, 'medium' );
+
+		wp_send_json_success( [ 'url' => $url, 'id' => $attachment_id, 'caption' => $caption ] );
+	}
+
+	// -----------------------------------------------------------------------
+	// AJAX: Delete a single image field value + attachment
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Clear an ACF image field and permanently delete the attachment.
+	 *
+	 * Action: wp_ajax_memdir_ajax_delete_image
+	 */
+	public static function handle_delete_image(): void {
+		if ( ! check_ajax_referer( 'md_save_nonce', 'nonce', false ) ) {
+			wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+		}
+
+		$post_id   = isset( $_POST['post_id'] )   ? absint( $_POST['post_id'] )                                    : 0;
+		$field_key = isset( $_POST['field_key'] )  ? sanitize_text_field( wp_unslash( $_POST['field_key'] ) )       : '';
+
+		if ( ! $post_id || get_post_type( $post_id ) !== 'member-directory' ) {
+			wp_send_json_error( [ 'message' => 'Invalid post.' ], 400 );
+		}
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+		}
+		if ( strpos( $field_key, 'field_' ) !== 0 ) {
+			wp_send_json_error( [ 'message' => 'Invalid field key.' ], 400 );
+		}
+
+		$old_id = (int) ( get_field( $field_key, $post_id, false ) ?: 0 );
+
+		update_field( $field_key, '', $post_id );
+
+		if ( $old_id ) {
+			wp_delete_attachment( $old_id, true );
+		}
+
+		wp_send_json_success( [ 'message' => 'Image removed.' ] );
+	}
+
+	// -----------------------------------------------------------------------
+	// AJAX: Gallery — upload one image (append)
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Upload a single image and append it to a gallery field.
+	 *
+	 * Action: wp_ajax_memdir_ajax_gallery_upload
+	 */
+	public static function handle_gallery_upload(): void {
+		if ( ! check_ajax_referer( 'md_save_nonce', 'nonce', false ) ) {
+			wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+		}
+
+		$post_id   = isset( $_POST['post_id'] )   ? absint( $_POST['post_id'] )                                    : 0;
+		$field_key = isset( $_POST['field_key'] )  ? sanitize_text_field( wp_unslash( $_POST['field_key'] ) )       : '';
+
+		if ( ! $post_id || get_post_type( $post_id ) !== 'member-directory' ) {
+			wp_send_json_error( [ 'message' => 'Invalid post.' ], 400 );
+		}
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+		}
+		if ( strpos( $field_key, 'field_' ) !== 0 ) {
+			wp_send_json_error( [ 'message' => 'Invalid field key.' ], 400 );
+		}
+		if ( empty( $_FILES['image'] ) ) {
+			wp_send_json_error( [ 'message' => 'No file uploaded.' ], 400 );
+		}
+
+		require_once ABSPATH . 'wp-admin/includes/image.php';
+		require_once ABSPATH . 'wp-admin/includes/file.php';
+		require_once ABSPATH . 'wp-admin/includes/media.php';
+
+		$attachment_id = media_handle_upload( 'image', $post_id );
+
+		if ( is_wp_error( $attachment_id ) ) {
+			wp_send_json_error( [ 'message' => $attachment_id->get_error_message() ], 500 );
+		}
+
+		// Optional caption.
+		$caption = isset( $_POST['caption'] ) ? sanitize_text_field( wp_unslash( $_POST['caption'] ) ) : '';
+		if ( $caption !== '' ) {
+			wp_update_post( [ 'ID' => $attachment_id, 'post_excerpt' => $caption ] );
+		}
+
+		$gallery = get_field( $field_key, $post_id, false ) ?: [];
+		if ( ! is_array( $gallery ) ) {
+			$gallery = [];
+		}
+		$gallery[] = $attachment_id;
+
+		update_field( $field_key, $gallery, $post_id );
+
+		$url = wp_get_attachment_image_url( $attachment_id, 'thumbnail' );
+
+		wp_send_json_success( [ 'url' => $url, 'id' => $attachment_id, 'caption' => $caption ] );
+	}
+
+	// -----------------------------------------------------------------------
+	// AJAX: Gallery — remove one image + delete attachment
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Remove an image from a gallery field and delete its attachment.
+	 *
+	 * Action: wp_ajax_memdir_ajax_gallery_remove
+	 */
+	public static function handle_gallery_remove(): void {
+		if ( ! check_ajax_referer( 'md_save_nonce', 'nonce', false ) ) {
+			wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+		}
+
+		$post_id       = isset( $_POST['post_id'] )       ? absint( $_POST['post_id'] )                                    : 0;
+		$field_key     = isset( $_POST['field_key'] )      ? sanitize_text_field( wp_unslash( $_POST['field_key'] ) )       : '';
+		$attachment_id = isset( $_POST['attachment_id'] )   ? absint( $_POST['attachment_id'] )                              : 0;
+
+		if ( ! $post_id || get_post_type( $post_id ) !== 'member-directory' ) {
+			wp_send_json_error( [ 'message' => 'Invalid post.' ], 400 );
+		}
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+		}
+		if ( strpos( $field_key, 'field_' ) !== 0 ) {
+			wp_send_json_error( [ 'message' => 'Invalid field key.' ], 400 );
+		}
+		if ( ! $attachment_id ) {
+			wp_send_json_error( [ 'message' => 'Invalid attachment.' ], 400 );
+		}
+
+		$gallery = get_field( $field_key, $post_id, false ) ?: [];
+		if ( ! is_array( $gallery ) ) {
+			$gallery = [];
+		}
+
+		$gallery = array_values( array_filter( $gallery, fn( $id ) => (int) $id !== $attachment_id ) );
+
+		update_field( $field_key, $gallery, $post_id );
+
+		wp_delete_attachment( $attachment_id, true );
+
+		wp_send_json_success( [ 'message' => 'Image removed.' ] );
+	}
+
+	// -----------------------------------------------------------------------
+	// AJAX: Update attachment caption
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Update the caption (post_excerpt) on an existing WP attachment.
+	 * Used by both single-image and gallery caption editing.
+	 *
+	 * Action: wp_ajax_memdir_ajax_update_caption
+	 */
+	public static function handle_update_caption(): void {
+		if ( ! check_ajax_referer( 'md_save_nonce', 'nonce', false ) ) {
+			wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+		}
+
+		$post_id       = isset( $_POST['post_id'] )       ? absint( $_POST['post_id'] )                                    : 0;
+		$attachment_id = isset( $_POST['attachment_id'] )   ? absint( $_POST['attachment_id'] )                              : 0;
+		$caption       = isset( $_POST['caption'] )         ? sanitize_text_field( wp_unslash( $_POST['caption'] ) )         : '';
+
+		if ( ! $post_id || get_post_type( $post_id ) !== 'member-directory' ) {
+			wp_send_json_error( [ 'message' => 'Invalid post.' ], 400 );
+		}
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+		}
+		if ( ! $attachment_id ) {
+			wp_send_json_error( [ 'message' => 'Invalid attachment.' ], 400 );
+		}
+
+		wp_update_post( [ 'ID' => $attachment_id, 'post_excerpt' => $caption ] );
+
+		wp_send_json_success( [ 'message' => 'Caption saved.', 'caption' => $caption ] );
 	}
 
 	// -----------------------------------------------------------------------

@@ -158,19 +158,34 @@ class Plugin {
 			wp_dequeue_script( 'buddypress-activity-post-form' );
 		}
 
+		// GLightbox — lightweight image lightbox (~10KB, zero deps).
+		wp_enqueue_style(
+			'glightbox',
+			'https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/css/glightbox.min.css',
+			[],
+			'3.3.0'
+		);
+		wp_enqueue_script(
+			'glightbox',
+			'https://cdn.jsdelivr.net/npm/glightbox@3.3.0/dist/js/glightbox.min.js',
+			[],
+			'3.3.0',
+			true
+		);
+
 		wp_enqueue_style(
 			'member-directory',
 			$this->plugin_url . 'assets/css/memdir.css',
-			[],
+			[ 'glightbox' ],
 			'0.1.0'
 		);
 
 		wp_enqueue_script(
 			'member-directory',
 			$this->plugin_url . 'assets/js/memdir.js',
-			[],       // No jQuery dependency — vanilla JS.
+			[ 'glightbox' ],  // GLightbox must load first.
 			'0.1.0',
-			true      // Load in footer.
+			true              // Load in footer.
 		);
 
 		// Build social import sources: other primary-capable sections that have
