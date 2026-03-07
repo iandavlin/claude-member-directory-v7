@@ -138,7 +138,7 @@ class FieldRenderer {
 				break;
 
 			case 'google_map':
-				self::render_map( $label, $value );
+				self::render_map( $label, $value, $field, $post_id );
 				break;
 
 			case 'select':
@@ -336,18 +336,73 @@ class FieldRenderer {
 
 	/**
 	 * google_map
-	 * ACF returns an array with address, lat, and lng. Only the human-readable
-	 * address string is displayed — no map embed. lat/lng are available for a
-	 * future enhancement (e.g. a JS-powered interactive map).
+	 * ACF returns an array with address, lat, lng, city, state, state_short,
+	 * country, country_short, street_number, street_name, post_code, etc.
+	 *
+	 * Display precision is controlled by a companion `_display_precision`
+	 * select field on the same post. Values: address (full), city, state,
+	 * country. Falls back to "address" (show everything) when absent.
+	 *
+	 * The full geocoded data (lat/lng) is always stored regardless of
+	 * display precision — useful for proximity search in DirectoryQuery.
 	 */
-	private static function render_map( string $label, mixed $value ): void {
+	private static function render_map( string $label, mixed $value, array $field = [], int $post_id = 0 ): void {
 		if ( ! is_array( $value ) || empty( $value['address'] ) ) {
 			return;
 		}
 
+		// Look up display precision companion field.
+		$precision = 'address';
+		if ( $post_id && ! empty( $field['name'] ) ) {
+			// Derive companion field name: replace the trailing suffix with _display_precision.
+			// e.g. member_directory_location_location → member_directory_location_display_precision
+			$section_prefix = preg_replace( '/[^_]+$/', '', $field['name'] ); // "member_directory_location_"
+			$precision_val  = get_field( $section_prefix . 'display_precision', $post_id );
+			if ( $precision_val && in_array( $precision_val, [ 'address', 'city', 'state', 'country' ], true ) ) {
+				$precision = $precision_val;
+			}
+		}
+
+		$display = self::format_location( $value, $precision );
+		if ( empty( $display ) ) {
+			return;
+		}
+
 		self::open_wrapper( 'google_map', $label );
-		echo '<p class="memdir-field-value">' . esc_html( $value['address'] ) . '</p>';
+		echo '<p class="memdir-field-value">' . esc_html( $display ) . '</p>';
 		self::close_wrapper();
+	}
+
+	/**
+	 * Build a display string from a Google Maps value array at the given
+	 * precision level. Falls back through progressively coarser levels
+	 * when finer components are missing.
+	 *
+	 * @param array  $value     ACF google_map value (address, city, state, country, etc.).
+	 * @param string $precision One of: address, city, state, country.
+	 * @return string
+	 */
+	private static function format_location( array $value, string $precision ): string {
+		$city          = $value['city']          ?? '';
+		$state         = $value['state_short']   ?? ( $value['state'] ?? '' );
+		$country       = $value['country']       ?? '';
+
+		switch ( $precision ) {
+			case 'country':
+				return $country;
+
+			case 'state':
+				$parts = array_filter( [ $state, $country ] );
+				return implode( ', ', $parts );
+
+			case 'city':
+				$parts = array_filter( [ $city, $state ] );
+				return implode( ', ', $parts );
+
+			case 'address':
+			default:
+				return $value['address'] ?? '';
+		}
 	}
 
 	/**
