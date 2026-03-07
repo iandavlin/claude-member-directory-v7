@@ -1586,6 +1586,17 @@
 			var sectionKey = section.dataset.section || '';
 			var postId     = section.dataset.postId  || '';
 
+			// Helper: safely show a modal dialog by temporarily moving it
+			// to document.body. Prevents the dialog from being trapped inside
+			// a hidden section when viewing a different pill (e.g. editing
+			// Business header fields while viewing the Workspace section).
+			// The dialog's 'close' event (added in createMiniModal) moves it
+			// back to fieldContent so saveSection() can still find its fields.
+			function showDialogSafe( dlg ) {
+				document.body.appendChild( dlg );
+				dlg.showModal();
+			}
+
 			// \u2500\u2500 Find the header tab button \u2500\u2500
 			var headerTabBtn = null;
 			section.querySelectorAll( '.memdir-section-controls__tab-item' ).forEach( function ( btn ) {
@@ -1740,6 +1751,10 @@
 					dialog.appendChild( saveBtn );
 
 					saveBtn.addEventListener( 'click', function () {
+						// Move dialog back before saving so saveSection() finds fields
+						if ( dialog.parentElement !== fieldContent ) {
+							fieldContent.appendChild( dialog );
+						}
 						var sBtn = section.querySelector( '.memdir-section-save' );
 						var ban  = section.querySelector( '.memdir-unsaved-banner' );
 						if ( sBtn ) { saveSection( section, sBtn, ban ); }
@@ -1750,6 +1765,15 @@
 
 				// Append inside fieldContent so saveSection() finds all ACF fields
 				fieldContent.appendChild( dialog );
+
+				// When the dialog closes (X, backdrop, Escape, or Save),
+				// move it back to fieldContent so saveSection() finds its fields.
+				// showDialogSafe() moves it to document.body before opening.
+				dialog.addEventListener( 'close', function () {
+					if ( dialog.parentElement !== fieldContent ) {
+						fieldContent.appendChild( dialog );
+					}
+				} );
 
 				closeBtn.addEventListener( 'click', function () { dialog.close(); } );
 				dialog.addEventListener( 'click', function ( e ) {
@@ -1891,7 +1915,7 @@
 						} );
 				} );
 
-				overlay.addEventListener( 'click', function () { avDialog.showModal(); } );
+				overlay.addEventListener( 'click', function () { showDialogSafe( avDialog ); } );
 			}
 
 			// ========================================
@@ -1923,7 +1947,7 @@
 				}
 				checkNameEmpty();
 
-				namePencil.addEventListener( 'click', function () { nameDialog.showModal(); } );
+				namePencil.addEventListener( 'click', function () { showDialogSafe( nameDialog ); } );
 				nameDialog.addEventListener( 'close', function () { checkNameEmpty(); } );
 			}
 
@@ -1955,7 +1979,7 @@
 				checkTaxoEmpty();
 
 				taxoPencil.addEventListener( 'click', function () {
-					taxoDialog.showModal();
+					showDialogSafe( taxoDialog );
 
 					// Fix select2 dropdownParent — preserve ACF's full config
 					// (AJAX search, formatters, etc.) while adding dropdownParent
@@ -1997,7 +2021,7 @@
 				}
 				checkSocialEmpty();
 
-				socialPencil.addEventListener( 'click', function () { socialDialog.showModal(); } );
+				socialPencil.addEventListener( 'click', function () { showDialogSafe( socialDialog ); } );
 
 				// --- Import social links from other primary section(s) ---
 				var socialSources = ( window.mdAjax && window.mdAjax.socialSources ) || {};
