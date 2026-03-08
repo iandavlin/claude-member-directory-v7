@@ -11,7 +11,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 ### Complete
 - `SectionRegistry` — JSON→DB sync (immutable pointers); runtime DB cache; mutable metadata in DB only
 - `TemplateLoader` — routes `member-directory` single/archive to plugin templates
-- `AdminSync` — admin page that triggers `SectionRegistry::sync()`; section editor UI (rename, reorder, toggle primary, toggle always_on, delete); Add Section form
+- `AdminSync` — admin page that triggers `SectionRegistry::sync()`; section editor UI (rename, reorder, toggle primary, toggle always_on, default avatar, delete); Add Section form
 - `PmpResolver` — PMP waterfall resolution + viewer context + view-as spoofing
 - `FieldRenderer` — field-to-HTML rendering for view mode (text, textarea, url, wysiwyg, image, gallery, file, google_map, true_false, checkbox, radio, taxonomy, select). Images/galleries render with GLightbox links + `<figcaption>` captions.
 - `GlobalFields` — ACF group for global PMP + primary section controls (**⚠ debug code present — see Known Issues**)
@@ -71,7 +71,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 
 3. **ACF is the field source of truth.** Field groups live entirely in ACF's own database. The plugin never registers, overrides, or caches field groups — no `acf-json/` folder, no `load_json`/`save_json` hooks. Templates call `acf_get_fields( $section['acf_group_key'] )` directly. Editing a field group in ACF admin and clicking Save is all that's needed — changes are live on the next page load.
 
-4. **Section JSON files are immutable registration-only pointers (gitignored).** `sections/*.json` contains only `acf_group_key`. The section key is derived from the filename. Mutable metadata (`label`, `can_be_primary`, `always_on`, order) lives in the `member_directory_sections` DB option only, managed through the AdminSync UI. JSON files are never written back to after creation. Field definitions live in ACF's database only. **The `sections/` directory is gitignored** — section pointers are created per-environment via AdminSync or manually.
+4. **Section JSON files are immutable registration-only pointers (gitignored).** `sections/*.json` contains only `acf_group_key`. The section key is derived from the filename. Mutable metadata (`label`, `can_be_primary`, `always_on`, `default_avatar`, order) lives in the `member_directory_sections` DB option only, managed through the AdminSync UI. JSON files are never written back to after creation. Field definitions live in ACF's database only. **The `sections/` directory is gitignored** — section pointers are created per-environment via AdminSync or manually.
 
 5. **PMP waterfall order: field → section → global.** `PmpResolver::can_view()` receives all three levels. Author and admin always see everything. Ghost behavior: hidden fields/sections render zero HTML — no empty wrappers.
 
@@ -86,16 +86,23 @@ WordPress plugin: section-based member profile and directory system powered by A
 ```
 member-directory.php              Entry point. ACF dependency check. Boots Plugin on plugins_loaded.
 member-directory-architecture.html Primary design reference. Read this when starting work on any new feature.
+frontend-layout.md                Frontend layout documentation.
+acf-location-import.json          ACF location field import/reference data.
+.gitignore                        Ignores sections/, *.log, node_modules/.
 includes/
   Plugin.php                  Bootstrap. Registers CPT + hooks. Calls each class init().
                               enqueue_assets() passes mdAjax to JS (ajaxurl, nonce,
-                              search_nonce, socialSources).
+                              search_nonce, socialSources). Dequeues conflicting scripts
+                              (elementor, buddypress).
   SectionRegistry.php         Section metadata store. sync() = sections/*.json → merge with DB option.
                               JSON files are immutable (acf_group_key only); mutable metadata
-                              (label, can_be_primary, always_on, order) lives in the DB option only.
+                              (label, can_be_primary, always_on, default_avatar, order) in DB only.
                               load_from_db() = DB option → in-memory cache.
-                              Public API: get_sections(), get_section(), validate_for_upload(),
-                              removed_content_keys() (always []), is_system_field().
+                              Public API: get_sections(), get_section(), update_section_meta(),
+                              validate_for_upload(), removed_content_keys() (always []),
+                              is_system_field().
+                              System field detection: SKIP_TYPES (button_group), SKIP_KEY_PATTERNS
+                              (_enabled, _privacy_mode, _privacy_level, _pmp_, _display_precision).
   GlobalFields.php            ACF group: global_pmp + primary_section. ⚠ Has temporary debug code.
   AcfFormHelper.php           maybe_render_form_head(), is_edit_mode(), render_edit_form().
                               acf_form() scoped to content field keys from acf_get_fields().
@@ -106,12 +113,14 @@ includes/
                               section_has_social_data().
   AdminSync.php               Admin page + nonce-protected handler that calls SectionRegistry::sync().
                               Section editor UI: rename label, reorder, toggle can_be_primary,
-                              toggle always_on, delete.
+                              toggle always_on, default avatar upload/remove, delete.
                               Add Section form for creating new section pointers inline.
+                              Backs up deleted section JSON files to sections/backups/.
                               All mutable metadata operations are DB-only — no JSON file writes.
   TemplateLoader.php          template_include filter → plugin templates for member-directory CPT.
   PmpResolver.php             resolve_viewer(), spoof_viewer(), can_view() (waterfall), is_member().
   FieldRenderer.php           render() — field definition + post_id → escaped HTML output.
+                              format_location() — Google Maps by display_precision level.
                               Images/galleries wrapped in <figure> with GLightbox <a> links,
                               data-description for lightbox captions, <figcaption> inline.
   DirectoryQuery.php          🔜 Not yet created.
@@ -119,12 +128,20 @@ sections/                         ⚠ GITIGNORED — not tracked in git. Created
   *.json                      Immutable section pointers. { acf_group_key }. Key from filename.
                               Current sections on dev: profile, discovery, business, location.
 templates/
-  single-member-directory.php Single profile. Calls form_head first, then branches edit/view per section.
+  single-member-directory.php Single profile. Calls form_head first, then branches edit/view
+                              per section. Pre-fetches $cached_acf_fields, $all_post_meta,
+                              $global_pmp for perf and passes to child partials.
+                              View mode uses ob_start() + $section_field_count to ghost
+                              sections where all fields are hidden by PMP.
   archive-member-directory.php Scaffold only — no real implementation.
   parts/
     header-section.php        Generic sticky header. Scans ACF fields for a tab with "header"
                               in label; maps fields to slots by type (text→title, image→avatar,
-                              taxonomy→badges, url→social icons).
+                              taxonomy→badges, url→social icons). Fallback avatar from
+                              section default_avatar. Inline SVG icons for 9 social platforms
+                              (website, linkedin, instagram, twitter, facebook, youtube,
+                              tiktok, vimeo, linktree). Location section special-case:
+                              pulls google_map field + display_precision.
     pill-nav.php              Pill navigation. All Sections pill + one pill per section (nav only;
                               enable/disable toggles in right-panel.php).
     section-edit.php          Edit partial. Left controls (section PMP buttons, tab list, save button) + ACF form.
@@ -145,6 +162,11 @@ tools/
   acf-field-prep.md           Claude skill: enrich a bare ACF field group export with full
                               iPMP apparatus (section system fields + per-field PMP companions)
                               and validate header tab structure. Single skill for all section prep.
+  patch-memdir.js             Node.js patching utility for memdir.js (handles CRLF issues).
+docs/
+  js-behavior.md              Frontend JS behavior documentation.
+  pmp-system.md               PMP (visibility) system documentation.
+  plan-image-upload-cleanup.md Plan for image upload system refactoring.
 ```
 
 ## Workflow: Sections
@@ -159,8 +181,8 @@ tools/
 1. Edit the field group in ACF admin → click Save
 2. Done — ACF saves to its DB, next page load both surfaces reflect the change. No sync needed.
 
-### Modify section metadata (label, order, can_be_primary, always_on)
-- Use the AdminSync UI controls (rename, reorder arrows, checkbox toggle) — all DB-only, no file writes needed
+### Modify section metadata (label, order, can_be_primary, always_on, default_avatar)
+- Use the AdminSync UI controls (rename, reorder arrows, checkbox toggle, avatar upload) — all DB-only, no file writes needed
 
 ### Delete a section
 1. Delete or deactivate the field group in ACF admin
@@ -222,7 +244,7 @@ Every content field has a companion `button_group` field with 4 choices:
 
 **ACF name:** `member_directory_field_pmp_{section}_{suffix}`
 **ACF key:** `field_md_{section}_pmp_{suffix}`
-**Type:** `button_group` — excluded from content field loops by `SectionRegistry::is_system_field()` via `SKIP_KEY_PATTERNS` (`_pmp_` substring)
+**Type:** `button_group` — excluded from content field loops by `SectionRegistry::is_system_field()` (matches `SKIP_TYPES` for `button_group` and `SKIP_KEY_PATTERNS` for `_pmp_` substring)
 
 ### Waterfall Resolution
 ```
@@ -309,7 +331,7 @@ View-mode images and galleries use GLightbox 3.3.0 (loaded from jsDelivr CDN via
   "acf_group_key": "group_md_05_business"
 }
 ```
-The section `key` is derived from the filename (`business.json` → `business`). Mutable metadata (`label`, `can_be_primary`, `always_on`, position order) lives in the `member_directory_sections` DB option, managed through the AdminSync UI. JSON files are never modified after creation.
+The section `key` is derived from the filename (`business.json` → `business`). Mutable metadata (`label`, `can_be_primary`, `always_on`, `default_avatar`, position order) lives in the `member_directory_sections` DB option, managed through the AdminSync UI. JSON files are never modified after creation.
 
 ### ACF field group (managed in ACF admin, stored in ACF's DB)
 Field ordering convention inside each field group:
@@ -348,7 +370,7 @@ The `sections/` directory is gitignored. Each environment maintains its own JSON
 | `business` | `group_md_05_business` |
 | `location` | `group_69ac2395a43da` |
 
-Label, can_be_primary, always_on, and order live in the DB option only (managed via AdminSync UI).
+Label, can_be_primary, always_on, default_avatar, and order live in the DB option only (managed via AdminSync UI).
 
 > **On a new server: create `sections/*.json` files manually, then run AdminSync Sync.**
 
