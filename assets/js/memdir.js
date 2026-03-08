@@ -1314,16 +1314,13 @@
 				wrapper.appendChild( badge );
 			}
 
-			// "Browse all" link — multi-select only
-		var browseBtn = null;
+			// "Browse all" link
+		var browseBtn = document.createElement( 'button' );
+		browseBtn.type = 'button';
+		browseBtn.className = 'memdir-taxo-search__browse';
+		browseBtn.textContent = 'Browse all';
+		wrapper.appendChild( browseBtn );
 		var browseModal = null;  // lazy — built on first click
-		if ( isMulti ) {
-			browseBtn = document.createElement( 'button' );
-			browseBtn.type = 'button';
-			browseBtn.className = 'memdir-taxo-search__browse';
-			browseBtn.textContent = 'Browse all';
-			wrapper.appendChild( browseBtn );
-		}
 
 		acfField.appendChild( wrapper );
 
@@ -1640,7 +1637,8 @@
 			return { dialog: dialog, list: list };
 		}
 
-		// Populate / re-sync the checkbox list
+		// Populate / re-sync the browse list (checkboxes for multi, radios for single)
+		var browseRadioName = 'memdir-browse-' + fieldKey + '-' + Math.random().toString( 36 ).substr( 2, 6 );
 		function populateBrowseChecklist( list, items ) {
 			list.innerHTML = '';
 			var selectedIds = getSelectedIds();
@@ -1649,21 +1647,42 @@
 				var label = document.createElement( 'label' );
 				label.className = 'memdir-taxo-browse__item';
 
-				var cb = document.createElement( 'input' );
-				cb.type = 'checkbox';
-				cb.value = term.id;
+				var input = document.createElement( 'input' );
+				if ( isMulti ) {
+					input.type = 'checkbox';
+				} else {
+					input.type = 'radio';
+					input.name = browseRadioName;
+				}
+				input.value = term.id;
 				if ( selectedIds[ term.id ] ) {
-					cb.checked = true;
+					input.checked = true;
 				}
 
 				var span = document.createElement( 'span' );
 				span.textContent = term.text || term.name || '';
 
-				cb.addEventListener( 'change', function () {
-					var existing = selectElement.querySelector( 'option[value="' + term.id + '"]' );
-
-					if ( cb.checked ) {
-						// Select
+				input.addEventListener( 'change', function () {
+					if ( isMulti ) {
+						// Multi-select: toggle
+						var existing = selectElement.querySelector( 'option[value="' + term.id + '"]' );
+						if ( input.checked ) {
+							if ( existing ) {
+								existing.selected = true;
+							} else {
+								var opt = document.createElement( 'option' );
+								opt.value = term.id;
+								opt.textContent = term.text || term.name || '';
+								opt.selected = true;
+								selectElement.appendChild( opt );
+							}
+						} else {
+							if ( existing ) { existing.selected = false; }
+						}
+					} else {
+						// Single-select: deselect all, select this one
+						Array.from( selectElement.options ).forEach( function ( o ) { o.selected = false; } );
+						var existing = selectElement.querySelector( 'option[value="' + term.id + '"]' );
 						if ( existing ) {
 							existing.selected = true;
 						} else {
@@ -1673,10 +1692,9 @@
 							opt.selected = true;
 							selectElement.appendChild( opt );
 						}
-					} else {
-						// Deselect
-						if ( existing ) {
-							existing.selected = false;
+						// Auto-close modal after single pick
+						if ( browseModal && browseModal.dialog ) {
+							setTimeout( function () { browseModal.dialog.close(); }, 150 );
 						}
 					}
 
@@ -1684,7 +1702,7 @@
 					updateSelectedDisplay();
 				} );
 
-				label.appendChild( cb );
+				label.appendChild( input );
 				label.appendChild( span );
 				list.appendChild( label );
 			} );

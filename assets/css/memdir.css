@@ -1601,7 +1601,8 @@ dialog.memdir-header-modal::backdrop {
   border-bottom: none;
 }
 
-.memdir-taxo-browse__item input[type="checkbox"] {
+.memdir-taxo-browse__item input[type="checkbox"],
+.memdir-taxo-browse__item input[type="radio"] {
   accent-color: var(--md-green-sage, #7aa060);
 }
 
