@@ -335,14 +335,20 @@ body.single-member-directory .select2-dropdown--above {
   font-weight: 600;
 }
 
+/* Disabled pills: hidden in view mode, greyed in edit mode. */
 .memdir-pill--disabled {
+  display: none;
+}
+
+.memdir-profile--edit .memdir-pill--disabled {
+  display: inline-flex;
   opacity: 0.5;
   color: var(--md-text-muted);
   cursor: default;
 }
 
 /* Suppress hover highlight on disabled pills. */
-.memdir-pill--disabled:hover {
+.memdir-profile--edit .memdir-pill--disabled:hover {
   background: var(--md-white);
   border-color: var(--md-border);
 }

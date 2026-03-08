@@ -91,7 +91,7 @@ $all_post_meta = get_post_meta( $post_id );
 $global_pmp    = get_field( 'member_directory_global_pmp', $post_id ) ?: 'public';
 
 ?>
-<div class="memdir-profile">
+<div class="memdir-profile<?php echo $is_edit ? ' memdir-profile--edit' : ''; ?>"><?php // --edit modifier drives CSS for edit-only UI (e.g. disabled pill visibility). ?>
 	<div class="memdir-profile__main">
 
 		<div class="memdir-sticky" data-primary-section="<?php echo esc_attr( $primary_section ); ?>">
