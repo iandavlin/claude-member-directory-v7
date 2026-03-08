@@ -3072,6 +3072,129 @@
 		}
 	}
 	// -----------------------------------------------------------------------
+	// Messaging Settings — edit-mode access control modal
+	// -----------------------------------------------------------------------
+
+	function initMessagingSettings() {
+		if ( ! window.mdAjax || ! window.mdAjax.messagingEnabled ) { return; }
+
+		var btn = document.querySelector( '[data-action="messaging-settings"]' );
+		if ( ! btn ) { return; }
+
+		btn.addEventListener( 'click', function () {
+			var postId  = btn.dataset.postId;
+			var current = btn.dataset.messagingAccess || 'off';
+
+			var dialog = document.createElement( 'dialog' );
+			dialog.className = 'memdir-msg-modal memdir-msg-settings-modal';
+
+			var levels = [
+				{ value: 'off',        label: 'Off',              desc: 'No one can send you messages' },
+				{ value: 'connection', label: 'Connections Only', desc: 'Only your connections can message you' },
+				{ value: 'all',        label: 'All Members',      desc: 'Any logged-in user can message you' }
+			];
+
+			var optionsHtml = levels.map( function ( lvl ) {
+				var checked = lvl.value === current ? ' checked' : '';
+				return '<label class="memdir-msg-settings__option' + ( lvl.value === current ? ' memdir-msg-settings__option--active' : '' ) + '">' +
+					'<input type="radio" name="memdir_msg_access" value="' + lvl.value + '"' + checked + ' />' +
+					'<span class="memdir-msg-settings__option-text">' +
+						'<strong>' + lvl.label + '</strong>' +
+						'<span>' + lvl.desc + '</span>' +
+					'</span>' +
+				'</label>';
+			} ).join( '' );
+
+			dialog.innerHTML =
+				'<div class="memdir-msg-modal__header">' +
+					'<h3 class="memdir-msg-modal__title">Message Settings</h3>' +
+					'<button type="button" class="memdir-msg-modal__close" aria-label="Close">&times;</button>' +
+				'</div>' +
+				'<div class="memdir-msg-settings__body">' +
+					'<p class="memdir-msg-settings__intro">Choose who can send you direct messages.</p>' +
+					optionsHtml +
+				'</div>' +
+				'<p class="memdir-msg-modal__error"></p>' +
+				'<div class="memdir-msg-modal__actions">' +
+					'<button type="button" class="memdir-msg-modal__cancel">Cancel</button>' +
+					'<button type="button" class="memdir-msg-modal__send memdir-msg-settings__save">Save</button>' +
+				'</div>';
+
+			document.body.appendChild( dialog );
+			dialog.showModal();
+
+			var closeBtn  = dialog.querySelector( '.memdir-msg-modal__close' );
+			var cancelBtn = dialog.querySelector( '.memdir-msg-modal__cancel' );
+			var saveBtn   = dialog.querySelector( '.memdir-msg-settings__save' );
+			var errorEl   = dialog.querySelector( '.memdir-msg-modal__error' );
+
+			// Highlight active option on radio change.
+			dialog.querySelectorAll( 'input[name="memdir_msg_access"]' ).forEach( function ( radio ) {
+				radio.addEventListener( 'change', function () {
+					dialog.querySelectorAll( '.memdir-msg-settings__option' ).forEach( function ( opt ) {
+						opt.classList.toggle( 'memdir-msg-settings__option--active', opt.querySelector( 'input' ).checked );
+					} );
+				} );
+			} );
+
+			function closeModal() {
+				dialog.close();
+				dialog.remove();
+			}
+
+			closeBtn.addEventListener( 'click', closeModal );
+			cancelBtn.addEventListener( 'click', closeModal );
+			dialog.addEventListener( 'click', function ( e ) {
+				if ( e.target === dialog ) { closeModal(); }
+			} );
+
+			saveBtn.addEventListener( 'click', function () {
+				var selected = dialog.querySelector( 'input[name="memdir_msg_access"]:checked' );
+				if ( ! selected ) { return; }
+
+				var newAccess = selected.value;
+				errorEl.style.display = 'none';
+				saveBtn.disabled = true;
+				saveBtn.textContent = 'Saving\u2026';
+
+				var formData = new FormData();
+				formData.set( 'action', 'memdir_ajax_save_messaging_access' );
+				formData.set( 'nonce', window.mdAjax.nonce );
+				formData.set( 'post_id', postId );
+				formData.set( 'access', newAccess );
+
+				fetch( window.mdAjax.ajaxurl, {
+					method:      'POST',
+					credentials: 'same-origin',
+					body:        formData,
+				} )
+				.then( function ( res ) { return res.json(); } )
+				.then( function ( json ) {
+					if ( json.success ) {
+						// Update button state.
+						btn.dataset.messagingAccess = json.data.access;
+						var stateEl = btn.querySelector( '.memdir-header__message-btn-state' );
+						if ( stateEl ) { stateEl.textContent = json.data.label; }
+						window.mdAjax.messagingAccess = json.data.access;
+						closeModal();
+					} else {
+						var msg = ( json.data && json.data.message ) ? json.data.message : 'Failed to save.';
+						errorEl.textContent = msg;
+						errorEl.style.display = 'block';
+						saveBtn.disabled = false;
+						saveBtn.textContent = 'Save';
+					}
+				} )
+				.catch( function () {
+					errorEl.textContent = 'Network error. Please try again.';
+					errorEl.style.display = 'block';
+					saveBtn.disabled = false;
+					saveBtn.textContent = 'Save';
+				} );
+			} );
+		} );
+	}
+	// -----------------------------------------------------------------------
 	// Messaging — BuddyBoss compose modal
 	// -----------------------------------------------------------------------
 
@@ -3215,6 +3338,7 @@
 		initTaxonomySearch(); // custom taxonomy search for all non-header taxonomy fields
 		initLightbox();       // GLightbox on view-mode images
 		initTrustNetwork();  // trust network action buttons + toggle
+		initMessagingSettings(); // edit-mode messaging access control
 		initMessaging();      // BuddyBoss compose message modal
 		hideEmptySectionPills();  // hide pills for PHP-dropped empty/PMP-blocked sections
 		restoreState();

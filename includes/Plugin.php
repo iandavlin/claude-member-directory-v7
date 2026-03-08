@@ -226,6 +226,9 @@ class Plugin {
 				'socialSources'    => (object) $social_sources,
 				'currentUserId'    => get_current_user_id(),
 				'messagingEnabled' => Messaging::is_available(),
+				'messagingAccess'  => is_singular( 'member-directory' )
+					? Messaging::get_access( get_queried_object_id() )
+					: 'off',
 				'profileAuthorId'  => is_singular( 'member-directory' )
 					? (int) get_post_field( 'post_author', get_queried_object_id() )
 					: 0,

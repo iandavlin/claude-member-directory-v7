@@ -290,20 +290,40 @@ $is_edit_mode   = ! empty( $is_edit ); // inherited from single-member-directory
 		<?php endif; ?>
 
 		<?php
-		// "Message" button — view mode only, logged-in, not own profile, BuddyBoss messaging active.
-		if (
+		$author_user_id  = (int) get_post_field( 'post_author', $post_id );
+		$messaging_access = \MemberDirectory\Messaging::get_access( $post_id );
+		$access_label     = \MemberDirectory\Messaging::get_access_label( $messaging_access );
+
+		$envelope_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>';
+
+		if ( $is_edit_mode && \MemberDirectory\Messaging::is_available() ) :
+			// Edit mode — settings button showing current access state.
+		?>
+		<button type="button"
+		        class="memdir-header__message-btn memdir-header__message-btn--edit"
+		        data-action="messaging-settings"
+		        data-post-id="<?php echo esc_attr( (string) $post_id ); ?>"
+		        data-messaging-access="<?php echo esc_attr( $messaging_access ); ?>">
+			<?php echo $envelope_svg; ?>
+			<span class="memdir-header__message-btn-text">
+				<span class="memdir-header__message-btn-state"><?php echo esc_html( $access_label ); ?></span>
+				<span class="memdir-header__message-btn-label">Messages</span>
+			</span>
+		</button>
+		<?php
+		elseif (
 			! $is_edit_mode
 			&& is_user_logged_in()
-			&& get_current_user_id() !== (int) get_post_field( 'post_author', $post_id )
-			&& \MemberDirectory\Messaging::is_available()
+			&& get_current_user_id() !== $author_user_id
+			&& \MemberDirectory\Messaging::can_message( $post_id, get_current_user_id() )
 		) :
-			$author_user_id = (int) get_post_field( 'post_author', $post_id );
+			// View mode — send message button (only if access allows).
 		?>
 		<button type="button"
 		        class="memdir-header__message-btn"
 		        data-action="send-message"
 		        data-recipient-id="<?php echo esc_attr( (string) $author_user_id ); ?>">
-			<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+			<?php echo $envelope_svg; ?>
 			Message
 		</button>
 		<?php endif; ?>

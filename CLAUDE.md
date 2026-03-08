@@ -58,6 +58,7 @@ WordPress plugin: section-based member profile and directory system powered by A
   - `memdir_ajax_trust_remove` → `TrustNetwork::handle_remove`
   - `memdir_ajax_trust_toggle` → `TrustNetwork::handle_toggle`
   - `memdir_ajax_send_message` → `Messaging::handle_send_message`
+  - `memdir_ajax_save_messaging_access` → `Messaging::handle_save_access`
 
 ### Not Started / Scaffold Only
 - `includes/DirectoryQuery.php` — 🔜 not created yet
@@ -151,8 +152,12 @@ includes/
                               profile in edit mode. Inline CSS, no JS dependency.
   Messaging.php               BuddyBoss messaging integration. Static class: init(),
                               is_available() (checks messages_new_message + bp_is_active),
-                              handle_send_message() AJAX handler. Sends real BuddyBoss
-                              messages via messages_new_message(). Logged-in only (wp_ajax).
+                              get_access(), get_access_label(), can_message().
+                              Per-profile messaging access: post meta _memdir_messaging_access
+                              with values off (default), connection, all.
+                              handle_send_message() enforces access + bypasses BB friendship
+                              filter when plugin access allows. handle_save_access() AJAX.
+                              Logged-in only (wp_ajax).
   DirectoryQuery.php          🔜 Not yet created.
 sections/                         ⚠ GITIGNORED — not tracked in git. Created per-environment.
   *.json                      Immutable section pointers. { acf_group_key }. Key from filename.
@@ -172,8 +177,9 @@ templates/
                               (website, linkedin, instagram, twitter, facebook, youtube,
                               tiktok, vimeo, linktree). Location section special-case:
                               pulls google_map field + display_precision.
-                              "Message" button in view mode (logged-in, not own profile,
-                              BuddyBoss messaging active).
+                              Messaging button: edit mode shows settings button (current
+                              access state + "Messages" label, opens settings modal);
+                              view mode shows "Message" send button (only when access allows).
     pill-nav.php              Pill navigation. All Sections pill + one pill per section (nav only;
                               enable/disable toggles in right-panel.php). Hard-coded Trust pill
                               appended after the SectionRegistry loop.
@@ -434,7 +440,23 @@ Inline `<style>` scoped to `.memdir-onboarding`. Uses brand palette CSS vars. No
 
 ## BuddyBoss Messaging Integration
 
-Lightweight compose modal that lets visitors send BuddyBoss messages to profile owners directly from the member directory.
+Lightweight compose modal that lets visitors send BuddyBoss messages to profile owners directly from the member directory. Per-profile access control lets each member choose who can message them.
+
+### Per-profile messaging access
+Post meta `_memdir_messaging_access` (underscore prefix = hidden from ACF). Three levels:
+
+| Value | Label | Who can message |
+|-------|-------|----------------|
+| `off` (default) | Off | Nobody — DMs disabled |
+| `connection` | Connections Only | BuddyBoss connections only (`friends_check_friendship()`) |
+| `all` | All Members | Any logged-in user |
+
+**Read:** `Messaging::get_access( $post_id )` — returns `off` / `connection` / `all`.
+**Check:** `Messaging::can_message( $post_id, $viewer_id )` — single authoritative check.
+**Write (AJAX):** `memdir_ajax_save_messaging_access` — author or admin only.
+
+### BuddyBoss friendship bypass
+When a profile's access is `all`, the handler temporarily filters `bp_force_friendship_to_message` to `__return_false` around the `messages_new_message()` call, then removes the filter. This scopes the bypass to plugin-sent messages only — BuddyBoss's site-wide connection requirement remains intact elsewhere.
 
 ### Availability check
 ```php
@@ -442,26 +464,41 @@ Messaging::is_available()
 // true when: function_exists('messages_new_message') && bp_is_active('messages')
 ```
 
-### Header button conditions (header-section.php)
-Button renders only when ALL are true:
-- Not edit mode
-- User is logged in
-- Not the profile author (can't message yourself)
-- `Messaging::is_available()` returns true
+### Header button (header-section.php)
+Dual-purpose button:
+- **Edit mode**: settings button showing current access state (e.g. "Off") + "Messages" label underneath. Dashed border style. Opens settings modal on click (`data-action="messaging-settings"`).
+- **View mode**: "Message" send button. Renders only when ALL are true:
+  - Not edit mode
+  - User is logged in
+  - Not the profile author
+  - `Messaging::can_message()` returns true
 
-### JS flow (initMessaging)
+### JS flow — initMessagingSettings (edit mode)
+1. Checks `mdAjax.messagingEnabled` — bail if false
+2. Finds `[data-action="messaging-settings"]` button
+3. On click → builds settings `<dialog>` with three radio options (Off / Connections Only / All Members)
+4. Save → POST to `memdir_ajax_save_messaging_access` with `post_id`, `access`
+5. Success → update button text, close modal
+6. Error → inline error, re-enable save
+
+### JS flow — initMessaging (view mode)
 1. Checks `mdAjax.messagingEnabled` — bail if false
 2. Finds `[data-action="send-message"]` button
-3. On click → builds `<dialog class="memdir-msg-modal">` with Subject input + Message textarea
-4. Send button → POST to `memdir_ajax_send_message` with `recipient_id`, `subject`, `content`
+3. On click → builds compose `<dialog>` with Subject + Message fields
+4. Send → POST to `memdir_ajax_send_message` with `recipient_id`, `subject`, `content`
 5. Success → close modal, show toast "Message sent ✓" (auto-fades)
 6. Error → inline error message, re-enable send button
 
-### AJAX handler (Messaging::handle_send_message)
-Reuses `md_save_nonce`. Validates sender (logged in), recipient (exists, not self), subject + content (non-empty). Calls `messages_new_message()` with `error_type => 'wp_error'`. Returns `wp_send_json_success/error`.
+### AJAX handlers
+Both reuse `md_save_nonce`:
+| Action | Handler | Who | What |
+|--------|---------|-----|------|
+| `memdir_ajax_send_message` | `handle_send_message()` | Any logged-in | Enforces `can_message()`, bypasses BB friendship, sends via `messages_new_message()` |
+| `memdir_ajax_save_messaging_access` | `handle_save_access()` | Author/admin | Updates `_memdir_messaging_access` post meta |
 
 ### mdAjax additions (Plugin.php)
 - `messagingEnabled` — bool from `Messaging::is_available()`
+- `messagingAccess` — string from `Messaging::get_access()` (current profile's setting)
 - `profileAuthorId` — int, profile author's user ID (0 on non-profile pages)
 
 ## Section JSON Schema
