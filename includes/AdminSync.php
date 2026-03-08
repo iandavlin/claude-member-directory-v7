@@ -110,6 +110,9 @@ class AdminSync {
 		?>
 		<div class="wrap">
 			<h1>Member Directory</h1>
+
+			<?php self::render_instructions(); ?>
+
 			<p>Run Sync any time a <code>sections/</code> JSON file changes.
 			ACF field group changes do <em>not</em> require a sync &mdash; they take effect immediately on the next page load.</p>
 
@@ -840,5 +843,115 @@ class AdminSync {
 			. '</p>';
 
 		echo '<hr>';
+	}
+
+	/* ── Plugin Guide (collapsible instructions) ───────────────────── */
+
+	/**
+	 * Render a collapsible "Plugin Guide" panel at the top of the admin page.
+	 *
+	 * Covers all major plugin features: onboarding, sections, headers,
+	 * conditional tabs, PMP, trust network. Starts closed so experienced
+	 * admins aren't slowed down.
+	 */
+	private static function render_instructions(): void {
+		?>
+		<details style="margin:12px 0 20px; border:1px solid #c3c4c7; border-radius:4px; background:#f6f7f7;">
+			<summary style="padding:12px 16px; cursor:pointer; font-size:14px; font-weight:600; color:#1d2327; list-style:none; display:flex; align-items:center; gap:8px;">
+				<span class="dashicons dashicons-book" style="color:#2271b1; font-size:18px;"></span>
+				Plugin Guide
+				<span style="font-weight:400; color:#787c82; font-size:12px; margin-left:4px;">(click to expand)</span>
+			</summary>
+
+			<div style="padding:4px 20px 16px; border-top:1px solid #c3c4c7; background:#fff;">
+
+				<h4 style="margin:16px 0 6px; font-size:13px; color:#1d2327;">Quick Start</h4>
+				<p style="margin:0 0 4px; font-size:13px; color:#50575e;">
+					Place the <code>[memdir_onboarding]</code> shortcode on any page. New members see a form to choose their
+					primary section and profile URL &mdash; on submit a member-directory post is created, only
+					the primary + &ldquo;always on&rdquo; sections are enabled, and they land on their profile in edit mode.
+					Existing members who visit the page are redirected straight to their profile.
+					Logged-out visitors are handled by BuddyBoss&rsquo;s login redirect.
+				</p>
+
+				<h4 style="margin:16px 0 6px; font-size:13px; color:#1d2327;">How Sections Work</h4>
+				<p style="margin:0 0 4px; font-size:13px; color:#50575e;">
+					Each section maps to one ACF field group. A small JSON pointer file in <code>sections/</code>
+					(containing only the ACF group key) links the two. Mutable metadata &mdash; label, display order,
+					flags &mdash; is managed here in the <strong>Section Editor</strong> below and stored in the database.
+					ACF field changes take effect immediately on save &mdash; no sync needed.
+					Only run <em>Sync</em> when a JSON file is added, removed, or edited.
+				</p>
+
+				<h4 style="margin:16px 0 6px; font-size:13px; color:#1d2327;">Section Flags</h4>
+				<ul style="margin:0 0 4px; padding-left:20px; font-size:13px; color:#50575e;">
+					<li><strong>Can be primary</strong> &mdash; The section appears as an option in the onboarding form
+						and can be set as the member&rsquo;s featured/primary section.</li>
+					<li><strong>Always on</strong> &mdash; Auto-enabled for every new member regardless of which primary
+						they choose. Use this for sections all members should have (e.g.&nbsp;Profile).</li>
+				</ul>
+
+				<h4 style="margin:16px 0 6px; font-size:13px; color:#1d2327;">Header Auto-Detection</h4>
+				<p style="margin:0 0 4px; font-size:13px; color:#50575e;">
+					Name any ACF tab with <strong>&ldquo;header&rdquo;</strong> in the label (e.g.&nbsp;&ldquo;Header&rdquo;,
+					&ldquo;Header &mdash; Edit Me&rdquo;). Fields under that tab auto-populate the sticky header:
+				</p>
+				<ul style="margin:0 0 4px; padding-left:20px; font-size:13px; color:#50575e;">
+					<li>First <strong>text</strong> field &rarr; profile title</li>
+					<li>First <strong>image</strong> field &rarr; avatar</li>
+					<li><strong>Taxonomy</strong> fields &rarr; category badges</li>
+					<li><strong>URL</strong> fields &rarr; social icons (matched by suffix: <code>_website</code>,
+						<code>_linkedin</code>, <code>_instagram</code>, <code>_twitter</code>,
+						<code>_facebook</code>, <code>_youtube</code>, <code>_tiktok</code>,
+						<code>_vimeo</code>, <code>_linktree</code>)</li>
+				</ul>
+
+				<h4 style="margin:16px 0 6px; font-size:13px; color:#1d2327;">Conditional Tabs</h4>
+				<p style="margin:0 0 4px; font-size:13px; color:#50575e;">
+					Add <code>[if:section_key]</code> to any ACF tab label
+					(e.g.&nbsp;<code>Storefront [if:business]</code>).
+					The tab and all its fields are hidden when the referenced section is disabled for that member.
+					The marker is stripped from the visible label automatically.
+				</p>
+
+				<h4 style="margin:16px 0 6px; font-size:13px; color:#1d2327;">PMP (Visibility Control)</h4>
+				<p style="margin:0 0 4px; font-size:13px; color:#50575e;">
+					Every field has a three-level visibility waterfall: <strong>Field &rarr; Section &rarr; Global</strong>.
+					Each level can be:
+				</p>
+				<ul style="margin:0 0 4px; padding-left:20px; font-size:13px; color:#50575e;">
+					<li><strong>Public</strong> &mdash; visible to everyone (logged in or out)</li>
+					<li><strong>Member</strong> &mdash; visible only to logged-in users</li>
+					<li><strong>Private</strong> &mdash; visible only to the profile author and admins</li>
+					<li><strong>Inherit</strong> &mdash; defer to the next level up</li>
+				</ul>
+				<p style="margin:0 0 4px; font-size:13px; color:#50575e;">
+					Members control PMP from their profile edit mode. The site-wide default is set in the
+					right panel under &ldquo;Global Default.&rdquo;
+					Hidden content renders <em>zero HTML</em> &mdash; no placeholders, no &ldquo;private&rdquo; labels.
+				</p>
+
+				<h4 style="margin:16px 0 6px; font-size:13px; color:#1d2327;">Trust Network</h4>
+				<p style="margin:0 0 4px; font-size:13px; color:#50575e;">
+					A non-ACF section for trusted repair partner relationships. Enabled by default for all profiles.
+					A logged-in member can request trust from another member&rsquo;s profile &mdash; the profile
+					author sees pending requests in edit mode and can accept or decline.
+					Accepted relationships are publicly visible. Either party can remove the relationship.
+					Toggle the section on/off per-profile via the Trust toggle in the right panel.
+					The database table is created automatically on plugin activation.
+				</p>
+
+				<h4 style="margin:16px 0 6px; font-size:13px; color:#1d2327;">Onboarding Shortcode</h4>
+				<p style="margin:0 0 4px; font-size:13px; color:#50575e;">
+					<code>[memdir_onboarding]</code> &mdash; place on any WordPress page.
+					New members see a lightweight form: choose a primary section + enter a profile URL slug.
+					On submit: a member-directory post is created, only the primary and &ldquo;always on&rdquo; sections
+					are enabled (everything else off), and the member is redirected to their profile in edit mode.
+					Existing members who land on the page are immediately redirected to their profile.
+				</p>
+
+			</div>
+		</details>
+		<?php
 	}
 }

@@ -11,7 +11,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 ### Complete
 - `SectionRegistry` — JSON→DB sync (immutable pointers); runtime DB cache; mutable metadata in DB only
 - `TemplateLoader` — routes `member-directory` single/archive to plugin templates
-- `AdminSync` — admin page that triggers `SectionRegistry::sync()`; section editor UI (rename, reorder, toggle primary, toggle always_on, default avatar, delete); Add Section form
+- `AdminSync` — admin page that triggers `SectionRegistry::sync()`; section editor UI (rename, reorder, toggle primary, toggle always_on, default avatar, delete); Add Section form; collapsible Plugin Guide panel with instructions for all major features
 - `PmpResolver` — PMP waterfall resolution + viewer context + view-as spoofing
 - `FieldRenderer` — field-to-HTML rendering for view mode (text, textarea, url, wysiwyg, image, gallery, file, google_map, true_false, checkbox, radio, taxonomy, select). Images/galleries render with GLightbox links + `<figcaption>` captions.
 - `GlobalFields` — ACF group for global PMP + primary section controls (**⚠ debug code present — see Known Issues**)
@@ -124,6 +124,8 @@ includes/
                               Add Section form for creating new section pointers inline.
                               Backs up deleted section JSON files to sections/backups/.
                               All mutable metadata operations are DB-only — no JSON file writes.
+                              Collapsible Plugin Guide panel: quick start, sections, flags,
+                              header auto-detection, conditional tabs, PMP, trust, onboarding.
   TemplateLoader.php          template_include filter → plugin templates for member-directory CPT.
   PmpResolver.php             resolve_viewer(), spoof_viewer(), can_view() (waterfall), is_member().
   FieldRenderer.php           render() — field definition + post_id → escaped HTML output.
