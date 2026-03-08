@@ -18,6 +18,7 @@
  *   ✅ AcfFormHelper.php    — available
  *   ✅ TrustNetwork.php     — available
  *   ✅ Onboarding.php       — available
+ *   ✅ Messaging.php        — available
  *   🔜 DirectoryQuery.php   — coming next
  */
 
@@ -36,6 +37,7 @@ require_once __DIR__ . '/GlobalFields.php';
 require_once __DIR__ . '/AcfFormHelper.php';
 require_once __DIR__ . '/TrustNetwork.php';
 require_once __DIR__ . '/Onboarding.php';
+require_once __DIR__ . '/Messaging.php';
 // require_once __DIR__ . '/DirectoryQuery.php';
 
 class Plugin {
@@ -82,6 +84,7 @@ class Plugin {
 		AcfFormHelper::init();
 		TrustNetwork::init();
 		Onboarding::init();
+		Messaging::init();
 	}
 
 	// -----------------------------------------------------------------------
@@ -217,11 +220,15 @@ class Plugin {
 			'member-directory',
 			'mdAjax',
 			[
-				'ajaxurl'       => admin_url( 'admin-ajax.php' ),
-				'nonce'         => wp_create_nonce( 'md_save_nonce' ),
-				'search_nonce'  => wp_create_nonce( 'memdir_search_terms' ),
-				'socialSources' => (object) $social_sources,
-				'currentUserId' => get_current_user_id(),
+				'ajaxurl'          => admin_url( 'admin-ajax.php' ),
+				'nonce'            => wp_create_nonce( 'md_save_nonce' ),
+				'search_nonce'     => wp_create_nonce( 'memdir_search_terms' ),
+				'socialSources'    => (object) $social_sources,
+				'currentUserId'    => get_current_user_id(),
+				'messagingEnabled' => Messaging::is_available(),
+				'profileAuthorId'  => is_singular( 'member-directory' )
+					? (int) get_post_field( 'post_author', get_queried_object_id() )
+					: 0,
 			]
 		);
 	}

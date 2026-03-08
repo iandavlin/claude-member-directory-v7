@@ -3072,6 +3072,132 @@
 		}
 	}
 	// -----------------------------------------------------------------------
+	// Messaging — BuddyBoss compose modal
+	// -----------------------------------------------------------------------
+
+	function initMessaging() {
+		if ( ! window.mdAjax || ! window.mdAjax.messagingEnabled ) { return; }
+
+		var btn = document.querySelector( '[data-action="send-message"]' );
+		if ( ! btn ) { return; }
+
+		btn.addEventListener( 'click', function () {
+			var recipientId = btn.dataset.recipientId;
+			if ( ! recipientId ) { return; }
+
+			// Build dialog
+			var dialog = document.createElement( 'dialog' );
+			dialog.className = 'memdir-msg-modal';
+
+			dialog.innerHTML =
+				'<div class="memdir-msg-modal__header">' +
+					'<h3 class="memdir-msg-modal__title">Send Message</h3>' +
+					'<button type="button" class="memdir-msg-modal__close" aria-label="Close">&times;</button>' +
+				'</div>' +
+				'<div class="memdir-msg-modal__body">' +
+					'<div class="memdir-msg-modal__field">' +
+						'<label for="memdir-msg-subject">Subject</label>' +
+						'<input type="text" id="memdir-msg-subject" placeholder="Subject" />' +
+					'</div>' +
+					'<div class="memdir-msg-modal__field">' +
+						'<label for="memdir-msg-content">Message</label>' +
+						'<textarea id="memdir-msg-content" rows="4" placeholder="Write your message..."></textarea>' +
+					'</div>' +
+				'</div>' +
+				'<p class="memdir-msg-modal__error"></p>' +
+				'<div class="memdir-msg-modal__actions">' +
+					'<button type="button" class="memdir-msg-modal__cancel">Cancel</button>' +
+					'<button type="button" class="memdir-msg-modal__send">Send</button>' +
+				'</div>';
+
+			document.body.appendChild( dialog );
+			dialog.showModal();
+
+			var closeBtn   = dialog.querySelector( '.memdir-msg-modal__close' );
+			var cancelBtn  = dialog.querySelector( '.memdir-msg-modal__cancel' );
+			var sendBtn    = dialog.querySelector( '.memdir-msg-modal__send' );
+			var subjectIn  = dialog.querySelector( '#memdir-msg-subject' );
+			var contentIn  = dialog.querySelector( '#memdir-msg-content' );
+			var errorEl    = dialog.querySelector( '.memdir-msg-modal__error' );
+
+			function closeModal() {
+				dialog.close();
+				dialog.remove();
+			}
+
+			closeBtn.addEventListener( 'click', closeModal );
+			cancelBtn.addEventListener( 'click', closeModal );
+			dialog.addEventListener( 'click', function ( e ) {
+				if ( e.target === dialog ) { closeModal(); }
+			} );
+
+			sendBtn.addEventListener( 'click', function () {
+				var subject = subjectIn.value.trim();
+				var content = contentIn.value.trim();
+
+				// Client-side validation
+				if ( ! subject ) {
+					errorEl.textContent = 'Please enter a subject.';
+					errorEl.style.display = 'block';
+					subjectIn.focus();
+					return;
+				}
+				if ( ! content ) {
+					errorEl.textContent = 'Please enter a message.';
+					errorEl.style.display = 'block';
+					contentIn.focus();
+					return;
+				}
+
+				errorEl.style.display = 'none';
+				sendBtn.disabled = true;
+				sendBtn.textContent = 'Sending…';
+
+				var formData = new FormData();
+				formData.set( 'action', 'memdir_ajax_send_message' );
+				formData.set( 'nonce', window.mdAjax.nonce );
+				formData.set( 'recipient_id', recipientId );
+				formData.set( 'subject', subject );
+				formData.set( 'content', content );
+
+				fetch( window.mdAjax.ajaxurl, {
+					method:      'POST',
+					credentials: 'same-origin',
+					body:        formData,
+				} )
+				.then( function ( res ) { return res.json(); } )
+				.then( function ( json ) {
+					if ( json.success ) {
+						closeModal();
+						// Show brief confirmation toast
+						var toast = document.createElement( 'div' );
+						toast.className = 'memdir-msg-sent';
+						toast.textContent = 'Message sent ✓';
+						document.body.appendChild( toast );
+						setTimeout( function () {
+							toast.classList.add( 'memdir-msg-sent--fade' );
+							setTimeout( function () { toast.remove(); }, 500 );
+						}, 2000 );
+					} else {
+						var msg = ( json.data && json.data.message ) ? json.data.message : 'Failed to send message.';
+						errorEl.textContent = msg;
+						errorEl.style.display = 'block';
+						sendBtn.disabled = false;
+						sendBtn.textContent = 'Send';
+					}
+				} )
+				.catch( function () {
+					errorEl.textContent = 'Network error. Please try again.';
+					errorEl.style.display = 'block';
+					sendBtn.disabled = false;
+					sendBtn.textContent = 'Send';
+				} );
+			} );
+		} );
+	}
+
+
+	// -----------------------------------------------------------------------
 	// Boot
 	// -----------------------------------------------------------------------
 
@@ -3089,6 +3215,7 @@
 		initTaxonomySearch(); // custom taxonomy search for all non-header taxonomy fields
 		initLightbox();       // GLightbox on view-mode images
 		initTrustNetwork();  // trust network action buttons + toggle
+		initMessaging();      // BuddyBoss compose message modal
 		hideEmptySectionPills();  // hide pills for PHP-dropped empty/PMP-blocked sections
 		restoreState();
 		syncControlsTop();

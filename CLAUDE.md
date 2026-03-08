@@ -36,6 +36,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 - Social link import — cross-section import for primary-capable sections (matched by URL field suffix)
 - `TrustNetwork` — first non-ACF, code-driven section. Custom DB table `{prefix}memdir_trust_network` for trusted repair partner relationships. Builder→luthier request/accept/decline flow. Enabled state via post meta `_memdir_trust_enabled`. Batch profile resolution via `resolve_profiles()` / `resolve_post_profiles()`. Hard-coded Trust pill in pill-nav + Trust toggle in right panel (distinguished by `data-trust-toggle="1"` attribute). Ghost logic: section hidden in view mode when disabled. JS `initTrustNetwork()` handles action buttons + toggle.
 - `Onboarding` — `[memdir_onboarding]` shortcode for self-service member creation. Redirect funnel: existing members → profile, new members → form (primary section radio + URL slug text input). Post-create: sets primary, enables always_on + primary sections, disables rest, redirects to profile in edit mode with primary pill active. Logged-out users handled by BuddyBoss login redirect. Inline CSS scoped to `.memdir-onboarding`.
+- `Messaging` — BuddyBoss messaging integration. "Message" button in sticky header (view mode, logged-in, not own profile). Opens `<dialog>` modal with Subject + Message fields. AJAX POST to `memdir_ajax_send_message` → calls BuddyBoss `messages_new_message()`. Graceful degradation: button hidden when BuddyBoss messaging inactive. JS `initMessaging()` in boot sequence.
 - AJAX handlers wired:
   - `md_save_section` → `AcfFormHelper::handle_ajax_save`
   - `memdir_ajax_save_section_enabled` → `AcfFormHelper::handle_save_section_enabled`
@@ -56,6 +57,7 @@ WordPress plugin: section-based member profile and directory system powered by A
   - `memdir_ajax_trust_cancel` → `TrustNetwork::handle_cancel`
   - `memdir_ajax_trust_remove` → `TrustNetwork::handle_remove`
   - `memdir_ajax_trust_toggle` → `TrustNetwork::handle_toggle`
+  - `memdir_ajax_send_message` → `Messaging::handle_send_message`
 
 ### Not Started / Scaffold Only
 - `includes/DirectoryQuery.php` — 🔜 not created yet
@@ -99,7 +101,8 @@ acf-location-import.json          ACF location field import/reference data.
 includes/
   Plugin.php                  Bootstrap. Registers CPT + hooks. Calls each class init().
                               enqueue_assets() passes mdAjax to JS (ajaxurl, nonce,
-                              search_nonce, socialSources, currentUserId). Dequeues
+                              search_nonce, socialSources, currentUserId,
+                              messagingEnabled, profileAuthorId). Dequeues
                               conflicting scripts (elementor, buddypress).
   SectionRegistry.php         Section metadata store. sync() = sections/*.json → merge with DB option.
                               JSON files are immutable (acf_group_key only); mutable metadata
@@ -146,6 +149,10 @@ includes/
                               + URL slug text input). Post-create: sets primary, enables
                               always_on + primary sections, disables rest, redirects to
                               profile in edit mode. Inline CSS, no JS dependency.
+  Messaging.php               BuddyBoss messaging integration. Static class: init(),
+                              is_available() (checks messages_new_message + bp_is_active),
+                              handle_send_message() AJAX handler. Sends real BuddyBoss
+                              messages via messages_new_message(). Logged-in only (wp_ajax).
   DirectoryQuery.php          🔜 Not yet created.
 sections/                         ⚠ GITIGNORED — not tracked in git. Created per-environment.
   *.json                      Immutable section pointers. { acf_group_key }. Key from filename.
@@ -165,6 +172,8 @@ templates/
                               (website, linkedin, instagram, twitter, facebook, youtube,
                               tiktok, vimeo, linktree). Location section special-case:
                               pulls google_map field + display_precision.
+                              "Message" button in view mode (logged-in, not own profile,
+                              BuddyBoss messaging active).
     pill-nav.php              Pill navigation. All Sections pill + one pill per section (nav only;
                               enable/disable toggles in right-panel.php). Hard-coded Trust pill
                               appended after the SectionRegistry loop.
@@ -186,10 +195,13 @@ assets/
                               image upload, gallery upload, figure/caption, and lightbox styles.
                               CSS vars redeclared on dialog.memdir-header-modal for portaled dialogs.
                               Trust network styles: .memdir-trust-* (block, list, card, btn, badge).
+                              Messaging styles: .memdir-header__message-btn (pill button),
+                              dialog.memdir-msg-modal (compose form), .memdir-msg-sent (toast).
   js/memdir.js                All frontend JS. ⚠ CRLF line endings — use Write tool or Node.js
                               scripts for edits (Edit tool fails on this file).
                               Boot sequence: initHeaderEditing() → initImageUploaders() →
-                              initTaxonomySearch() → initLightbox() → initTrustNetwork().
+                              initTaxonomySearch() → initLightbox() → initTrustNetwork() →
+                              initMessaging().
 tools/
   acf-field-prep.md           Claude skill: enrich a bare ACF field group export with full
                               iPMP apparatus (section system fields + per-field PMP companions)
@@ -419,6 +431,38 @@ Self-service member creation form + redirect funnel. Place on any page.
 
 ### Styling
 Inline `<style>` scoped to `.memdir-onboarding`. Uses brand palette CSS vars. No external CSS/JS dependency.
+
+## BuddyBoss Messaging Integration
+
+Lightweight compose modal that lets visitors send BuddyBoss messages to profile owners directly from the member directory.
+
+### Availability check
+```php
+Messaging::is_available()
+// true when: function_exists('messages_new_message') && bp_is_active('messages')
+```
+
+### Header button conditions (header-section.php)
+Button renders only when ALL are true:
+- Not edit mode
+- User is logged in
+- Not the profile author (can't message yourself)
+- `Messaging::is_available()` returns true
+
+### JS flow (initMessaging)
+1. Checks `mdAjax.messagingEnabled` — bail if false
+2. Finds `[data-action="send-message"]` button
+3. On click → builds `<dialog class="memdir-msg-modal">` with Subject input + Message textarea
+4. Send button → POST to `memdir_ajax_send_message` with `recipient_id`, `subject`, `content`
+5. Success → close modal, show toast "Message sent ✓" (auto-fades)
+6. Error → inline error message, re-enable send button
+
+### AJAX handler (Messaging::handle_send_message)
+Reuses `md_save_nonce`. Validates sender (logged in), recipient (exists, not self), subject + content (non-empty). Calls `messages_new_message()` with `error_type => 'wp_error'`. Returns `wp_send_json_success/error`.
+
+### mdAjax additions (Plugin.php)
+- `messagingEnabled` — bool from `Messaging::is_available()`
+- `profileAuthorId` — int, profile author's user ID (0 on non-profile pages)
 
 ## Section JSON Schema
 

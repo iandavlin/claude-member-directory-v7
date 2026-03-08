@@ -2235,3 +2235,224 @@ dialog.memdir-header-modal--media {
   font-style: italic;
   margin: 12px 0;
 }
+
+/* ── Messaging — header button ─────────────────────────────── */
+.memdir-header__message-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border: 1.5px solid var(--md-green-sage);
+  border-radius: var(--md-radius-pill);
+  background: transparent;
+  color: var(--md-green-sage);
+  font-family: var(--md-font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.memdir-header__message-btn:hover {
+  background: var(--md-green-sage);
+  color: var(--md-white);
+}
+
+.memdir-header__message-btn svg {
+  flex-shrink: 0;
+}
+
+/* ── Messaging — compose modal ─────────────────────────────── */
+dialog.memdir-msg-modal {
+  --md-gold:        #ECB351;
+  --md-gold-light:  #F1DE83;
+  --md-green-pale:  #D4E0B8;
+  --md-green-light: #C2D5AA;
+  --md-green-mid:   #A8BE8B;
+  --md-green-sage:  #97A97C;
+  --md-green-dark:  #87986A;
+  --md-coral:       #FE6B4F;
+  --md-text:        #1a1a1a;
+  --md-text-muted:  #6b6b6b;
+  --md-bg:          #f8f8f6;
+  --md-white:       #ffffff;
+  --md-border:      #e2e2dc;
+  --md-radius:      8px;
+  --md-radius-pill: 999px;
+  --md-font:        'Jost', sans-serif;
+
+  border: none;
+  border-radius: 12px;
+  padding: 0;
+  max-width: 480px;
+  width: 90vw;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  background: var(--md-white);
+}
+
+dialog.memdir-msg-modal:not([open]) {
+  display: none !important;
+}
+
+dialog.memdir-msg-modal::backdrop {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.memdir-msg-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--md-border);
+}
+
+.memdir-msg-modal__title {
+  font-family: var(--md-font);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--md-text);
+}
+
+.memdir-msg-modal__close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--md-text-muted);
+  cursor: pointer;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+
+.memdir-msg-modal__close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--md-text);
+}
+
+.memdir-msg-modal__body {
+  padding: 16px 20px 20px;
+}
+
+.memdir-msg-modal__field {
+  margin-bottom: 14px;
+}
+
+.memdir-msg-modal__field label {
+  display: block;
+  font-family: var(--md-font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--md-text);
+  margin-bottom: 5px;
+}
+
+.memdir-msg-modal__field input[type="text"],
+.memdir-msg-modal__field textarea {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
+  font-family: var(--md-font);
+  font-size: 14px;
+  color: var(--md-text);
+  background: var(--md-white);
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.memdir-msg-modal__field input[type="text"]:focus,
+.memdir-msg-modal__field textarea:focus {
+  outline: none;
+  border-color: var(--md-green-sage);
+}
+
+.memdir-msg-modal__field textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.memdir-msg-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 20px 20px;
+}
+
+.memdir-msg-modal__cancel {
+  padding: 8px 18px;
+  border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
+  background: var(--md-white);
+  color: var(--md-text-muted);
+  font-family: var(--md-font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.memdir-msg-modal__cancel:hover {
+  background: var(--md-bg);
+}
+
+.memdir-msg-modal__send {
+  padding: 8px 22px;
+  border: none;
+  border-radius: var(--md-radius);
+  background: var(--md-green-sage);
+  color: var(--md-white);
+  font-family: var(--md-font);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.memdir-msg-modal__send:hover {
+  background: var(--md-green-dark);
+}
+
+.memdir-msg-modal__send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.memdir-msg-modal__error {
+  font-family: var(--md-font);
+  font-size: 13px;
+  color: var(--md-coral);
+  margin: 0 20px 12px;
+  display: none;
+}
+
+/* ── Message sent confirmation ─────────────────────────────── */
+.memdir-msg-sent {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  padding: 12px 22px;
+  background: var(--md-green-sage, #97A97C);
+  color: #fff;
+  font-family: 'Jost', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+.memdir-msg-sent--fade {
+  opacity: 0;
+}
