@@ -1833,6 +1833,14 @@
 				mHeader.appendChild( closeBtn );
 				dialog.appendChild( mHeader );
 
+				// Optional description paragraph below the header
+				if ( opts.description ) {
+					var descP = document.createElement( 'p' );
+					descP.className = 'memdir-header-modal__desc';
+					descP.textContent = opts.description;
+					dialog.appendChild( descP );
+				}
+
 				var body = document.createElement( 'div' );
 				body.className = 'memdir-header-modal__body';
 
@@ -2082,11 +2090,12 @@
 			}
 
 			// ========================================
-			// Categories — pencil next to badges + modal
+			// Quick Focus — pencil next to badges + modal
 			// ========================================
 			if ( taxonomyFields.length && headerTaxo ) {
-				var taxoDialog = createMiniModal( 'Edit Categories', taxonomyFields, {
+				var taxoDialog = createMiniModal( 'Edit Quick Focus', taxonomyFields, {
 					modifier: 'categories',
+					description: 'Pick the tags that define you at a glance \u2014 these are the first things people notice on your profile.',
 					onSave: function () {
 						checkTaxoEmpty();
 					}

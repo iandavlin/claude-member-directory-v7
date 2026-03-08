@@ -1340,6 +1340,15 @@ dialog.memdir-header-modal::backdrop {
   color: var(--md-text);
 }
 
+.memdir-header-modal__desc {
+  font-family: var(--md-font);
+  font-size: 13px;
+  color: var(--md-text-muted, #888);
+  margin: 0;
+  padding: 0 20px 8px;
+  line-height: 1.4;
+}
+
 .memdir-header-modal__close {
   width: 32px;
   height: 32px;
