@@ -36,10 +36,14 @@ foreach ( $sections as $section ) {
 	$key   = $section['key'] ?? '';
 	$value = get_field( 'member_directory_' . $key . '_enabled', $post_id );
 
-	// Primary section is always on — treat any saved false/0/'0' value as disabled.
+	// Primary and always_on sections are always on — treat any saved
+	// false/0/'0' value as disabled for the rest.
 	// get_field returns: true (ACF true_false checked), false (unchecked),
 	// null (no value/field), '0' (raw meta fallback), 0 (int cast).
-	$is_on = ( $key === $primary_section ) ? true : ( $value !== false && $value !== 0 && $value !== '0' );
+	$is_always_on = ! empty( $section['always_on'] );
+	$is_on = ( $key === $primary_section || $is_always_on )
+		? true
+		: ( $value !== false && $value !== 0 && $value !== '0' );
 
 	$section_enabled_map[ $key ] = $is_on;
 }

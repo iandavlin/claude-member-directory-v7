@@ -7,7 +7,7 @@
  * merging the results with the WordPress database.
  *
  * Also provides:
- *   - A section editor: rename, reorder, toggle can_be_primary, delete.
+ *   - A section editor: rename, reorder, toggle can_be_primary, toggle always_on, delete.
  *     All mutable metadata lives in the DB only — JSON files are immutable.
  *   - An "Add Section" form for creating new section pointers by typing JSON.
  *
@@ -334,6 +334,7 @@ class AdminSync {
 
 		$section_key    = sanitize_key( $_POST['toggle_section_key'] ?? '' );
 		$can_be_primary = isset( $_POST['can_be_primary'] ) && $_POST['can_be_primary'] === '1';
+		$always_on      = isset( $_POST['always_on'] ) && $_POST['always_on'] === '1';
 
 		if ( empty( $section_key ) ) {
 			self::render_upload_result( false, 'No section key provided.' );
@@ -348,6 +349,7 @@ class AdminSync {
 		}
 
 		$stored[ $section_key ]['can_be_primary'] = $can_be_primary;
+		$stored[ $section_key ]['always_on']      = $always_on;
 		update_option( SectionRegistry::OPTION_KEY, $stored, false );
 
 		// Refresh in-memory cache.
@@ -355,8 +357,12 @@ class AdminSync {
 
 		self::$last_edited_key = $section_key;
 
-		$state = $can_be_primary ? 'enabled' : 'disabled';
-		self::render_upload_result( true, '"Can be primary" ' . $state . ' for <strong>' . esc_html( $section_key ) . '</strong>.' );
+		// Build a human-friendly summary of the current flags.
+		$flags = [];
+		if ( $can_be_primary ) { $flags[] = 'can be primary'; }
+		if ( $always_on )      { $flags[] = 'always on'; }
+		$summary = $flags ? implode( ', ', $flags ) : 'no flags';
+		self::render_upload_result( true, 'Section flags updated for <strong>' . esc_html( $section_key ) . '</strong> (' . $summary . ').' );
 	}
 
 	/**
@@ -557,6 +563,7 @@ class AdminSync {
 			'key'            => $section_key,
 			'label'          => $label,
 			'can_be_primary' => false,
+			'always_on'      => false,
 			'acf_group_key'  => $acf_group_key,
 		];
 		update_option( SectionRegistry::OPTION_KEY, $stored, false );
@@ -632,8 +639,9 @@ class AdminSync {
 			echo '<strong>' . esc_html( $label ) . '</strong>';
 			echo '<code style="font-size:12px;">' . esc_html( $key ) . '</code>';
 
-			// Can be primary toggle — auto-submits on change; stops summary click propagation.
-			echo '<form method="post" action="" style="margin-left:auto;display:flex;align-items:center;gap:5px;" onclick="event.stopPropagation();">';
+			// Section flags — auto-submit on change; stops summary click propagation.
+			$always_on = ! empty( $section['always_on'] );
+			echo '<form method="post" action="" style="margin-left:auto;display:flex;align-items:center;gap:12px;" onclick="event.stopPropagation();">';
 			wp_nonce_field( self::TOGGLE_PRIMARY_NONCE_ACTION, self::TOGGLE_PRIMARY_NONCE_FIELD );
 			echo '<input type="hidden" name="toggle_section_key" value="' . esc_attr( $key ) . '">';
 			echo '<label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#555;cursor:pointer;user-select:none;" onclick="event.stopPropagation();">';
@@ -641,6 +649,12 @@ class AdminSync {
 				. checked( $can_be_primary, true, false )
 				. ' onchange="this.form.submit();" onclick="event.stopPropagation();">';
 			echo 'Can be primary';
+			echo '</label>';
+			echo '<label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#555;cursor:pointer;user-select:none;" onclick="event.stopPropagation();">';
+			echo '<input type="checkbox" name="always_on" value="1"'
+				. checked( $always_on, true, false )
+				. ' onchange="this.form.submit();" onclick="event.stopPropagation();">';
+			echo 'Always on';
 			echo '</label>';
 			echo '</form>';
 

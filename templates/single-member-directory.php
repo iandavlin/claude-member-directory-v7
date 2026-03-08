@@ -143,10 +143,10 @@ $global_pmp    = get_field( 'member_directory_global_pmp', $post_id ) ?: 'public
 				$section_key     = $section['key'] ?? '';
 				$section_enabled = get_field( 'member_directory_' . $section_key . '_enabled', $post_id );
 
-				// Primary section must always render — it can never be hidden, even
-				// if its enabled flag was saved as false during a period when it was
-				// a non-primary section.
-				if ( $section_enabled === false && $section_key !== $primary_section ) {
+				// Primary and always_on sections must always render — they can never
+				// be hidden, even if their enabled flag was saved as false.
+				$is_always_on = ! empty( $section['always_on'] );
+				if ( $section_enabled === false && $section_key !== $primary_section && ! $is_always_on ) {
 					continue;
 				}
 

@@ -195,6 +195,7 @@ class SectionRegistry {
 				'key'            => $key,
 				'label'          => $existing['label'] ?? ( $data['label'] ?? ucfirst( $key ) ),
 				'can_be_primary' => $existing['can_be_primary'] ?? ( $data['can_be_primary'] ?? false ),
+				'always_on'      => $existing['always_on'] ?? ( $data['always_on'] ?? false ),
 				'acf_group_key'  => $acf_group_key,
 				'default_avatar' => $existing['default_avatar'] ?? null,
 			];
