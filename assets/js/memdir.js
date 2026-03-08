@@ -1726,6 +1726,10 @@
 								if ( avatarImg ) { avatarImg.src = ''; avatarImg.style.display = 'none'; }
 								avStatus.textContent = 'Photo removed.';
 								deleteBtn.style.display = 'none';
+								// Sync ACF hidden input so saveSection() sends empty.
+								if ( acfHiddenInput ) {
+									acfHiddenInput.value = '';
+								}
 							} else {
 								avStatus.textContent = 'Error: ' + ( res.data && res.data.message ? res.data.message : 'Remove failed.' );
 							}
@@ -1769,6 +1773,10 @@
 								if ( avatarImg ) { avatarImg.src = res.data.url; avatarImg.style.display = ''; }
 								avStatus.textContent = 'Photo updated.';
 								deleteBtn.style.display = '';
+								// Sync ACF hidden input so saveSection() uses the new ID.
+								if ( acfHiddenInput && res.data.id ) {
+									acfHiddenInput.value = res.data.id;
+								}
 							} else {
 								avStatus.textContent = 'Error: ' + ( res.data && res.data.message ? res.data.message : 'Upload failed.' );
 							}
