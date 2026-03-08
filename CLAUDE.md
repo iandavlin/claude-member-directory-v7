@@ -32,7 +32,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 - Section PMP controls — 4-state button group in edit mode left panel (inherit/public/member/private)
 - Field PMP controls — per-field visibility buttons injected into edit mode
 - Global PMP controls — right panel buttons wired with AJAX save
-- Custom taxonomy search — replaces select2 with debounced AJAX search, selection badge, mousedown focus guard
+- Custom taxonomy search — replaces ACF's select2 with debounced AJAX search UI for all taxonomy fields in edit mode. Supports both single-select (one badge) and multi-select (badge pills with × remove). Applied globally via `initTaxonomySearch()` boot function; header modal taxonomy fields initialized separately by `initHeaderEditing()`. `getHeaderFieldKeys()` guard prevents double-init.
 - Social link import — cross-section import for primary-capable sections (matched by URL field suffix)
 - AJAX handlers wired:
   - `md_save_section` → `AcfFormHelper::handle_ajax_save`
@@ -140,7 +140,7 @@ assets/
                               CSS vars redeclared on dialog.memdir-header-modal for portaled dialogs.
   js/memdir.js                All frontend JS. ⚠ CRLF line endings — use Write tool or Node.js
                               scripts for edits (Edit tool fails on this file).
-                              Boot sequence: initHeaderEditing() → initImageUploaders() → initLightbox().
+                              Boot sequence: initHeaderEditing() → initImageUploaders() → initTaxonomySearch() → initLightbox().
 tools/
   acf-field-prep.md           Claude skill: enrich a bare ACF field group export with full
                               iPMP apparatus (section system fields + per-field PMP companions)

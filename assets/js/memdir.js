@@ -1267,10 +1267,12 @@
 
 	
 	// Helper: Create custom taxonomy search box (replaces select2)
+	// Supports both single-select and multi-select taxonomy fields.
 		function createTaxonomySearch( acfField ) {
 			var selectElement = acfField.querySelector( 'select' );
 			if ( ! selectElement ) { return; }
 
+			var isMulti  = selectElement.multiple;
 			var fieldKey = acfField.dataset.key || '';
 
 			// Destroy select2 and hide the entire ACF input wrapper
@@ -1293,33 +1295,102 @@
 			var results = document.createElement( 'div' );
 			results.className = 'memdir-taxo-search__results';
 
-			// Selected term badge (visual confirmation)
-			var badge = document.createElement( 'div' );
-			badge.className = 'memdir-taxo-search__badge';
-			badge.style.display = 'none';
-
 			wrapper.appendChild( input );
 			wrapper.appendChild( results );
-			wrapper.appendChild( badge );
+
+			// Single-select: one badge element
+			var badge = null;
+			// Multi-select: badge container for multiple pills
+			var badgeContainer = null;
+
+			if ( isMulti ) {
+				badgeContainer = document.createElement( 'div' );
+				badgeContainer.className = 'memdir-taxo-search__badges';
+				wrapper.appendChild( badgeContainer );
+			} else {
+				badge = document.createElement( 'div' );
+				badge.className = 'memdir-taxo-search__badge';
+				badge.style.display = 'none';
+				wrapper.appendChild( badge );
+			}
+
 			acfField.appendChild( wrapper );
 
-			// Show currently selected value with badge
+			// Build a set of currently selected IDs for quick lookup
+			function getSelectedIds() {
+				var ids = {};
+				Array.from( selectElement.selectedOptions ).forEach( function ( o ) {
+					if ( o.value ) { ids[ o.value ] = true; }
+				} );
+				return ids;
+			}
+
+			// Show currently selected value(s)
 			function updateSelectedDisplay() {
-				var selectedOpt = selectElement.querySelector( 'option:checked' );
-				if ( selectedOpt && selectedOpt.value ) {
-					var name = selectedOpt.textContent.trim();
-					badge.textContent = '✓ ' + name;
-					badge.style.display = 'block';
+				if ( isMulti ) {
+					// Multi-select: render badge pills with × remove
+					badgeContainer.innerHTML = '';
+					var hasSelection = false;
+					Array.from( selectElement.options ).forEach( function ( opt ) {
+						if ( ! opt.selected || ! opt.value ) { return; }
+						hasSelection = true;
+
+						var pill = document.createElement( 'span' );
+						pill.className = 'memdir-taxo-search__badge-pill';
+
+						var pillText = document.createTextNode( opt.textContent.trim() );
+						pill.appendChild( pillText );
+
+						var removeBtn = document.createElement( 'button' );
+						removeBtn.type = 'button';
+						removeBtn.className = 'memdir-taxo-search__badge-remove';
+						removeBtn.innerHTML = '&times;';
+						removeBtn.title = 'Remove';
+						removeBtn.dataset.value = opt.value;
+
+						removeBtn.addEventListener( 'click', function () {
+							opt.selected = false;
+							selectElement.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+							updateSelectedDisplay();
+							// Re-render dropdown if open to update highlights
+							if ( results.style.display === 'block' ) {
+								updateResultHighlights();
+							}
+						} );
+
+						pill.appendChild( removeBtn );
+						badgeContainer.appendChild( pill );
+					} );
+
 					input.value = '';
-					input.placeholder = 'Change selection…';
+					input.placeholder = hasSelection ? 'Add more…' : 'Type to search…';
 				} else {
-					badge.textContent = '';
-					badge.style.display = 'none';
-					input.value = '';
-					input.placeholder = 'Type to search…';
+					// Single-select: one badge
+					var selectedOpt = selectElement.querySelector( 'option:checked' );
+					if ( selectedOpt && selectedOpt.value ) {
+						var name = selectedOpt.textContent.trim();
+						badge.textContent = '✓ ' + name;
+						badge.style.display = 'block';
+						input.value = '';
+						input.placeholder = 'Change selection…';
+					} else {
+						badge.textContent = '';
+						badge.style.display = 'none';
+						input.value = '';
+						input.placeholder = 'Type to search…';
+					}
 				}
 			}
 			updateSelectedDisplay();
+
+			// Highlight already-selected items in dropdown
+			function updateResultHighlights() {
+				var selectedIds = getSelectedIds();
+				results.querySelectorAll( '.memdir-taxo-search__result-item' ).forEach( function ( item ) {
+					var id = item.dataset.id || '';
+					item.classList.toggle( 'is-selected', !! selectedIds[ id ] );
+				} );
+			}
 
 			// Debounce timer
 			var debounceTimer = null;
@@ -1367,9 +1438,14 @@
 						return;
 					}
 
+					var selectedIds = getSelectedIds();
+
 					items.forEach( function ( term ) {
 						var item = document.createElement( 'div' );
 						item.className = 'memdir-taxo-search__result-item';
+						if ( selectedIds[ term.id ] ) {
+							item.classList.add( 'is-selected' );
+						}
 						item.textContent = term.text || term.name || '';
 						item.dataset.id = term.id || '';
 
@@ -1379,26 +1455,46 @@
 						} );
 
 						item.addEventListener( 'click', function () {
-							// Deselect all existing options first
-							Array.from( selectElement.options ).forEach( function ( o ) { o.selected = false; } );
-
-							// Set the select value
-							var existing = selectElement.querySelector( 'option[value="' + term.id + '"]' );
-							if ( ! existing ) {
-								var opt = document.createElement( 'option' );
-								opt.value = term.id;
-								opt.textContent = term.text || term.name || '';
-								opt.selected = true;
-								selectElement.appendChild( opt );
+							if ( isMulti ) {
+								// Multi-select: toggle selection
+								var existing = selectElement.querySelector( 'option[value="' + term.id + '"]' );
+								if ( existing && existing.selected ) {
+									// Already selected — deselect
+									existing.selected = false;
+								} else if ( existing ) {
+									existing.selected = true;
+								} else {
+									var opt = document.createElement( 'option' );
+									opt.value = term.id;
+									opt.textContent = term.text || term.name || '';
+									opt.selected = true;
+									selectElement.appendChild( opt );
+								}
+								selectElement.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+								updateSelectedDisplay();
+								updateResultHighlights();
+								// Keep dropdown open for multi-select
 							} else {
-								existing.selected = true;
-							}
-							selectElement.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+								// Single-select: deselect all, select one, close
+								Array.from( selectElement.options ).forEach( function ( o ) { o.selected = false; } );
 
-							// Close results and show badge
-							results.innerHTML = '';
-							results.style.display = 'none';
-							updateSelectedDisplay();
+								var existing = selectElement.querySelector( 'option[value="' + term.id + '"]' );
+								if ( ! existing ) {
+									var opt = document.createElement( 'option' );
+									opt.value = term.id;
+									opt.textContent = term.text || term.name || '';
+									opt.selected = true;
+									selectElement.appendChild( opt );
+								} else {
+									existing.selected = true;
+								}
+								selectElement.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+
+								// Close results and show badge
+								results.innerHTML = '';
+								results.style.display = 'none';
+								updateSelectedDisplay();
+							}
 						} );
 
 						results.appendChild( item );
@@ -2581,6 +2677,27 @@
 	}
 
 	/**
+	 * Scan all edit-mode sections for taxonomy fields and replace ACF's
+	 * native select2 with the custom search UI. Skips header-owned fields
+	 * (already handled by initHeaderEditing) and dialog-portaled fields.
+	 */
+	function initTaxonomySearch() {
+		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
+			var headerKeys   = getHeaderFieldKeys( section );
+			var fieldContent = section.querySelector( '.memdir-field-content' );
+			if ( ! fieldContent ) { return; }
+
+			fieldContent.querySelectorAll( '.acf-field[data-type="taxonomy"]' ).forEach( function ( field ) {
+				var key = field.dataset.key || '';
+				// Skip header-owned taxonomy fields (handled by header modal)
+				if ( headerKeys.indexOf( key ) !== -1 ) { return; }
+				if ( field.closest( 'dialog' ) ) { return; }
+				createTaxonomySearch( field );
+			} );
+		} );
+	}
+
+	/**
 	 * Initialise GLightbox on all .glightbox links in view-mode sections.
 	 */
 	function initLightbox() {
@@ -2608,6 +2725,7 @@
 		initFieldPmp();           // inject field PMP controls after section PMP is wired
 		initHeaderEditing();  // per-element header pencils + modals
 		initImageUploaders(); // custom image/gallery upload UIs
+		initTaxonomySearch(); // custom taxonomy search for all non-header taxonomy fields
 		initLightbox();       // GLightbox on view-mode images
 		hideEmptySectionPills();  // hide pills for PHP-dropped empty/PMP-blocked sections
 		restoreState();

@@ -1500,6 +1500,52 @@ dialog.memdir-header-modal::backdrop {
   display: inline-block;
 }
 
+/* Multi-select badge container */
+.memdir-taxo-search__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.memdir-taxo-search__badges:empty {
+  display: none;
+}
+
+/* Individual badge pill (multi-select) */
+.memdir-taxo-search__badge-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--md-green-sage, #7aa060);
+  color: #fff;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* × remove button inside badge */
+.memdir-taxo-search__badge-remove {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.memdir-taxo-search__badge-remove:hover {
+  color: #fff;
+}
+
+/* Selected item highlight in dropdown */
+.memdir-taxo-search__result-item.is-selected {
+  background: #f0f7ec;
+  font-weight: 500;
+}
+
 /* ─────────────────────────────────────────────────────────────
    IMAGE / GALLERY — INLINE DISPLAY (compact, in-form previews)
 ───────────────────────────────────────────────────────────── */
