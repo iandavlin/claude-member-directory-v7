@@ -933,7 +933,7 @@ class AdminSync {
 
 				<h4 style="margin:16px 0 6px; font-size:13px; color:#1d2327;">Trust Network</h4>
 				<p style="margin:0 0 4px; font-size:13px; color:#50575e;">
-					A non-ACF section for trusted repair partner relationships. Enabled by default for all profiles.
+					A non-ACF section for trusted repair partner relationships. Disabled by default &mdash; members opt in via the Trust toggle in their right panel.
 					A logged-in member can request trust from another member&rsquo;s profile &mdash; the profile
 					author sees pending requests in edit mode and can accept or decline.
 					Accepted relationships are publicly visible. Either party can remove the relationship.

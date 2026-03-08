@@ -95,11 +95,10 @@ class TrustNetwork {
 
 	/**
 	 * Check if the Trust section is enabled for a post.
-	 * Default: enabled (empty meta = never set = enabled).
+	 * Default: disabled (empty meta = never set = off).
 	 */
 	public static function is_trust_enabled( int $post_id ): bool {
-		$val = get_post_meta( $post_id, self::META_ENABLED, true );
-		return ( $val === '' || $val === '1' );
+		return get_post_meta( $post_id, self::META_ENABLED, true ) === '1';
 	}
 
 	/* ── Query Methods ───────────────────────────────────── */

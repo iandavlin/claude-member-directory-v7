@@ -139,7 +139,7 @@ includes/
                               get_pending_requests(), get_relationship(),
                               resolve_profiles(), resolve_post_profiles().
                               5 AJAX handlers: handle_request/respond/cancel/remove/toggle.
-                              Enabled state: post meta _memdir_trust_enabled (default: on).
+                              Enabled state: post meta _memdir_trust_enabled (default: off).
   Onboarding.php              [memdir_onboarding] shortcode. Redirect funnel for member
                               creation. Logged-out → BuddyBoss login. Existing member →
                               redirect to profile. New member → form (primary section radio
@@ -376,7 +376,7 @@ Builder visits luthier's profile → clicks "Request as Trusted Repair Partner" 
 UNIQUE KEY on `(requester_id, target_post)`. Indexes on `(target_post, status)` and `(requester_id, status)`.
 
 ### Section enabled state
-Post meta `_memdir_trust_enabled` (underscore prefix = hidden from ACF). Default: enabled (empty meta = never set = enabled).
+Post meta `_memdir_trust_enabled` (underscore prefix = hidden from ACF). Default: disabled (empty meta = never set = off). Members must opt in via the right-panel toggle.
 
 ### Integration points
 - **pill-nav.php**: Hard-coded Trust pill after the SectionRegistry loop. Uses `TrustNetwork::is_trust_enabled()` for disabled class.
