@@ -218,7 +218,7 @@ class Plugin {
 				'nonce'         => wp_create_nonce( 'md_save_nonce' ),
 				'search_nonce'  => wp_create_nonce( 'memdir_search_terms' ),
 				'socialSources' => (object) $social_sources,
-			'currentUserId' => get_current_user_id(),
+				'currentUserId' => get_current_user_id(),
 			]
 		);
 	}

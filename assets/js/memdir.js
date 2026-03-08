@@ -3006,20 +3006,32 @@
 			btn.disabled = true;
 			btn.textContent = 'Saving\u2026';
 
+			var originalText = btn.textContent;
+
 			fetch( ajaxUrl, {
 				method:      'POST',
 				credentials: 'same-origin',
 				body:        formData,
-			} ).then( function ( res ) { return res.json(); } )
-			  .then( function ( json ) {
+			} ).then( function ( res ) {
+				if ( ! res.ok ) {
+					console.error( 'Trust AJAX HTTP error:', res.status, res.statusText );
+				}
+				return res.json();
+			} ).then( function ( json ) {
 				if ( json.success ) {
 					window.location.reload();
 				} else {
-					alert( ( json.data && json.data.message ) || 'An error occurred.' );
+					var msg = ( json.data && json.data.message ) || 'An error occurred.';
+					console.error( 'Trust AJAX error:', msg, json );
+					alert( msg );
 					btn.disabled = false;
+					btn.textContent = originalText;
 				}
-			} ).catch( function () {
+			} ).catch( function ( err ) {
+				console.error( 'Trust AJAX catch:', err );
+				alert( 'Request failed. Check browser console for details.' );
 				btn.disabled = false;
+				btn.textContent = originalText;
 			} );
 		} );
 
