@@ -17,6 +17,7 @@
  *   ✅ GlobalFields.php     — available
  *   ✅ AcfFormHelper.php    — available
  *   ✅ TrustNetwork.php     — available
+ *   ✅ Onboarding.php       — available
  *   🔜 DirectoryQuery.php   — coming next
  */
 
@@ -34,6 +35,7 @@ require_once __DIR__ . '/PmpResolver.php';
 require_once __DIR__ . '/GlobalFields.php';
 require_once __DIR__ . '/AcfFormHelper.php';
 require_once __DIR__ . '/TrustNetwork.php';
+require_once __DIR__ . '/Onboarding.php';
 // require_once __DIR__ . '/DirectoryQuery.php';
 
 class Plugin {
@@ -79,6 +81,7 @@ class Plugin {
 		GlobalFields::init();
 		AcfFormHelper::init();
 		TrustNetwork::init();
+		Onboarding::init();
 	}
 
 	// -----------------------------------------------------------------------

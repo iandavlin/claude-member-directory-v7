@@ -35,6 +35,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 - Custom taxonomy search — replaces ACF's select2 with debounced AJAX search UI for all taxonomy fields in edit mode. Supports both single-select (one badge) and multi-select (badge pills with × remove). Applied globally via `initTaxonomySearch()` boot function; header modal taxonomy fields initialized separately by `initHeaderEditing()`. `getHeaderFieldKeys()` guard prevents double-init. Multi-select fields include a "Browse all" link that opens a checkbox modal with the full alphabetical term list (up to 200 terms via `browse_all` AJAX flag).
 - Social link import — cross-section import for primary-capable sections (matched by URL field suffix)
 - `TrustNetwork` — first non-ACF, code-driven section. Custom DB table `{prefix}memdir_trust_network` for trusted repair partner relationships. Builder→luthier request/accept/decline flow. Enabled state via post meta `_memdir_trust_enabled`. Batch profile resolution via `resolve_profiles()` / `resolve_post_profiles()`. Hard-coded Trust pill in pill-nav + Trust toggle in right panel (distinguished by `data-trust-toggle="1"` attribute). Ghost logic: section hidden in view mode when disabled. JS `initTrustNetwork()` handles action buttons + toggle.
+- `Onboarding` — `[memdir_onboarding]` shortcode for self-service member creation. Redirect funnel: existing members → profile, new members → form (primary section radio + URL slug text input). Post-create: sets primary, enables always_on + primary sections, disables rest, redirects to profile in edit mode with primary pill active. Logged-out users handled by BuddyBoss login redirect. Inline CSS scoped to `.memdir-onboarding`.
 - AJAX handlers wired:
   - `md_save_section` → `AcfFormHelper::handle_ajax_save`
   - `memdir_ajax_save_section_enabled` → `AcfFormHelper::handle_save_section_enabled`
@@ -137,6 +138,12 @@ includes/
                               resolve_profiles(), resolve_post_profiles().
                               5 AJAX handlers: handle_request/respond/cancel/remove/toggle.
                               Enabled state: post meta _memdir_trust_enabled (default: on).
+  Onboarding.php              [memdir_onboarding] shortcode. Redirect funnel for member
+                              creation. Logged-out → BuddyBoss login. Existing member →
+                              redirect to profile. New member → form (primary section radio
+                              + URL slug text input). Post-create: sets primary, enables
+                              always_on + primary sections, disables rest, redirects to
+                              profile in edit mode. Inline CSS, no JS dependency.
   DirectoryQuery.php          🔜 Not yet created.
 sections/                         ⚠ GITIGNORED — not tracked in git. Created per-environment.
   *.json                      Immutable section pointers. { acf_group_key }. Key from filename.
@@ -384,6 +391,32 @@ All reuse `md_save_nonce`:
 | `memdir_ajax_trust_cancel` | `handle_cancel()` | Builder | Delete pending row |
 | `memdir_ajax_trust_remove` | `handle_remove()` | Either | Delete accepted row |
 | `memdir_ajax_trust_toggle` | `handle_toggle()` | Author | Toggle post meta |
+
+## Onboarding Shortcode (`[memdir_onboarding]`)
+
+Self-service member creation form + redirect funnel. Place on any page.
+
+### Flow
+1. **Logged-out** → shortcode returns empty (BuddyBoss handles login redirect)
+2. **Existing member** → `wp_safe_redirect` to their profile permalink (at `template_redirect`, before headers)
+3. **New member** → form: primary section radio + URL slug text input → on submit: create post, set primary, enable `always_on` + primary sections, disable the rest, redirect to profile in edit mode with `?active_section=` query param
+
+### Hooks
+- `add_shortcode( 'memdir_onboarding', render_shortcode )` — form HTML
+- `add_action( 'template_redirect', maybe_redirect )` — handles POST processing + existing-member redirect before headers are sent
+
+### Post creation (process_form)
+1. Verify nonce
+2. Race guard: re-check no existing profile
+3. Validate primary key against `can_be_primary` sections from SectionRegistry
+4. `sanitize_title()` slug, check non-empty, check uniqueness via direct DB query
+5. `wp_insert_post()`: type=member-directory, status=publish, author, title=display_name, post_name=slug
+6. `update_field( 'field_md_primary_section', $primary_key, $post_id )`
+7. Loop all sections: enable (`1`) if `always_on` or primary, disable (`0`) otherwise
+8. `wp_safe_redirect( permalink + '?active_section=' . $primary_key )` + exit
+
+### Styling
+Inline `<style>` scoped to `.memdir-onboarding`. Uses brand palette CSS vars. No external CSS/JS dependency.
 
 ## Section JSON Schema
 
