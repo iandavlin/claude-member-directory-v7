@@ -248,6 +248,18 @@ body.single-member-directory .select2-dropdown--above {
   line-height: 1.4;
 }
 
+/* Edit-mode placeholders for empty badges / social links */
+.memdir-header__placeholder {
+  font-family: var(--md-font);
+  font-size: 12px;
+  font-weight: 500;
+  font-style: italic;
+  color: var(--md-text-muted);
+  opacity: 0.65;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
 /* Social icon links */
 .memdir-header__social {
   display: flex;

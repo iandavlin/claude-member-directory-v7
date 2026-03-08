@@ -20,7 +20,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 - `templates/parts/section-edit.php` — edit partial (left controls panel + ACF form)
 - `templates/parts/section-view.php` — view partial (PMP waterfall + FieldRenderer per field)
 - `templates/parts/right-panel.php` — author/admin panel: View As button group, Global Default block, Primary Section block, Section toggles (edit mode), Notes block
-- `templates/parts/header-section.php` — generic data-driven sticky header (scans for ACF tab with "header" in label; maps fields to slots: text→title, image→avatar, taxonomy→badges, url→social icons)
+- `templates/parts/header-section.php` — generic data-driven sticky header (scans for ACF tab with "header" in label; maps fields to slots: text→title, image→avatar, taxonomy→badges, url→social icons). Edit-mode fallbacks: "Edit Quick Focus" and "Add Links" placeholder text when badges/socials are empty
 - `templates/parts/pill-nav.php` — pill navigation row; All Sections + per-section pills (navigation only; enable/disable toggles live in right panel)
 - Custom image/gallery uploaders — "image in, image out" pattern for all image and gallery fields in edit mode. Replaces ACF's native media library UI with inline upload/remove buttons + caption inputs. Old attachments auto-deleted on replace/remove. Galleries use thumbnail grid with per-image captions.
 - GLightbox integration — view-mode images and galleries open in a lightbox with captions. Galleries support prev/next navigation. Initialized via `initLightbox()` in JS boot sequence. GLightbox 3.3.0 loaded from jsDelivr CDN.

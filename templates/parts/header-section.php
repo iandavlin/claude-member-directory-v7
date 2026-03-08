@@ -199,7 +199,8 @@ foreach ( $taxo_terms as $group ) {
 	}
 }
 
-$has_meta = ! empty( $badge_names ) || ! empty( $social_links );
+$has_meta       = ! empty( $badge_names ) || ! empty( $social_links );
+$is_edit_mode   = ! empty( $is_edit ); // inherited from single-member-directory.php
 
 ?>
 <header class="memdir-header memdir-header--<?php echo esc_attr( $section_key ); ?>">
@@ -248,7 +249,7 @@ $has_meta = ! empty( $badge_names ) || ! empty( $social_links );
 
 		</div>
 
-		<?php if ( $has_meta ) : ?>
+		<?php if ( $has_meta || $is_edit_mode ) : ?>
 		<div class="memdir-header__meta">
 
 			<?php if ( ! empty( $badge_names ) ) : ?>
@@ -257,9 +258,13 @@ $has_meta = ! empty( $badge_names ) || ! empty( $social_links );
 					<span class="memdir-header__taxo-badge"><?php echo esc_html( $badge_name ); ?></span>
 				<?php endforeach; ?>
 			</div>
+			<?php elseif ( $is_edit_mode ) : ?>
+			<div class="memdir-header__taxo">
+				<span class="memdir-header__placeholder">Edit Quick Focus</span>
+			</div>
 			<?php endif; ?>
 
-			<?php if ( ! empty( $badge_names ) && ! empty( $social_links ) ) : ?>
+			<?php if ( ( ! empty( $badge_names ) || $is_edit_mode ) && ( ! empty( $social_links ) || $is_edit_mode ) ) : ?>
 			<span class="memdir-header__divider" aria-hidden="true"></span>
 			<?php endif; ?>
 
@@ -274,6 +279,10 @@ $has_meta = ! empty( $badge_names ) || ! empty( $social_links );
 						aria-label="<?php echo esc_attr( $link['label'] ); ?>"
 					><?php echo $link['svg']; ?></a>
 				<?php endforeach; ?>
+			</div>
+			<?php elseif ( $is_edit_mode ) : ?>
+			<div class="memdir-header__social">
+				<span class="memdir-header__placeholder">Add Links</span>
 			</div>
 			<?php endif; ?>
 
