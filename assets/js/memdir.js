@@ -1206,182 +1206,39 @@
 										statusSpan.classList.remove( 'memdir-field-pmp__status--saved' );
 									}, 1200 );
 								} else {
-									console.error( 'MemberDirectory: field PMP AJAX error', data );
-									// Revert optimistic change.
-									wrap.dataset.storedPmp = prevPmp;
-									row.querySelectorAll( '.memdir-field-pmp__btn' ).forEach( function ( b ) {
-										b.classList.toggle( 'is-active', b.dataset.pmp === prevPmp );
-									} );
-									statusSpan.textContent = computeFieldPmpStatus( wrap );
-								}
-							} )
-							.catch( function ( err ) {
-								console.error( 'MemberDirectory: field PMP AJAX failed', err );
-								// Revert optimistic change on network failure.
-								wrap.dataset.storedPmp = prevPmp;
-								row.querySelectorAll( '.memdir-field-pmp__btn' ).forEach( function ( b ) {
-									b.classList.toggle( 'is-active', b.dataset.pmp === prevPmp );
-								} );
-								statusSpan.textContent = computeFieldPmpStatus( wrap );
-							} );
+				// Single-select: one badge with × clear button
+				var selectedOpt = selectElement.querySelector( 'option:checked' );
+				if ( selectedOpt && selectedOpt.value ) {
+					var name = selectedOpt.textContent.trim();
+					badge.innerHTML = '';
+					badge.style.display = 'inline-flex';
+
+					var badgeText = document.createTextNode( '✓ ' + name );
+					badge.appendChild( badgeText );
+
+					var clearBtn = document.createElement( 'button' );
+					clearBtn.type = 'button';
+					clearBtn.className = 'memdir-taxo-search__badge-clear';
+					clearBtn.innerHTML = '&times;';
+					clearBtn.title = 'Clear selection';
+					clearBtn.addEventListener( 'click', function () {
+						Array.from( selectElement.options ).forEach( function ( o ) { o.selected = false; } );
+						var emptyOpt = selectElement.querySelector( 'option[value=""]' );
+						if ( emptyOpt ) { emptyOpt.selected = true; }
+						selectElement.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+						updateSelectedDisplay();
 					} );
-				} );
-			} );
-		} );
-	}
-
-	// -----------------------------------------------------------------------
-	// 10. Sticky section controls
-	//
-	// The section controls column needs to stick just below the sticky header
-	// zone. We measure .memdir-sticky's rendered height + CSS top at runtime
-	// and apply it as an inline style so it always tracks the real layout.
-	// -----------------------------------------------------------------------
-
-	// -----------------------------------------------------------------------
-	// Per-element Header Editing
-	//
-	// Each header element (avatar, name, categories, social links) gets its
-	// own edit trigger and small modal. The avatar uses a camera overlay;
-	// name, categories, and social links each get an inline pencil icon.
-	// Pencil icons pulse gold when their corresponding fields are empty.
-	// -----------------------------------------------------------------------
-
-	var SOCIAL_SUFFIXES = [
-		'_website', '_linkedin', '_instagram', '_twitter', '_facebook',
-		'_youtube', '_tiktok', '_vimeo', '_linktree'
-	];
-
-	function isSocialField( fieldEl ) {
-		var name = fieldEl.dataset.name || '';
-		var type = fieldEl.dataset.type || '';
-		if ( type !== 'url' ) { return false; }
-		for ( var s = 0; s < SOCIAL_SUFFIXES.length; s++ ) {
-			if ( name.length > SOCIAL_SUFFIXES[ s ].length &&
-				name.substring( name.length - SOCIAL_SUFFIXES[ s ].length ) === SOCIAL_SUFFIXES[ s ] ) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	
-	// Helper: Create custom taxonomy search box (replaces select2)
-	// Supports both single-select and multi-select taxonomy fields.
-		function createTaxonomySearch( acfField ) {
-			var selectElement = acfField.querySelector( 'select' );
-			if ( ! selectElement ) { return; }
-
-			var isMulti  = selectElement.multiple;
-			var fieldKey = acfField.dataset.key || '';
-
-			// Destroy select2 and hide the entire ACF input wrapper
-			var acfInput = acfField.querySelector( '.acf-input' );
-			if ( typeof jQuery !== 'undefined' && jQuery.fn.select2 ) {
-				try { jQuery( selectElement ).select2( 'destroy' ); } catch ( e ) { /* ok */ }
-			}
-			if ( acfInput ) { acfInput.style.display = 'none'; }
-
-			// Create search wrapper
-			var wrapper = document.createElement( 'div' );
-			wrapper.className = 'memdir-taxo-search';
-
-			var input = document.createElement( 'input' );
-			input.type = 'text';
-			input.className = 'memdir-taxo-search__input';
-			input.dataset.memdirSkip = '1';
-			input.placeholder = 'Type to search…';
-
-			var results = document.createElement( 'div' );
-			results.className = 'memdir-taxo-search__results';
-
-			wrapper.appendChild( input );
-			wrapper.appendChild( results );
-
-			// Single-select: one badge element
-			var badge = null;
-			// Multi-select: badge container for multiple pills
-			var badgeContainer = null;
-
-			if ( isMulti ) {
-				badgeContainer = document.createElement( 'div' );
-				badgeContainer.className = 'memdir-taxo-search__badges';
-				wrapper.appendChild( badgeContainer );
-			} else {
-				badge = document.createElement( 'div' );
-				badge.className = 'memdir-taxo-search__badge';
-				badge.style.display = 'none';
-				wrapper.appendChild( badge );
-			}
-
-			// "Browse all" link
-		var browseBtn = document.createElement( 'button' );
-		browseBtn.type = 'button';
-		browseBtn.className = 'memdir-taxo-search__browse';
-		browseBtn.textContent = 'Browse all';
-		wrapper.appendChild( browseBtn );
-		var browseModal = null;  // lazy — built on first click
-
-		acfField.appendChild( wrapper );
-
-			// Build a set of currently selected IDs for quick lookup
-			function getSelectedIds() {
-				var ids = {};
-				Array.from( selectElement.selectedOptions ).forEach( function ( o ) {
-					if ( o.value ) { ids[ o.value ] = true; }
-				} );
-				return ids;
-			}
-
-			// Show currently selected value(s)
-			function updateSelectedDisplay() {
-				if ( isMulti ) {
-					// Multi-select: render badge pills with × remove
-					badgeContainer.innerHTML = '';
-					var hasSelection = false;
-					Array.from( selectElement.options ).forEach( function ( opt ) {
-						if ( ! opt.selected || ! opt.value ) { return; }
-						hasSelection = true;
-
-						var pill = document.createElement( 'span' );
-						pill.className = 'memdir-taxo-search__badge-pill';
-
-						var pillText = document.createTextNode( opt.textContent.trim() );
-						pill.appendChild( pillText );
-
-						var removeBtn = document.createElement( 'button' );
-						removeBtn.type = 'button';
-						removeBtn.className = 'memdir-taxo-search__badge-remove';
-						removeBtn.innerHTML = '&times;';
-						removeBtn.title = 'Remove';
-						removeBtn.dataset.value = opt.value;
-
-						removeBtn.addEventListener( 'click', function () {
-							opt.selected = false;
-							selectElement.dispatchEvent( new Event( 'change', { bubbles: true } ) );
-							updateSelectedDisplay();
-							// Re-render dropdown if open to update highlights
-							if ( results.style.display === 'block' ) {
-								updateResultHighlights();
-							}
-						} );
-
-						pill.appendChild( removeBtn );
-						badgeContainer.appendChild( pill );
-					} );
+					badge.appendChild( clearBtn );
 
 					input.value = '';
-					input.placeholder = hasSelection ? 'Add more…' : 'Type to search…';
+					input.placeholder = 'Change selection…';
 				} else {
-					// Single-select: one badge
-					var selectedOpt = selectElement.querySelector( 'option:checked' );
-					if ( selectedOpt && selectedOpt.value ) {
-						var name = selectedOpt.textContent.trim();
-						badge.textContent = '✓ ' + name;
-						badge.style.display = 'block';
-						input.value = '';
-						input.placeholder = 'Change selection…';
-					} else {
+					badge.innerHTML = '';
+					badge.style.display = 'none';
+					input.value = '';
+					input.placeholder = 'Type to search…';
+				}
+			} else {
 						badge.textContent = '';
 						badge.style.display = 'none';
 						input.value = '';
@@ -1642,6 +1499,38 @@
 		function populateBrowseChecklist( list, items ) {
 			list.innerHTML = '';
 			var selectedIds = getSelectedIds();
+
+			// Single-select: "None" option at top to clear selection
+			if ( ! isMulti ) {
+				var noneLabel = document.createElement( 'label' );
+				noneLabel.className = 'memdir-taxo-browse__item memdir-taxo-browse__item--none';
+
+				var noneInput = document.createElement( 'input' );
+				noneInput.type = 'radio';
+				noneInput.name = browseRadioName;
+				noneInput.value = '';
+				if ( Object.keys( selectedIds ).length === 0 ) { noneInput.checked = true; }
+
+				var noneSpan = document.createElement( 'span' );
+				noneSpan.textContent = 'None';
+				noneSpan.style.fontStyle = 'italic';
+				noneSpan.style.color = 'var(--md-text-muted, #888)';
+
+				noneInput.addEventListener( 'change', function () {
+					Array.from( selectElement.options ).forEach( function ( o ) { o.selected = false; } );
+					var emptyOpt = selectElement.querySelector( 'option[value=""]' );
+					if ( emptyOpt ) { emptyOpt.selected = true; }
+					selectElement.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+					updateSelectedDisplay();
+					if ( browseModal && browseModal.dialog ) {
+						setTimeout( function () { browseModal.dialog.close(); }, 150 );
+					}
+				} );
+
+				noneLabel.appendChild( noneInput );
+				noneLabel.appendChild( noneSpan );
+				list.appendChild( noneLabel );
+			}
 
 			items.forEach( function ( term ) {
 				var label = document.createElement( 'label' );
