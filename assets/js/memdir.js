@@ -1314,7 +1314,18 @@
 				wrapper.appendChild( badge );
 			}
 
-			acfField.appendChild( wrapper );
+			// "Browse all" link — multi-select only
+		var browseBtn = null;
+		var browseModal = null;  // lazy — built on first click
+		if ( isMulti ) {
+			browseBtn = document.createElement( 'button' );
+			browseBtn.type = 'button';
+			browseBtn.className = 'memdir-taxo-search__browse';
+			browseBtn.textContent = 'Browse all';
+			wrapper.appendChild( browseBtn );
+		}
+
+		acfField.appendChild( wrapper );
 
 			// Build a set of currently selected IDs for quick lookup
 			function getSelectedIds() {
@@ -1531,7 +1542,155 @@
 				}, 300 );
 			} );
 
-			return wrapper;
+// ── Browse-all modal (multi-select only) ──
+		if ( browseBtn ) {
+			browseBtn.addEventListener( 'click', function () {
+				// Fetch all terms
+				var ajaxUrl = ( typeof mdAjax !== 'undefined' ) ? mdAjax.ajaxurl : '/wp-admin/admin-ajax.php';
+				var nonce   = ( typeof mdAjax !== 'undefined' ) ? mdAjax.search_nonce : '';
+
+				var formData = new FormData();
+				formData.append( 'action', 'memdir_search_taxonomy_terms' );
+				formData.append( 'taxonomy', taxonomySlug );
+				formData.append( 'search', '' );
+				formData.append( 'browse_all', '1' );
+				formData.append( '_wpnonce', nonce );
+
+				browseBtn.textContent = 'Loading…';
+				browseBtn.disabled = true;
+
+				fetch( ajaxUrl, {
+					method: 'POST',
+					credentials: 'same-origin',
+					body: formData
+				} )
+				.then( function ( res ) { return res.json(); } )
+				.then( function ( data ) {
+					browseBtn.textContent = 'Browse all';
+					browseBtn.disabled = false;
+
+					var items = ( data && data.results ) ? data.results : [];
+					if ( items.length === 0 ) { return; }
+
+					// Build or reuse modal
+					if ( ! browseModal ) {
+						browseModal = buildBrowseModal();
+					}
+
+					// Populate checklist
+					populateBrowseChecklist( browseModal.list, items );
+
+					// Show the modal
+					document.body.appendChild( browseModal.dialog );
+					browseModal.dialog.showModal();
+				} )
+				.catch( function ( err ) {
+					console.error( 'Browse-all fetch error:', err );
+					browseBtn.textContent = 'Browse all';
+					browseBtn.disabled = false;
+				} );
+			} );
+		}
+
+		// Build the browse-all modal (called once, then reused)
+		function buildBrowseModal() {
+			var dialog = document.createElement( 'dialog' );
+			dialog.className = 'memdir-header-modal memdir-header-modal--media';
+
+			var header = document.createElement( 'div' );
+			header.className = 'memdir-header-modal__header';
+
+			var h3 = document.createElement( 'h3' );
+			h3.className = 'memdir-header-modal__title';
+			h3.textContent = 'Browse All';
+			header.appendChild( h3 );
+
+			var closeBtn = document.createElement( 'button' );
+			closeBtn.type = 'button';
+			closeBtn.className = 'memdir-header-modal__close';
+			closeBtn.innerHTML = '&times;';
+			closeBtn.addEventListener( 'click', function () { dialog.close(); } );
+			header.appendChild( closeBtn );
+			dialog.appendChild( header );
+
+			var body = document.createElement( 'div' );
+			body.className = 'memdir-header-modal__body';
+
+			var list = document.createElement( 'div' );
+			list.className = 'memdir-taxo-browse__list';
+			body.appendChild( list );
+			dialog.appendChild( body );
+
+			var footer = document.createElement( 'div' );
+			footer.className = 'memdir-media-footer';
+
+			var doneBtn = document.createElement( 'button' );
+			doneBtn.type = 'button';
+			doneBtn.className = 'memdir-media-footer__save';
+			doneBtn.textContent = 'Done';
+			doneBtn.addEventListener( 'click', function () { dialog.close(); } );
+			footer.appendChild( doneBtn );
+			dialog.appendChild( footer );
+
+			// Backdrop click to close
+			dialog.addEventListener( 'click', function ( e ) {
+				if ( e.target === dialog ) { dialog.close(); }
+			} );
+
+			return { dialog: dialog, list: list };
+		}
+
+		// Populate / re-sync the checkbox list
+		function populateBrowseChecklist( list, items ) {
+			list.innerHTML = '';
+			var selectedIds = getSelectedIds();
+
+			items.forEach( function ( term ) {
+				var label = document.createElement( 'label' );
+				label.className = 'memdir-taxo-browse__item';
+
+				var cb = document.createElement( 'input' );
+				cb.type = 'checkbox';
+				cb.value = term.id;
+				if ( selectedIds[ term.id ] ) {
+					cb.checked = true;
+				}
+
+				var span = document.createElement( 'span' );
+				span.textContent = term.text || term.name || '';
+
+				cb.addEventListener( 'change', function () {
+					var existing = selectElement.querySelector( 'option[value="' + term.id + '"]' );
+
+					if ( cb.checked ) {
+						// Select
+						if ( existing ) {
+							existing.selected = true;
+						} else {
+							var opt = document.createElement( 'option' );
+							opt.value = term.id;
+							opt.textContent = term.text || term.name || '';
+							opt.selected = true;
+							selectElement.appendChild( opt );
+						}
+					} else {
+						// Deselect
+						if ( existing ) {
+							existing.selected = false;
+						}
+					}
+
+					selectElement.dispatchEvent( new Event( 'change', { bubbles: true } ) );
+					updateSelectedDisplay();
+				} );
+
+				label.appendChild( cb );
+				label.appendChild( span );
+				list.appendChild( label );
+			} );
+		}
+
+					return wrapper;
 		}
 
 	function initHeaderEditing() {

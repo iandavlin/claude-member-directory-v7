@@ -1546,6 +1546,56 @@ dialog.memdir-header-modal::backdrop {
   font-weight: 500;
 }
 
+/* "Browse all" link button */
+.memdir-taxo-search__browse {
+  background: none;
+  border: none;
+  color: var(--md-green-sage, #7aa060);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 4px 0;
+  text-decoration: underline;
+}
+
+.memdir-taxo-search__browse:hover {
+  color: var(--md-text);
+}
+
+.memdir-taxo-search__browse:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Checklist inside browse-all modal */
+.memdir-taxo-browse__list {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.memdir-taxo-browse__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f0f0f0;
+  font-size: 14px;
+  color: var(--md-text);
+}
+
+.memdir-taxo-browse__item:hover {
+  background: #f9f9f9;
+}
+
+.memdir-taxo-browse__item:last-child {
+  border-bottom: none;
+}
+
+.memdir-taxo-browse__item input[type="checkbox"] {
+  accent-color: var(--md-green-sage, #7aa060);
+}
+
 /* ─────────────────────────────────────────────────────────────
    IMAGE / GALLERY — INLINE DISPLAY (compact, in-form previews)
 ───────────────────────────────────────────────────────────── */

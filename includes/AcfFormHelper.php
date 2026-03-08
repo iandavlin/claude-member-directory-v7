@@ -764,8 +764,9 @@ class AcfFormHelper {
 	public static function handle_search_taxonomy_terms(): void {
 		check_ajax_referer( 'memdir_search_terms', '_wpnonce' );
 
-		$taxonomy = sanitize_text_field( wp_unslash( $_POST['taxonomy'] ?? '' ) );
-		$search   = sanitize_text_field( wp_unslash( $_POST['search']   ?? '' ) );
+		$taxonomy   = sanitize_text_field( wp_unslash( $_POST['taxonomy'] ?? '' ) );
+		$search     = sanitize_text_field( wp_unslash( $_POST['search']   ?? '' ) );
+		$browse_all = ! empty( $_POST['browse_all'] );
 
 		if ( ! $taxonomy || ! taxonomy_exists( $taxonomy ) ) {
 			wp_send_json_error( 'Invalid taxonomy' );
@@ -773,9 +774,9 @@ class AcfFormHelper {
 
 		$terms = get_terms( [
 			'taxonomy'   => $taxonomy,
-			'search'     => $search,
+			'search'     => $browse_all ? '' : $search,
 			'hide_empty' => false,
-			'number'     => 25,
+			'number'     => $browse_all ? 200 : 25,
 			'orderby'    => 'name',
 			'order'      => 'ASC',
 		] );
@@ -792,8 +793,10 @@ class AcfFormHelper {
 			];
 		}
 
-		// Shuffle for variety
-		shuffle( $results );
+		// Shuffle for variety — but not in browse-all mode (keep alphabetical)
+		if ( ! $browse_all ) {
+			shuffle( $results );
+		}
 
 		wp_send_json( [ 'results' => $results ] );
 	}

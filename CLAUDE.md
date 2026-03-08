@@ -32,7 +32,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 - Section PMP controls — 4-state button group in edit mode left panel (inherit/public/member/private)
 - Field PMP controls — per-field visibility buttons injected into edit mode
 - Global PMP controls — right panel buttons wired with AJAX save
-- Custom taxonomy search — replaces ACF's select2 with debounced AJAX search UI for all taxonomy fields in edit mode. Supports both single-select (one badge) and multi-select (badge pills with × remove). Applied globally via `initTaxonomySearch()` boot function; header modal taxonomy fields initialized separately by `initHeaderEditing()`. `getHeaderFieldKeys()` guard prevents double-init.
+- Custom taxonomy search — replaces ACF's select2 with debounced AJAX search UI for all taxonomy fields in edit mode. Supports both single-select (one badge) and multi-select (badge pills with × remove). Applied globally via `initTaxonomySearch()` boot function; header modal taxonomy fields initialized separately by `initHeaderEditing()`. `getHeaderFieldKeys()` guard prevents double-init. Multi-select fields include a "Browse all" link that opens a checkbox modal with the full alphabetical term list (up to 200 terms via `browse_all` AJAX flag).
 - Social link import — cross-section import for primary-capable sections (matched by URL field suffix)
 - AJAX handlers wired:
   - `md_save_section` → `AcfFormHelper::handle_ajax_save`
