@@ -13,6 +13,7 @@
  *   7. State restore      -- sessionStorage + URL param restore on page load
  *   8. Section PMP        -- 4-button inherit/public/member/private + eyebrow cascade
  *   9. Field PMP          -- per-field icon-button PMP controls injected after each ACF field
+ *  11. Trust Network     -- trust request/respond/cancel/remove action buttons + toggle
  */
 
 ( function () {
@@ -608,6 +609,10 @@
 		}
 
 		panel.querySelectorAll( '.memdir-panel__toggle input[type="checkbox"]' ).forEach( function ( toggle ) {
+			// Skip trust toggle — handled by initTrustNetwork().
+			if ( toggle.dataset.trustToggle ) {
+				return;
+			}
 			toggle.addEventListener( 'change', function () {
 				var sectionKey = toggle.dataset.sectionKey || '';
 				var enabled    = toggle.checked;
@@ -2947,6 +2952,114 @@
 	}
 
 	// -----------------------------------------------------------------------
+	// 11. Trust Network
+	//
+	// Event delegation on [data-trust-action] buttons inside the trust section.
+	// Each action builds a FormData, POSTs to the matching AJAX endpoint,
+	// and reloads on success.
+	// -----------------------------------------------------------------------
+
+	function initTrustNetwork() {
+		var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
+			? window.mdAjax.ajaxurl
+			: '/wp-admin/admin-ajax.php';
+		var nonce = ( window.mdAjax && window.mdAjax.nonce )
+			? window.mdAjax.nonce
+			: '';
+
+		// --- Trust action buttons (request, respond, cancel, remove) ---
+		document.addEventListener( 'click', function ( e ) {
+			var btn = e.target.closest( '[data-trust-action]' );
+			if ( ! btn ) { return; }
+
+			var action   = btn.dataset.trustAction || '';
+			var formData = new FormData();
+			formData.set( 'nonce', nonce );
+
+			switch ( action ) {
+				case 'request':
+					formData.set( 'action', 'memdir_ajax_trust_request' );
+					formData.set( 'target_post_id', btn.dataset.targetPost || '' );
+					break;
+
+				case 'respond':
+					formData.set( 'action', 'memdir_ajax_trust_respond' );
+					formData.set( 'trust_id', btn.dataset.trustId || '' );
+					formData.set( 'response', btn.dataset.trustResponse || '' );
+					break;
+
+				case 'cancel':
+					formData.set( 'action', 'memdir_ajax_trust_cancel' );
+					formData.set( 'trust_id', btn.dataset.trustId || '' );
+					break;
+
+				case 'remove':
+					if ( ! confirm( 'Remove this trust relationship?' ) ) { return; }
+					formData.set( 'action', 'memdir_ajax_trust_remove' );
+					formData.set( 'trust_id', btn.dataset.trustId || '' );
+					break;
+
+				default:
+					return;
+			}
+
+			btn.disabled = true;
+			btn.textContent = 'Saving\u2026';
+
+			fetch( ajaxUrl, {
+				method:      'POST',
+				credentials: 'same-origin',
+				body:        formData,
+			} ).then( function ( res ) { return res.json(); } )
+			  .then( function ( json ) {
+				if ( json.success ) {
+					window.location.reload();
+				} else {
+					alert( ( json.data && json.data.message ) || 'An error occurred.' );
+					btn.disabled = false;
+				}
+			} ).catch( function () {
+				btn.disabled = false;
+			} );
+		} );
+
+		// --- Trust toggle in right panel ---
+		var trustToggle = document.querySelector( 'input[data-trust-toggle="1"]' );
+		if ( trustToggle ) {
+			trustToggle.addEventListener( 'change', function () {
+				var nav    = document.querySelector( '.memdir-pills' );
+				var postId = nav ? ( nav.dataset.postId || '' ) : '';
+				var enabled = trustToggle.checked;
+
+				// Update pill disabled state.
+				if ( nav ) {
+					var pill = nav.querySelector( '.memdir-pill[data-section="trust"]' );
+					if ( pill ) {
+						pill.classList.toggle( 'memdir-pill--disabled', ! enabled );
+					}
+					updateAllSectionsBadge( nav );
+				}
+
+				// AJAX save via trust-specific endpoint.
+				var formData = new FormData();
+				formData.set( 'action',  'memdir_ajax_trust_toggle' );
+				formData.set( 'nonce',   nonce );
+				formData.set( 'post_id', postId );
+				formData.set( 'enabled', enabled ? '1' : '0' );
+
+				fetch( ajaxUrl, {
+					method:      'POST',
+					credentials: 'same-origin',
+					body:        formData,
+				} ).then( function () {
+					window.location.reload();
+				} ).catch( function () {
+					// Silently fail — UI is already updated.
+				} );
+			} );
+		}
+	}
+	// -----------------------------------------------------------------------
 	// Boot
 	// -----------------------------------------------------------------------
 
@@ -2963,6 +3076,7 @@
 		initImageUploaders(); // custom image/gallery upload UIs
 		initTaxonomySearch(); // custom taxonomy search for all non-header taxonomy fields
 		initLightbox();       // GLightbox on view-mode images
+		initTrustNetwork();  // trust network action buttons + toggle
 		hideEmptySectionPills();  // hide pills for PHP-dropped empty/PMP-blocked sections
 		restoreState();
 		syncControlsTop();

@@ -135,6 +135,18 @@ if ( $is_edit ) {
 				<?php endif; ?>
 			</div>
 			<?php endforeach; ?>
+		<?php
+		// Trust toggle — hard-coded, non-ACF section.
+		$trust_is_on = \MemberDirectory\TrustNetwork::is_trust_enabled( $post_id );
+		?>
+		<div class="memdir-panel__section-row">
+			<span class="memdir-panel__section-name">Trust</span>
+			<label class="memdir-panel__toggle">
+				<input type="checkbox" data-section-key="trust"
+				       data-trust-toggle="1" <?php checked( $trust_is_on ); ?>>
+				<span class="memdir-panel__toggle-slider"></span>
+			</label>
+		</div>
 		</div>
 		<?php endif; ?>
 

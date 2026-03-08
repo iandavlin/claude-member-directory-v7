@@ -167,6 +167,24 @@ $global_pmp    = get_field( 'member_directory_global_pmp', $post_id ) ?: 'public
 				}
 				?>
 			<?php endforeach; ?>
+
+		<?php
+		// ── Trust Network section — non-ACF, code-driven. ────────────
+		// Uses the same ob_start ghost pattern as ACF sections: if the
+		// partial produces no output, the section is silently omitted
+		// and JS will hide its pill on load.
+		$section_color = ( $_section_idx % 15 ) + 1;
+		if ( $is_edit ) {
+			include plugin_dir_path( __FILE__ ) . 'parts/trust-network.php';
+		} else {
+			ob_start();
+			include plugin_dir_path( __FILE__ ) . 'parts/trust-network.php';
+			$trust_html = ob_get_clean();
+			if ( trim( $trust_html ) !== '' ) {
+				echo $trust_html;
+			}
+		}
+		?>
 		</div>
 
 	</div>

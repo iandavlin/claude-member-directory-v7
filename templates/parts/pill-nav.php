@@ -136,5 +136,21 @@ $active_section = isset( $active_section ) ? (string) $active_section : 'all';
 
 	<?php endforeach; ?>
 
+	<?php
+	// -----------------------------------------------------------------------
+	// Trust pill — hard-coded outside the SectionRegistry loop.
+	// This is the plugin's first non-ACF code-driven section.
+	// -----------------------------------------------------------------------
+	$trust_enabled = \MemberDirectory\TrustNetwork::is_trust_enabled( $post_id );
+	$trust_pill_classes = 'memdir-pill';
+	if ( ! $trust_enabled ) {
+		$trust_pill_classes .= ' memdir-pill--disabled';
+	}
+	?>
+	<button class="<?php echo esc_attr( $trust_pill_classes ); ?>"
+	        data-section="trust" type="button">
+		<span class="memdir-pill__label">Trust</span>
+	</button>
+
 </nav><?php
 // No closing PHP tag — intentional. Prevents accidental whitespace output.

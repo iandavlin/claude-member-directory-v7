@@ -16,6 +16,7 @@
  *   ✅ PmpResolver.php      — available
  *   ✅ GlobalFields.php     — available
  *   ✅ AcfFormHelper.php    — available
+ *   ✅ TrustNetwork.php     — available
  *   🔜 DirectoryQuery.php   — coming next
  */
 
@@ -32,6 +33,7 @@ require_once __DIR__ . '/FieldRenderer.php';
 require_once __DIR__ . '/PmpResolver.php';
 require_once __DIR__ . '/GlobalFields.php';
 require_once __DIR__ . '/AcfFormHelper.php';
+require_once __DIR__ . '/TrustNetwork.php';
 // require_once __DIR__ . '/DirectoryQuery.php';
 
 class Plugin {
@@ -76,6 +78,7 @@ class Plugin {
 		AdminSync::init();
 		GlobalFields::init();
 		AcfFormHelper::init();
+		TrustNetwork::init();
 	}
 
 	// -----------------------------------------------------------------------
@@ -215,6 +218,7 @@ class Plugin {
 				'nonce'         => wp_create_nonce( 'md_save_nonce' ),
 				'search_nonce'  => wp_create_nonce( 'memdir_search_terms' ),
 				'socialSources' => (object) $social_sources,
+			'currentUserId' => get_current_user_id(),
 			]
 		);
 	}

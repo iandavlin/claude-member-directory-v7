@@ -30,6 +30,12 @@ if ( ! class_exists( 'ACF' ) ) {
 }
 
 // ---------------------------------------------------------------------------
+// Table creation on plugin activation.
+// ---------------------------------------------------------------------------
+require_once plugin_dir_path( __FILE__ ) . 'includes/TrustNetwork.php';
+register_activation_hook( __FILE__, [ MemberDirectory\TrustNetwork::class, 'install_table' ] );
+
+// ---------------------------------------------------------------------------
 // Bootstrap.
 // ---------------------------------------------------------------------------
 require_once plugin_dir_path( __FILE__ ) . 'includes/Plugin.php';

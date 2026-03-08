@@ -34,6 +34,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 - Global PMP controls — right panel buttons wired with AJAX save
 - Custom taxonomy search — replaces ACF's select2 with debounced AJAX search UI for all taxonomy fields in edit mode. Supports both single-select (one badge) and multi-select (badge pills with × remove). Applied globally via `initTaxonomySearch()` boot function; header modal taxonomy fields initialized separately by `initHeaderEditing()`. `getHeaderFieldKeys()` guard prevents double-init. Multi-select fields include a "Browse all" link that opens a checkbox modal with the full alphabetical term list (up to 200 terms via `browse_all` AJAX flag).
 - Social link import — cross-section import for primary-capable sections (matched by URL field suffix)
+- `TrustNetwork` — first non-ACF, code-driven section. Custom DB table `{prefix}memdir_trust_network` for trusted repair partner relationships. Builder→luthier request/accept/decline flow. Enabled state via post meta `_memdir_trust_enabled`. Batch profile resolution via `resolve_profiles()` / `resolve_post_profiles()`. Hard-coded Trust pill in pill-nav + Trust toggle in right panel (distinguished by `data-trust-toggle="1"` attribute). Ghost logic: section hidden in view mode when disabled. JS `initTrustNetwork()` handles action buttons + toggle.
 - AJAX handlers wired:
   - `md_save_section` → `AcfFormHelper::handle_ajax_save`
   - `memdir_ajax_save_section_enabled` → `AcfFormHelper::handle_save_section_enabled`
@@ -49,6 +50,11 @@ WordPress plugin: section-based member profile and directory system powered by A
   - `memdir_ajax_update_caption` → `AcfFormHelper::handle_update_caption`
   - `memdir_ajax_save_primary_section` → `GlobalFields::handle_save_primary_section`
   - `memdir_ajax_save_global_pmp` → `GlobalFields::handle_save_global_pmp`
+  - `memdir_ajax_trust_request` → `TrustNetwork::handle_request`
+  - `memdir_ajax_trust_respond` → `TrustNetwork::handle_respond`
+  - `memdir_ajax_trust_cancel` → `TrustNetwork::handle_cancel`
+  - `memdir_ajax_trust_remove` → `TrustNetwork::handle_remove`
+  - `memdir_ajax_trust_toggle` → `TrustNetwork::handle_toggle`
 
 ### Not Started / Scaffold Only
 - `includes/DirectoryQuery.php` — 🔜 not created yet
@@ -92,8 +98,8 @@ acf-location-import.json          ACF location field import/reference data.
 includes/
   Plugin.php                  Bootstrap. Registers CPT + hooks. Calls each class init().
                               enqueue_assets() passes mdAjax to JS (ajaxurl, nonce,
-                              search_nonce, socialSources). Dequeues conflicting scripts
-                              (elementor, buddypress).
+                              search_nonce, socialSources, currentUserId). Dequeues
+                              conflicting scripts (elementor, buddypress).
   SectionRegistry.php         Section metadata store. sync() = sections/*.json → merge with DB option.
                               JSON files are immutable (acf_group_key only); mutable metadata
                               (label, can_be_primary, always_on, default_avatar, order) in DB only.
@@ -123,6 +129,14 @@ includes/
                               format_location() — Google Maps by display_precision level.
                               Images/galleries wrapped in <figure> with GLightbox <a> links,
                               data-description for lightbox captions, <figcaption> inline.
+  TrustNetwork.php            Trust Network — first non-ACF code-driven section.
+                              Custom DB table {prefix}memdir_trust_network.
+                              Static class: init(), install_table(), is_trust_enabled(),
+                              get_trusting_builders(), get_trusted_by_user(),
+                              get_pending_requests(), get_relationship(),
+                              resolve_profiles(), resolve_post_profiles().
+                              5 AJAX handlers: handle_request/respond/cancel/remove/toggle.
+                              Enabled state: post meta _memdir_trust_enabled (default: on).
   DirectoryQuery.php          🔜 Not yet created.
 sections/                         ⚠ GITIGNORED — not tracked in git. Created per-environment.
   *.json                      Immutable section pointers. { acf_group_key }. Key from filename.
@@ -143,26 +157,36 @@ templates/
                               tiktok, vimeo, linktree). Location section special-case:
                               pulls google_map field + display_precision.
     pill-nav.php              Pill navigation. All Sections pill + one pill per section (nav only;
-                              enable/disable toggles in right-panel.php).
+                              enable/disable toggles in right-panel.php). Hard-coded Trust pill
+                              appended after the SectionRegistry loop.
+    trust-network.php         Trust Network section partial. Non-ACF code-driven. View mode:
+                              trusted-by cards, request button (state-dependent), outbound
+                              network. Edit mode: pending requests with accept/decline, accepted
+                              relationships with remove, outbound list. Ghost logic when disabled.
     section-edit.php          Edit partial. Left controls (section PMP buttons, tab list, save button) + ACF form.
                               Tab list derived from acf_get_fields( $section['acf_group_key'] ).
     section-view.php          View partial. Resolves PMP waterfall per field, calls FieldRenderer.
                               Field list derived from acf_get_fields( $section['acf_group_key'] ).
     right-panel.php           Author/admin panel. View As buttons, Global Default block,
                               Primary Section block, Section toggles (edit mode only).
+                              Hard-coded Trust toggle (data-trust-toggle="1") appended
+                              after the SectionRegistry toggle loop.
 assets/
   css/memdir.css              All plugin styles. Scoped to .memdir-profile. Includes modal,
                               header editing, taxonomy search, import button, PMP control,
                               image upload, gallery upload, figure/caption, and lightbox styles.
                               CSS vars redeclared on dialog.memdir-header-modal for portaled dialogs.
+                              Trust network styles: .memdir-trust-* (block, list, card, btn, badge).
   js/memdir.js                All frontend JS. ⚠ CRLF line endings — use Write tool or Node.js
                               scripts for edits (Edit tool fails on this file).
-                              Boot sequence: initHeaderEditing() → initImageUploaders() → initTaxonomySearch() → initLightbox().
+                              Boot sequence: initHeaderEditing() → initImageUploaders() →
+                              initTaxonomySearch() → initLightbox() → initTrustNetwork().
 tools/
   acf-field-prep.md           Claude skill: enrich a bare ACF field group export with full
                               iPMP apparatus (section system fields + per-field PMP companions)
                               and validate header tab structure. Single skill for all section prep.
   patch-memdir.js             Node.js patching utility for memdir.js (handles CRLF issues).
+  patch-trust.js              Node.js patch script — adds initTrustNetwork() to memdir.js.
 docs/
   js-behavior.md              Frontend JS behavior documentation.
   pmp-system.md               PMP (visibility) system documentation.
@@ -322,6 +346,44 @@ View-mode images and galleries use GLightbox 3.3.0 (loaded from jsDelivr CDN via
 - `FieldRenderer::render_gallery()` groups images with `data-gallery` attribute for prev/next navigation
 - Captions sourced from WP attachment `post_excerpt`, shown as `<figcaption>` inline and in lightbox overlay
 - Initialized by `initLightbox()` in JS boot sequence
+
+## Trust Network (Non-ACF Section)
+
+The plugin's first non-ACF, code-driven section. Uses a custom DB table instead of ACF field groups but appears as a peer section with its own pill and right-panel toggle.
+
+### Flow
+Builder visits luthier's profile → clicks "Request as Trusted Repair Partner" → luthier sees pending request in edit mode → accepts or declines. Accepted relationships are publicly visible. Either party can remove an accepted relationship.
+
+### DB table: `{prefix}memdir_trust_network`
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | BIGINT PK AUTO_INCREMENT | |
+| `requester_id` | BIGINT | Builder's user ID |
+| `target_post` | BIGINT | Luthier's member-directory post ID |
+| `status` | VARCHAR(10) | `pending` / `accepted` / `declined` |
+| `created_at` | DATETIME | |
+| `responded_at` | DATETIME NULL | |
+
+UNIQUE KEY on `(requester_id, target_post)`. Indexes on `(target_post, status)` and `(requester_id, status)`.
+
+### Section enabled state
+Post meta `_memdir_trust_enabled` (underscore prefix = hidden from ACF). Default: enabled (empty meta = never set = enabled).
+
+### Integration points
+- **pill-nav.php**: Hard-coded Trust pill after the SectionRegistry loop. Uses `TrustNetwork::is_trust_enabled()` for disabled class.
+- **right-panel.php**: Hard-coded Trust toggle after the section toggle loop. `data-trust-toggle="1"` distinguishes it from ACF-backed toggles so JS routes to the trust-specific handler.
+- **single-member-directory.php**: Trust section rendered after the `endforeach` for ACF sections, using the same `ob_start()` ghost pattern.
+- **memdir.js**: `initTrustNetwork()` uses event delegation on `[data-trust-action]` buttons. Guard in `initSectionToggles()` skips `data-trust-toggle` checkboxes.
+
+### AJAX endpoints
+All reuse `md_save_nonce`:
+| Action | Handler | Who | What |
+|--------|---------|-----|------|
+| `memdir_ajax_trust_request` | `handle_request()` | Builder | Insert pending row |
+| `memdir_ajax_trust_respond` | `handle_respond()` | Luthier | Update to accepted/declined |
+| `memdir_ajax_trust_cancel` | `handle_cancel()` | Builder | Delete pending row |
+| `memdir_ajax_trust_remove` | `handle_remove()` | Either | Delete accepted row |
+| `memdir_ajax_trust_toggle` | `handle_toggle()` | Author | Toggle post meta |
 
 ## Section JSON Schema
 

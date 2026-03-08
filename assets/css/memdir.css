@@ -2017,3 +2017,209 @@ dialog.memdir-header-modal--media {
     padding-bottom: 4px;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   TRUST NETWORK SECTION
+   Non-ACF code-driven section — trusted repair partner cards,
+   request/accept/decline/remove buttons, pending request rows.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Block headings ─────────────────────────────────────────── */
+.memdir-trust-block {
+  margin-bottom: 28px;
+}
+
+.memdir-trust-block__heading {
+  font-family: 'Jost', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--md-text);
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--md-border);
+}
+
+/* ── Card list (flex wrap) ──────────────────────────────────── */
+.memdir-trust-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* ── Individual trust card ──────────────────────────────────── */
+.memdir-trust-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--md-white);
+  border: 1px solid var(--md-border);
+  border-radius: 8px;
+  min-width: 200px;
+  max-width: 320px;
+  transition: box-shadow 0.15s;
+}
+
+.memdir-trust-card:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.memdir-trust-card--pending {
+  border-left: 3px solid var(--md-gold);
+}
+
+.memdir-trust-card__avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.memdir-trust-card__name {
+  font-family: 'Jost', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--md-text);
+  text-decoration: none;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.memdir-trust-card__name:hover {
+  color: var(--md-green-sage);
+}
+
+.memdir-trust-card__actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+/* ── Trust buttons ──────────────────────────────────────────── */
+.memdir-trust-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border: 1px solid var(--md-border);
+  border-radius: 6px;
+  background: var(--md-white);
+  font-family: 'Jost', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--md-text);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.memdir-trust-btn:hover {
+  background: rgba(151, 169, 124, 0.1);
+  border-color: var(--md-green-sage);
+}
+
+.memdir-trust-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* Request — prominent green CTA */
+.memdir-trust-btn--request {
+  background: var(--md-green-sage);
+  color: var(--md-white);
+  border-color: var(--md-green-sage);
+  font-weight: 600;
+}
+
+.memdir-trust-btn--request:hover {
+  background: var(--md-green-dark);
+  border-color: var(--md-green-dark);
+}
+
+/* Accept — green */
+.memdir-trust-btn--accept {
+  background: var(--md-green-sage);
+  color: var(--md-white);
+  border-color: var(--md-green-sage);
+}
+
+.memdir-trust-btn--accept:hover {
+  background: var(--md-green-dark);
+  border-color: var(--md-green-dark);
+}
+
+/* Decline — subtle red */
+.memdir-trust-btn--decline {
+  color: var(--md-coral);
+  border-color: var(--md-coral);
+}
+
+.memdir-trust-btn--decline:hover {
+  background: rgba(254, 107, 79, 0.08);
+}
+
+/* Cancel — muted */
+.memdir-trust-btn--cancel {
+  font-size: 12px;
+  color: #888;
+  border-color: #ccc;
+}
+
+.memdir-trust-btn--cancel:hover {
+  color: var(--md-coral);
+  border-color: var(--md-coral);
+}
+
+/* Remove — small, muted red */
+.memdir-trust-btn--remove {
+  font-size: 12px;
+  padding: 4px 10px;
+  color: #888;
+  border-color: #ccc;
+}
+
+.memdir-trust-btn--remove:hover {
+  color: var(--md-coral);
+  border-color: var(--md-coral);
+}
+
+/* ── Trust badges ───────────────────────────────────────────── */
+.memdir-trust-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-family: 'Jost', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.memdir-trust-badge--pending {
+  background: rgba(236, 179, 81, 0.15);
+  color: #b08830;
+}
+
+.memdir-trust-badge--accepted {
+  background: rgba(151, 169, 124, 0.15);
+  color: var(--md-green-dark);
+}
+
+/* ── Action row (request button area) ───────────────────────── */
+.memdir-trust-action {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+/* ── Empty state ────────────────────────────────────────────── */
+.memdir-trust-empty {
+  font-family: 'Jost', sans-serif;
+  font-size: 14px;
+  color: #999;
+  font-style: italic;
+  margin: 12px 0;
+}
