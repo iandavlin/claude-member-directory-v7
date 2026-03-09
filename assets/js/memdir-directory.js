@@ -1,29 +1,30 @@
 /**
  * Member Directory — Directory Listing JS.
  *
- * Handles search debounce, taxonomy filter interactions, AJAX live reload,
- * pagination, URL state management, Leaflet map with markers, and the
- * unified filter-stack for the [memdir_directory] shortcode.
+ * Handles search debounce, taxonomy filter interactions (inline multi-select
+ * search + browse-all dialogs, mirroring the profile edit form pattern),
+ * AJAX live reload, pagination, URL state management, Leaflet map with
+ * markers, and the unified filter-stack for the [memdir_directory] shortcode.
  */
 
 (function () {
 	'use strict';
 
-	const container = document.querySelector('.memdir-directory');
+	var container = document.querySelector('.memdir-directory');
 	if (!container) return;
 
 	// Config from localized script or data attribute.
-	const cfg = typeof mdDirectory !== 'undefined'
+	var cfg = typeof mdDirectory !== 'undefined'
 		? mdDirectory
 		: JSON.parse(container.dataset.config || '{}');
 
-	const ajaxurl = cfg.ajaxurl || '';
-	const nonce = cfg.nonce || '';
+	var ajaxurl = cfg.ajaxurl || '';
+	var nonce = cfg.nonce || '';
 
 	if (!ajaxurl) return;
 
 	// State: current filter selections.
-	const state = {
+	var state = {
 		search: '',
 		filters: {},  // { taxonomy_slug: [ 'term1', 'term2' ] }
 		page: 1,
@@ -31,22 +32,22 @@
 	};
 
 	// Leaflet map instance + markers layer.
-	let map = null;
-	let markersLayer = null;
+	var map = null;
+	var markersLayer = null;
 
 	// ── Init ──────────────────────────────────────────────────────────
 
 	function init() {
 		// Read initial state from DOM.
-		const searchInput = container.querySelector('[data-memdir-search]');
+		var searchInput = container.querySelector('[data-memdir-search]');
 		if (searchInput) {
 			state.search = searchInput.value;
 		}
 
 		// Read active filter pills from the filter stack.
 		container.querySelectorAll('[data-filter-stack] .memdir-directory__filter-pill').forEach(function (pill) {
-			const tax = pill.dataset.taxonomy;
-			const term = pill.dataset.term;
+			var tax = pill.dataset.taxonomy;
+			var term = pill.dataset.term;
 			if (tax && term) {
 				if (!state.filters[tax]) state.filters[tax] = [];
 				if (!state.filters[tax].includes(term)) {
@@ -59,7 +60,8 @@
 		state.section = container.dataset.section || '';
 
 		initSearch();
-		initFilters();
+		initFilterStack();
+		initFilterGroups();
 		initPagination();
 		initMap();
 	}
@@ -67,10 +69,10 @@
 	// ── Search ────────────────────────────────────────────────────────
 
 	function initSearch() {
-		const input = container.querySelector('[data-memdir-search]');
+		var input = container.querySelector('[data-memdir-search]');
 		if (!input) return;
 
-		let timer = null;
+		var timer = null;
 
 		input.addEventListener('input', function () {
 			clearTimeout(timer);
@@ -82,21 +84,24 @@
 		});
 	}
 
-	// ── Filters ───────────────────────────────────────────────────────
+	// ── Unified filter stack (top pills area) ─────────────────────────
 
-	function initFilters() {
-		// Remove pill clicks from the unified filter stack (event delegation).
+	function initFilterStack() {
 		container.addEventListener('click', function (e) {
-			const pill = e.target.closest('.memdir-directory__filter-pill');
+			// Remove a single pill from the stack.
+			var pill = e.target.closest('.memdir-directory__filter-pill');
 			if (pill) {
 				e.preventDefault();
-				const tax = pill.dataset.taxonomy;
-				const term = pill.dataset.term;
+				var tax = pill.dataset.taxonomy;
+				var term = pill.dataset.term;
 
 				if (tax && term) {
 					removeTerm(tax, term);
 					pill.remove();
-					updateFilterCounts();
+
+					// Also remove the inline badge from the filter group.
+					removeInlineBadge(tax, term);
+
 					maybeHideClearAll();
 					state.page = 1;
 					fetchResults();
@@ -104,39 +109,196 @@
 			}
 
 			// Clear all button.
-			const clearBtn = e.target.closest('[data-clear-all]');
+			var clearBtn = e.target.closest('[data-clear-all]');
 			if (clearBtn) {
 				e.preventDefault();
 				state.filters = {};
-				const stack = container.querySelector('[data-filter-stack]');
+				var stack = container.querySelector('[data-filter-stack]');
 				if (stack) stack.innerHTML = '';
-				updateFilterCounts();
+
+				// Clear all inline badges.
+				container.querySelectorAll('[data-filter-pills]').forEach(function (c) {
+					c.innerHTML = '';
+				});
+
 				state.page = 1;
 				fetchResults();
 			}
 		});
+	}
 
-		// Filter group headers open the browse-all dialog.
-		container.querySelectorAll('.memdir-directory__filter-header').forEach(function (btn) {
-			btn.addEventListener('click', function (e) {
-				e.preventDefault();
-				const group = btn.closest('.memdir-directory__filter-group');
-				if (!group) return;
+	// ── Per-group inline multi-select search ──────────────────────────
 
-				const tax = group.dataset.taxonomy;
-				const dataEl = group.querySelector('.memdir-directory__terms-data');
-				if (!dataEl) return;
+	function initFilterGroups() {
+		container.querySelectorAll('.memdir-directory__filter-group').forEach(function (group) {
+			var tax = group.dataset.taxonomy;
+			var dataEl = group.querySelector('.memdir-directory__terms-data');
+			if (!dataEl) return;
 
-				let terms;
-				try {
-					terms = JSON.parse(dataEl.textContent);
-				} catch (err) {
-					return;
+			var allTerms;
+			try {
+				allTerms = JSON.parse(dataEl.textContent);
+			} catch (err) {
+				return;
+			}
+
+			var input = group.querySelector('[data-filter-input]');
+			var resultsDiv = group.querySelector('[data-filter-results]');
+			var pillsDiv = group.querySelector('[data-filter-pills]');
+			var browseBtn = group.querySelector('[data-filter-browse]');
+
+			if (!input || !resultsDiv) return;
+
+			var debounceTimer = null;
+
+			// ── Inline search input ──
+
+			input.addEventListener('input', function () {
+				clearTimeout(debounceTimer);
+				debounceTimer = setTimeout(function () {
+					var q = input.value.trim().toLowerCase();
+					if (q.length < 1) {
+						resultsDiv.innerHTML = '';
+						resultsDiv.style.display = 'none';
+						return;
+					}
+
+					var matches = allTerms.filter(function (t) {
+						return t.name.toLowerCase().indexOf(q) !== -1;
+					});
+
+					renderDropdown(resultsDiv, matches, tax, pillsDiv, input);
+				}, 150);
+			});
+
+			input.addEventListener('focus', function () {
+				if (input.value.trim().length >= 1) {
+					var q = input.value.trim().toLowerCase();
+					var matches = allTerms.filter(function (t) {
+						return t.name.toLowerCase().indexOf(q) !== -1;
+					});
+					renderDropdown(resultsDiv, matches, tax, pillsDiv, input);
+				}
+			});
+
+			// Close dropdown when clicking outside.
+			document.addEventListener('click', function (e) {
+				if (!group.contains(e.target)) {
+					resultsDiv.style.display = 'none';
+				}
+			});
+
+			// ── Inline badge remove (event delegation on pills container) ──
+			if (pillsDiv) {
+				pillsDiv.addEventListener('click', function (e) {
+					var removeBtn = e.target.closest('[data-remove-term]');
+					if (removeBtn) {
+						e.preventDefault();
+						var termSlug = removeBtn.dataset.removeTerm;
+						var badge = removeBtn.closest('.memdir-directory__filter-badge');
+						if (badge) badge.remove();
+
+						removeTerm(tax, termSlug);
+						removeStackPill(tax, termSlug);
+						maybeHideClearAll();
+						state.page = 1;
+						fetchResults();
+					}
+				});
+			}
+
+			// ── Browse all button ──
+			if (browseBtn) {
+				browseBtn.addEventListener('click', function (e) {
+					e.preventDefault();
+					openBrowseDialog(tax, allTerms, group, pillsDiv, input);
+				});
+			}
+		});
+	}
+
+	function renderDropdown(resultsDiv, matches, tax, pillsDiv, input) {
+		resultsDiv.innerHTML = '';
+
+		if (matches.length === 0) {
+			resultsDiv.innerHTML = '<div class="memdir-directory__filter-no-results">No matches</div>';
+			resultsDiv.style.display = 'block';
+			return;
+		}
+
+		var activeTerms = state.filters[tax] || [];
+
+		matches.forEach(function (t) {
+			var item = document.createElement('div');
+			item.className = 'memdir-directory__filter-result-item';
+			if (activeTerms.includes(t.slug)) {
+				item.classList.add('is-selected');
+			}
+			item.textContent = t.name;
+			item.dataset.slug = t.slug;
+			item.dataset.name = t.name;
+
+			item.addEventListener('click', function () {
+				if (activeTerms.includes(t.slug)) {
+					// Deselect.
+					removeTerm(tax, t.slug);
+					removeInlineBadge(tax, t.slug);
+					removeStackPill(tax, t.slug);
+					item.classList.remove('is-selected');
+				} else {
+					// Select.
+					addTerm(tax, t.slug, t.name);
+					addInlineBadge(tax, t.slug, t.name, pillsDiv);
+					item.classList.add('is-selected');
 				}
 
-				openBrowseDialog(tax, terms, group);
+				maybeHideClearAll();
+				input.value = '';
+				resultsDiv.style.display = 'none';
+				state.page = 1;
+				fetchResults();
 			});
+
+			resultsDiv.appendChild(item);
 		});
+
+		resultsDiv.style.display = 'block';
+	}
+
+	// ── Inline badge management (per-group pills) ─────────────────────
+
+	function addInlineBadge(tax, termSlug, termName, pillsDiv) {
+		if (!pillsDiv) return;
+
+		// Don't duplicate.
+		if (pillsDiv.querySelector('[data-term="' + termSlug + '"]')) return;
+
+		var badge = document.createElement('span');
+		badge.className = 'memdir-directory__filter-badge';
+		badge.dataset.term = termSlug;
+		badge.innerHTML = escHtml(termName) +
+			' <button type="button" class="memdir-directory__filter-badge-remove" data-remove-term="' + escAttr(termSlug) + '">&times;</button>';
+
+		pillsDiv.appendChild(badge);
+	}
+
+	function removeInlineBadge(tax, termSlug) {
+		var group = container.querySelector('.memdir-directory__filter-group[data-taxonomy="' + tax + '"]');
+		if (!group) return;
+		var badge = group.querySelector('.memdir-directory__filter-badge[data-term="' + termSlug + '"]');
+		if (badge) badge.remove();
+	}
+
+	// ── Unified stack pill management ─────────────────────────────────
+
+	function addTerm(tax, termSlug, termName) {
+		if (!state.filters[tax]) {
+			state.filters[tax] = [];
+		}
+		if (!state.filters[tax].includes(termSlug)) {
+			state.filters[tax].push(termSlug);
+			addPillToStack(tax, termSlug, termName);
+		}
 	}
 
 	function removeTerm(tax, term) {
@@ -147,45 +309,38 @@
 		}
 	}
 
-	function addTerm(tax, termSlug, termName) {
-		if (!state.filters[tax]) {
-			state.filters[tax] = [];
-		}
-		if (!state.filters[tax].includes(termSlug)) {
-			state.filters[tax].push(termSlug);
-
-			// Add pill to the unified filter stack.
-			addPillToStack(tax, termSlug, termName);
-		}
-	}
-
 	function addPillToStack(tax, termSlug, termName) {
-		const stack = container.querySelector('[data-filter-stack]');
+		var stack = container.querySelector('[data-filter-stack]');
 		if (!stack) return;
 
-		const pill = document.createElement('button');
+		var pill = document.createElement('button');
 		pill.className = 'memdir-directory__filter-pill';
 		pill.dataset.term = termSlug;
 		pill.dataset.taxonomy = tax;
 		pill.innerHTML = escHtml(termName) + ' <span class="remove">&times;</span>';
 
-		// Insert before the "Clear all" button if it exists, otherwise append.
-		const clearBtn = stack.querySelector('[data-clear-all]');
+		var clearBtn = stack.querySelector('[data-clear-all]');
 		if (clearBtn) {
 			stack.insertBefore(pill, clearBtn);
 		} else {
 			stack.appendChild(pill);
 		}
 
-		// Ensure "Clear all" button exists.
 		ensureClearAllButton();
 	}
 
+	function removeStackPill(tax, termSlug) {
+		var stack = container.querySelector('[data-filter-stack]');
+		if (!stack) return;
+		var pill = stack.querySelector('.memdir-directory__filter-pill[data-taxonomy="' + tax + '"][data-term="' + termSlug + '"]');
+		if (pill) pill.remove();
+	}
+
 	function ensureClearAllButton() {
-		const stack = container.querySelector('[data-filter-stack]');
+		var stack = container.querySelector('[data-filter-stack]');
 		if (!stack) return;
 
-		let clearBtn = stack.querySelector('[data-clear-all]');
+		var clearBtn = stack.querySelector('[data-clear-all]');
 		if (!clearBtn) {
 			clearBtn = document.createElement('button');
 			clearBtn.className = 'memdir-directory__filter-clear';
@@ -196,60 +351,41 @@
 	}
 
 	function maybeHideClearAll() {
-		const stack = container.querySelector('[data-filter-stack]');
+		var stack = container.querySelector('[data-filter-stack]');
 		if (!stack) return;
 
-		const pills = stack.querySelectorAll('.memdir-directory__filter-pill');
-		const clearBtn = stack.querySelector('[data-clear-all]');
+		var pills = stack.querySelectorAll('.memdir-directory__filter-pill');
+		var clearBtn = stack.querySelector('[data-clear-all]');
 		if (clearBtn && pills.length === 0) {
 			clearBtn.remove();
 		}
 	}
 
-	function updateFilterCounts() {
-		container.querySelectorAll('.memdir-directory__filter-group').forEach(function (group) {
-			const tax = group.dataset.taxonomy;
-			const count = (state.filters[tax] || []).length;
-			let badge = group.querySelector('.memdir-directory__filter-count');
+	// ── Browse all dialog ─────────────────────────────────────────────
 
-			if (count > 0) {
-				if (!badge) {
-					badge = document.createElement('span');
-					badge.className = 'memdir-directory__filter-count';
-					const label = group.querySelector('.memdir-directory__filter-label');
-					if (label) label.insertAdjacentElement('afterend', badge);
-				}
-				badge.textContent = count;
-			} else if (badge) {
-				badge.remove();
-			}
-		});
-	}
-
-	function openBrowseDialog(tax, terms, group) {
+	function openBrowseDialog(tax, terms, group, pillsDiv, filterInput) {
 		// Remove existing dialog if any.
-		const existing = document.querySelector('.memdir-directory__browse-dialog');
+		var existing = document.querySelector('.memdir-directory__browse-dialog');
 		if (existing) existing.remove();
 
-		const headerBtn = group.querySelector('.memdir-directory__filter-header');
-		const label = headerBtn ? headerBtn.querySelector('.memdir-directory__filter-label') : null;
-		const title = label ? label.textContent : tax;
+		var labelEl = group.querySelector('.memdir-directory__filter-label');
+		var title = labelEl ? labelEl.textContent : tax;
 
-		const activeTerms = state.filters[tax] || [];
+		var activeTerms = state.filters[tax] || [];
 
-		const dialog = document.createElement('dialog');
+		var dialog = document.createElement('dialog');
 		dialog.className = 'memdir-directory__browse-dialog';
 
-		let searchHtml = '';
+		var searchHtml = '';
 		if (terms.length > 10) {
 			searchHtml = '<div class="memdir-directory__browse-search-wrap">' +
 				'<input type="text" class="memdir-directory__browse-search" placeholder="Search...">' +
 				'</div>';
 		}
 
-		let checkboxesHtml = '';
+		var checkboxesHtml = '';
 		terms.forEach(function (t) {
-			const checked = activeTerms.includes(t.slug) ? ' checked' : '';
+			var checked = activeTerms.includes(t.slug) ? ' checked' : '';
 			checkboxesHtml += '<label data-term-name="' + escAttr(t.name.toLowerCase()) + '"><input type="checkbox" value="' + escAttr(t.slug) + '" data-name="' + escAttr(t.name) + '"' + checked + '> ' + escHtml(t.name) + '</label>';
 		});
 
@@ -270,12 +406,12 @@
 		dialog.showModal();
 
 		// In-dialog search filtering.
-		const searchInput = dialog.querySelector('.memdir-directory__browse-search');
-		if (searchInput) {
-			searchInput.addEventListener('input', function () {
-				const q = searchInput.value.toLowerCase().trim();
+		var searchInputEl = dialog.querySelector('.memdir-directory__browse-search');
+		if (searchInputEl) {
+			searchInputEl.addEventListener('input', function () {
+				var q = searchInputEl.value.toLowerCase().trim();
 				dialog.querySelectorAll('.memdir-directory__browse-body label').forEach(function (lbl) {
-					const name = lbl.dataset.termName || '';
+					var name = lbl.dataset.termName || '';
 					lbl.style.display = (!q || name.includes(q)) ? '' : 'none';
 				});
 			});
@@ -287,22 +423,24 @@
 			dialog.remove();
 		});
 
-		// Done button.
+		// Done button — sync checkboxes back to state + inline badges.
 		dialog.querySelector('.memdir-directory__browse-done').addEventListener('click', function () {
-			// Rebuild filter state from checkboxes.
-			const newTerms = [];
+			var newTerms = [];
 			dialog.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
 				if (cb.checked) {
 					newTerms.push({ slug: cb.value, name: cb.dataset.name });
 				}
 			});
 
-			// Remove all pills for this taxonomy from the stack.
-			const stack = container.querySelector('[data-filter-stack]');
+			// Remove all stack pills + inline badges for this taxonomy.
+			var stack = container.querySelector('[data-filter-stack]');
 			if (stack) {
 				stack.querySelectorAll('.memdir-directory__filter-pill[data-taxonomy="' + tax + '"]').forEach(function (p) {
 					p.remove();
 				});
+			}
+			if (pillsDiv) {
+				pillsDiv.innerHTML = '';
 			}
 
 			// Reset filter state for this taxonomy.
@@ -311,14 +449,15 @@
 			// Re-add checked terms.
 			newTerms.forEach(function (t) {
 				addTerm(tax, t.slug, t.name);
+				addInlineBadge(tax, t.slug, t.name, pillsDiv);
 			});
 
 			if (newTerms.length === 0) {
 				delete state.filters[tax];
 			}
 
-			updateFilterCounts();
 			maybeHideClearAll();
+			if (filterInput) filterInput.value = '';
 			state.page = 1;
 			dialog.close();
 			dialog.remove();
@@ -337,13 +476,13 @@
 	// ── Map ───────────────────────────────────────────────────────────
 
 	function initMap() {
-		const mapEl = document.getElementById('memdir-directory__map');
+		var mapEl = document.getElementById('memdir-directory__map');
 		if (!mapEl || typeof L === 'undefined') return;
 
 		map = L.map(mapEl, {
 			scrollWheelZoom: false,
 			zoomControl: true,
-		}).setView([39.8, -98.5], 4); // Default: center of US
+		}).setView([39.8, -98.5], 4);
 
 		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 			attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -352,11 +491,10 @@
 
 		markersLayer = L.layerGroup().addTo(map);
 
-		// Load initial markers from embedded JSON.
-		const markersEl = document.getElementById('memdir-directory__markers');
+		var markersEl = document.getElementById('memdir-directory__markers');
 		if (markersEl) {
 			try {
-				const markers = JSON.parse(markersEl.textContent);
+				var markers = JSON.parse(markersEl.textContent);
 				updateMapMarkers(markers);
 			} catch (err) {
 				// Silently fail.
@@ -419,8 +557,6 @@
 				e.preventDefault();
 				state.page = parseInt(btn.dataset.page, 10) || 1;
 				fetchResults();
-
-				// Scroll to top of directory.
 				container.scrollIntoView({ behavior: 'smooth', block: 'start' });
 			}
 		});
@@ -431,7 +567,6 @@
 	var fetchController = null;
 
 	function fetchResults() {
-		// Abort any pending request.
 		if (fetchController) {
 			fetchController.abort();
 		}
@@ -447,7 +582,6 @@
 		formData.append('page', state.page);
 		formData.append('section', state.section);
 
-		// Serialize filters.
 		Object.keys(state.filters).forEach(function (tax) {
 			state.filters[tax].forEach(function (term) {
 				formData.append('filters[' + tax + '][]', term);
@@ -467,7 +601,6 @@
 						grid.innerHTML = json.data.html || '';
 					}
 
-					// Replace pagination.
 					var oldPag = container.querySelector('.memdir-directory__pagination');
 					if (oldPag) oldPag.remove();
 
@@ -475,7 +608,6 @@
 						grid.insertAdjacentHTML('afterend', json.data.pagination);
 					}
 
-					// Show/hide empty message.
 					var emptyMsg = container.querySelector('.memdir-directory__empty');
 					if (json.data.found_posts === 0) {
 						if (!emptyMsg) {
@@ -488,7 +620,6 @@
 						emptyMsg.remove();
 					}
 
-					// Update map markers.
 					if (json.data.markers) {
 						updateMapMarkers(json.data.markers);
 					}
@@ -506,7 +637,6 @@
 
 	function showLoading() {
 		if (container.querySelector('.memdir-directory__loading')) return;
-
 		var overlay = document.createElement('div');
 		overlay.className = 'memdir-directory__loading';
 		overlay.innerHTML = '<div class="memdir-directory__spinner"></div>';
@@ -523,27 +653,22 @@
 	function updateURL() {
 		var params = new URLSearchParams(window.location.search);
 
-		// Search.
 		if (state.search) {
 			params.set('memdir_search', state.search);
 		} else {
 			params.delete('memdir_search');
 		}
 
-		// Page.
 		if (state.page > 1) {
 			params.set('memdir_page', state.page);
 		} else {
 			params.delete('memdir_page');
 		}
 
-		// Taxonomy filters.
-		// First remove all existing taxonomy params.
 		container.querySelectorAll('.memdir-directory__filter-group').forEach(function (g) {
 			params.delete(g.dataset.taxonomy);
 		});
 
-		// Add active ones.
 		Object.keys(state.filters).forEach(function (tax) {
 			if (state.filters[tax].length) {
 				params.set(tax, state.filters[tax].join(','));

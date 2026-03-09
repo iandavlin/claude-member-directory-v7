@@ -1,7 +1,9 @@
 <?php
 /**
  * Partial: Directory Filters — sidebar layout with search, unified filter
- * stack, and taxonomy filter groups with "Browse all" dialogs.
+ * stack, and per-taxonomy multi-select search fields with "Browse all".
+ *
+ * Visual pattern mirrors the profile edit form taxonomy search (memdir-taxo-search).
  *
  * Expected variables (set by the caller before include):
  *
@@ -78,7 +80,7 @@ foreach ( $enabled_filters as $filter ) {
 		$tax   = $filter['taxonomy'] ?? '';
 		$label = $filter['label']    ?? $tax;
 
-		// Load all terms for the "Browse all" dialog.
+		// Load all terms for search + browse-all.
 		$all_terms = get_terms( [
 			'taxonomy'   => $tax,
 			'hide_empty' => true,
@@ -91,16 +93,33 @@ foreach ( $enabled_filters as $filter ) {
 		}
 
 		$active_terms = $active_filters[ $tax ] ?? [];
-		$count        = count( $active_terms );
 	?>
 	<div class="memdir-directory__filter-group" data-taxonomy="<?php echo esc_attr( $tax ); ?>">
-		<button class="memdir-directory__filter-header" data-taxonomy="<?php echo esc_attr( $tax ); ?>">
-			<span class="memdir-directory__filter-label"><?php echo esc_html( $label ); ?></span>
-			<?php if ( $count > 0 ) : ?>
-				<span class="memdir-directory__filter-count"><?php echo $count; ?></span>
-			<?php endif; ?>
-			<svg class="memdir-directory__filter-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-		</button>
+		<label class="memdir-directory__filter-label"><?php echo esc_html( $label ); ?></label>
+
+		<div class="memdir-directory__filter-search" data-filter-search>
+			<input
+				type="text"
+				class="memdir-directory__filter-input"
+				placeholder="Type to search..."
+				data-filter-input
+			>
+			<div class="memdir-directory__filter-results" data-filter-results></div>
+		</div>
+
+		<div class="memdir-directory__filter-pills" data-filter-pills>
+			<?php foreach ( $active_terms as $term_slug ) :
+				$term_obj  = get_term_by( 'slug', $term_slug, $tax );
+				$term_name = $term_obj ? $term_obj->name : $term_slug;
+			?>
+				<span class="memdir-directory__filter-badge" data-term="<?php echo esc_attr( $term_slug ); ?>">
+					<?php echo esc_html( $term_name ); ?>
+					<button type="button" class="memdir-directory__filter-badge-remove" data-remove-term="<?php echo esc_attr( $term_slug ); ?>">&times;</button>
+				</span>
+			<?php endforeach; ?>
+		</div>
+
+		<button type="button" class="memdir-directory__filter-browse" data-filter-browse>Browse all</button>
 
 		<?php // Hidden data for JS: all terms as JSON ?>
 		<script type="application/json" class="memdir-directory__terms-data">
