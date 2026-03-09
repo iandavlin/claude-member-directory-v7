@@ -192,6 +192,11 @@ class Directory {
 	 * @return string
 	 */
 	public static function render_shortcode( $atts ): string {
+		// Enqueue assets from inside the shortcode — page builders (Elementor)
+		// store content in meta rather than post_content, so has_shortcode()
+		// detection in enqueue_assets() may miss it.
+		self::enqueue_assets();
+
 		$atts = shortcode_atts( [
 			'per_page' => 0,
 			'sort'     => '',
@@ -691,6 +696,33 @@ class Directory {
 		}
 
 		echo '</div>';
+	}
+
+	/**
+	 * Enqueue directory CSS and JS. Safe to call multiple times — WordPress
+	 * deduplicates by handle. Called from render_shortcode() to guarantee
+	 * loading even when page builders bypass has_shortcode() detection.
+	 */
+	public static function enqueue_assets(): void {
+		$plugin_url = plugin_dir_url( dirname( __FILE__ ) );
+
+		wp_enqueue_style(
+			'memdir-directory',
+			$plugin_url . 'assets/css/memdir-directory.css',
+			[],
+			'0.1.0'
+		);
+		wp_enqueue_script(
+			'memdir-directory',
+			$plugin_url . 'assets/js/memdir-directory.js',
+			[],
+			'0.1.0',
+			true
+		);
+		wp_localize_script( 'memdir-directory', 'mdDirectory', [
+			'ajaxurl' => admin_url( 'admin-ajax.php' ),
+			'nonce'   => wp_create_nonce( 'memdir_directory_nonce' ),
+		] );
 	}
 
 	// -----------------------------------------------------------------------

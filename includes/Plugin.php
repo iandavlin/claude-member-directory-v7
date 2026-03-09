@@ -165,25 +165,11 @@ class Plugin {
 			return;
 		}
 
-		// Enqueue directory-specific assets (separate files, no CRLF issues).
+		// Enqueue directory-specific assets when detected early (non-page-builder).
+		// The shortcode also self-enqueues via Directory::enqueue_assets() as a
+		// fallback for page builders where has_shortcode() misses the content.
 		if ( $has_directory ) {
-			wp_enqueue_style(
-				'memdir-directory',
-				$this->plugin_url . 'assets/css/memdir-directory.css',
-				[],
-				'0.1.0'
-			);
-			wp_enqueue_script(
-				'memdir-directory',
-				$this->plugin_url . 'assets/js/memdir-directory.js',
-				[],
-				'0.1.0',
-				true
-			);
-			wp_localize_script( 'memdir-directory', 'mdDirectory', [
-				'ajaxurl' => admin_url( 'admin-ajax.php' ),
-				'nonce'   => wp_create_nonce( 'memdir_directory_nonce' ),
-			] );
+			Directory::enqueue_assets();
 		}
 
 		// Dequeue scripts with beforeunload handlers on member-directory pages.
