@@ -2342,56 +2342,42 @@ dialog.memdir-header-modal--media {
   margin: 12px 0;
 }
 
-/* ── Messaging — header button ─────────────────────────────── */
-.memdir-header__message-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 16px;
-  border: 1.5px solid var(--md-green-sage);
-  border-radius: var(--md-radius-pill);
-  background: transparent;
-  color: var(--md-green-sage);
-  font-family: var(--md-font);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  white-space: nowrap;
-  flex-shrink: 0;
+/* ── Messaging — pill-row message button ───────────────────── */
+.memdir-pill--message {
   margin-left: auto;
+  border-color: var(--md-green-sage);
+  color: var(--md-green-sage);
+  font-weight: 600;
 }
 
-.memdir-header__message-btn:hover {
+.memdir-pill--message:hover {
   background: var(--md-green-sage);
   color: var(--md-white);
+  border-color: var(--md-green-sage);
 }
 
-.memdir-header__message-btn svg {
+.memdir-pill--message svg {
   flex-shrink: 0;
 }
 
-/* Edit-mode messaging settings button — stacked text layout */
-.memdir-header__message-btn--edit {
-  flex-direction: row;
-  gap: 8px;
-  padding: 6px 14px;
+/* Edit-mode messaging settings — dashed border + sublabel */
+.memdir-pill--message-edit {
   border-style: dashed;
 }
 
-.memdir-header__message-btn-text {
+.memdir-pill--message-edit .memdir-pill__label {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   line-height: 1.2;
 }
 
-.memdir-header__message-btn-state {
+.memdir-pill--message__state {
   font-size: 13px;
   font-weight: 600;
 }
 
-.memdir-header__message-btn-label {
+.memdir-pill--message__sublabel {
   font-size: 10px;
   font-weight: 400;
   opacity: 0.7;

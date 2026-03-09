@@ -152,5 +152,47 @@ $active_section = isset( $active_section ) ? (string) $active_section : 'all';
 		<span class="memdir-pill__label">Trust</span>
 	</button>
 
+	<?php
+	// -----------------------------------------------------------------------
+	// Message button — pushed to the far right of the pill row.
+	// Edit mode: messaging settings button. View mode: send message button.
+	// -----------------------------------------------------------------------
+	$author_user_id   = (int) get_post_field( 'post_author', $post_id );
+	$messaging_access = \MemberDirectory\Messaging::get_access( $post_id );
+	$access_label     = \MemberDirectory\Messaging::get_access_label( $messaging_access );
+	$is_edit_mode     = ! empty( $is_edit );
+
+	$envelope_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>';
+
+	if ( $is_edit_mode && \MemberDirectory\Messaging::is_available() ) :
+	?>
+	<button type="button"
+	        class="memdir-pill memdir-pill--message memdir-pill--message-edit"
+	        data-action="messaging-settings"
+	        data-post-id="<?php echo esc_attr( (string) $post_id ); ?>"
+	        data-messaging-access="<?php echo esc_attr( $messaging_access ); ?>">
+		<?php echo $envelope_svg; ?>
+		<span class="memdir-pill__label">
+			<span class="memdir-pill--message__state"><?php echo esc_html( $access_label ); ?></span>
+			<span class="memdir-pill--message__sublabel">Messages</span>
+		</span>
+	</button>
+	<?php
+	elseif (
+		! $is_edit_mode
+		&& is_user_logged_in()
+		&& get_current_user_id() !== $author_user_id
+		&& \MemberDirectory\Messaging::can_message( $post_id, get_current_user_id() )
+	) :
+	?>
+	<button type="button"
+	        class="memdir-pill memdir-pill--message"
+	        data-action="send-message"
+	        data-recipient-id="<?php echo esc_attr( (string) $author_user_id ); ?>">
+		<?php echo $envelope_svg; ?>
+		<span class="memdir-pill__label">Message</span>
+	</button>
+	<?php endif; ?>
+
 </nav><?php
 // No closing PHP tag — intentional. Prevents accidental whitespace output.

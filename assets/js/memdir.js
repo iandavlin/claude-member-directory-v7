@@ -3334,7 +3334,7 @@
 					if ( json.success ) {
 						// Update button state.
 						btn.dataset.messagingAccess = json.data.access;
-						var stateEl = btn.querySelector( '.memdir-header__message-btn-state' );
+						var stateEl = btn.querySelector( '.memdir-pill--message__state' );
 						if ( stateEl ) { stateEl.textContent = json.data.label; }
 						window.mdAjax.messagingAccess = json.data.access;
 						closeModal();

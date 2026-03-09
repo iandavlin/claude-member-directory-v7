@@ -21,7 +21,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 - `templates/parts/section-view.php` — view partial (PMP waterfall + FieldRenderer per field)
 - `templates/parts/right-panel.php` — author/admin panel: View As button group, Global Default block, Primary Section block, Section toggles (edit mode), Notes block
 - `templates/parts/header-section.php` — generic data-driven sticky header (scans for ACF tab with "header" in label; maps fields to slots by type and suffix: text→title, image→avatar or banner by suffix, taxonomy→badges, url→social icons). Suffix-based image detection: avatar suffixes (`_photo`, `_avatar`, `_headshot`, `_portrait`) → circular avatar, banner suffixes (`_banner`, `_cover`, `_header_image`) → full-width banner image. Unmatched images default to avatar. Banner renders as a background-image div above the header body with avatar overlapping the bottom edge. Edit-mode fallbacks: "Edit Quick Focus" and "Add Links" placeholder text when badges/socials are empty
-- `templates/parts/pill-nav.php` — pill navigation row; All Sections + per-section pills (navigation only; enable/disable toggles live in right panel)
+- `templates/parts/pill-nav.php` — pill navigation row; All Sections + per-section pills (navigation only; enable/disable toggles live in right panel). Message button pushed to far right (edit mode: messaging settings, view mode: send message)
 - Custom image/gallery uploaders — "image in, image out" pattern for all image and gallery fields in edit mode. Replaces ACF's native media library UI with inline upload/remove buttons + caption inputs. Old attachments auto-deleted on replace/remove. Galleries use thumbnail grid with per-image captions.
 - GLightbox integration — view-mode images and galleries open in a lightbox with captions. Galleries support prev/next navigation. Initialized via `initLightbox()` in JS boot sequence. GLightbox 3.3.0 loaded from jsDelivr CDN.
 - Header editing system — per-element pencil/camera overlays with mini-modals:
@@ -36,7 +36,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 - Social link import — cross-section import for primary-capable sections (matched by URL field suffix)
 - `TrustNetwork` — first non-ACF, code-driven section. Custom DB table `{prefix}memdir_trust_network` for trusted repair partner relationships. Builder→luthier request/accept/decline flow. Enabled state via post meta `_memdir_trust_enabled`. Batch profile resolution via `resolve_profiles()` / `resolve_post_profiles()`. Hard-coded Trust pill in pill-nav + Trust toggle in right panel (distinguished by `data-trust-toggle="1"` attribute). Ghost logic: section hidden in view mode when disabled. JS `initTrustNetwork()` handles action buttons + toggle.
 - `Onboarding` — `[memdir_onboarding]` shortcode for self-service member creation. Redirect funnel: existing members → profile, new members → form (primary section radio + URL slug text input). Post-create: sets primary, enables always_on + primary sections, disables rest, redirects to profile in edit mode with primary pill active. Logged-out users handled by BuddyBoss login redirect. Inline CSS scoped to `.memdir-onboarding`.
-- `Messaging` — BuddyBoss messaging integration. "Message" button in sticky header (view mode, logged-in, not own profile). Opens `<dialog>` modal with Subject + Message fields. AJAX POST to `memdir_ajax_send_message` → calls BuddyBoss `messages_new_message()`. Graceful degradation: button hidden when BuddyBoss messaging inactive. JS `initMessaging()` in boot sequence.
+- `Messaging` — BuddyBoss messaging integration. "Message" button in pill nav row (view mode, logged-in, not own profile, pushed far right). Opens `<dialog>` modal with Subject + Message fields. AJAX POST to `memdir_ajax_send_message` → calls BuddyBoss `messages_new_message()`. Graceful degradation: button hidden when BuddyBoss messaging inactive. JS `initMessaging()` in boot sequence.
 - AJAX handlers wired:
   - `md_save_section` → `AcfFormHelper::handle_ajax_save`
   - `memdir_ajax_save_section_enabled` → `AcfFormHelper::handle_save_section_enabled`
@@ -186,12 +186,11 @@ templates/
                               (website, linkedin, instagram, twitter, facebook, youtube,
                               tiktok, vimeo, linktree). Location section special-case:
                               pulls google_map field + display_precision.
-                              Messaging button: edit mode shows settings button (current
-                              access state + "Messages" label, opens settings modal);
-                              view mode shows "Message" send button (only when access allows).
     pill-nav.php              Pill navigation. All Sections pill + one pill per section (nav only;
                               enable/disable toggles in right-panel.php). Hard-coded Trust pill
-                              appended after the SectionRegistry loop.
+                              appended after the SectionRegistry loop. Message button pushed
+                              to far right: edit mode shows messaging settings (dashed pill),
+                              view mode shows "Message" send button (only when access allows).
     trust-network.php         Trust Network section partial. Non-ACF code-driven. View mode:
                               trusted-by cards, request button (state-dependent), outbound
                               network. Edit mode: pending requests with accept/decline, accepted
@@ -210,7 +209,7 @@ assets/
                               image upload, gallery upload, figure/caption, and lightbox styles.
                               CSS vars redeclared on dialog.memdir-header-modal for portaled dialogs.
                               Trust network styles: .memdir-trust-* (block, list, card, btn, badge).
-                              Messaging styles: .memdir-header__message-btn (pill button),
+                              Messaging styles: .memdir-pill--message (pill-row button),
                               dialog.memdir-msg-modal (compose form), .memdir-msg-sent (toast).
   js/memdir.js                All frontend JS. ⚠ CRLF line endings — use Write tool or Node.js
                               scripts for edits (Edit tool fails on this file).
@@ -500,10 +499,10 @@ Messaging::is_available()
 // true when: function_exists('messages_new_message') && bp_is_active('messages')
 ```
 
-### Header button (header-section.php)
-Dual-purpose button:
-- **Edit mode**: settings button showing current access state (e.g. "Off") + "Messages" label underneath. Dashed border style. Opens settings modal on click (`data-action="messaging-settings"`).
-- **View mode**: "Message" send button. Renders only when ALL are true:
+### Pill-row button (pill-nav.php)
+Dual-purpose button pushed to the far right of the pill navigation row:
+- **Edit mode**: settings pill showing current access state (e.g. "Off") + "Messages" sublabel. Dashed border style. Opens settings modal on click (`data-action="messaging-settings"`).
+- **View mode**: "Message" send pill. Renders only when ALL are true:
   - Not edit mode
   - User is logged in
   - Not the profile author
