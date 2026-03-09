@@ -151,6 +151,25 @@ body.single-member-directory .select2-dropdown--above {
   border-radius: var(--md-radius) var(--md-radius) 0 0;
 }
 
+/* Subtle gradient fade at bottom of banner so overlapping badges/socials pop */
+.memdir-header__banner::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60%;
+  background: linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.55) 100%);
+  border-radius: 0 0 var(--md-radius) var(--md-radius);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Edit overlay sits above the gradient */
+.memdir-header__banner-edit {
+  z-index: 1;
+}
+
 /* When banner is present, body overlaps the bottom edge so the avatar
    straddles the banner/body boundary — LinkedIn-style. */
 .memdir-header__body--with-banner {
@@ -177,6 +196,11 @@ body.single-member-directory .select2-dropdown--above {
 /* Name / location text push down slightly to align with avatar bottom half */
 .memdir-header--has-banner .memdir-header__text {
   padding-bottom: 4px;
+}
+
+/* No gradient on empty banner placeholder */
+.memdir-header__banner--empty::after {
+  display: none;
 }
 
 /* ── Banner empty state (edit mode — no image yet) ───────── */
