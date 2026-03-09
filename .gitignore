@@ -8,3 +8,12 @@ Thumbs.db
 
 # Node (if ever used for tooling)
 node_modules/
+
+# Root-level patch scripts (already applied; tools/ has the keepers)
+/patch-*.js
+
+# Backup archives
+*.tar.gz
+
+# Claude local settings
+.claude/settings.local.json
