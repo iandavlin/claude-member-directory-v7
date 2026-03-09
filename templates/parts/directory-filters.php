@@ -1,6 +1,7 @@
 <?php
 /**
- * Partial: Directory Filters — search bar + taxonomy filter controls.
+ * Partial: Directory Filters — sidebar layout with search, unified filter
+ * stack, and taxonomy filter groups with "Browse all" dialogs.
  *
  * Expected variables (set by the caller before include):
  *
@@ -26,23 +27,56 @@ if ( empty( $config['search_enabled'] ) && empty( $enabled_filters ) ) {
 	return;
 }
 
+// Collect all active pills across taxonomies for the unified filter stack.
+$all_active_pills = [];
+foreach ( $enabled_filters as $filter ) {
+	$tax   = $filter['taxonomy'] ?? '';
+	$label = $filter['label']    ?? $tax;
+	$terms = $active_filters[ $tax ] ?? [];
+	foreach ( $terms as $term_slug ) {
+		$term_obj  = get_term_by( 'slug', $term_slug, $tax );
+		$term_name = $term_obj ? $term_obj->name : $term_slug;
+		$all_active_pills[] = [
+			'taxonomy'  => $tax,
+			'slug'      => $term_slug,
+			'name'      => $term_name,
+			'tax_label' => $label,
+		];
+	}
+}
+
 ?>
 <div class="memdir-directory__filters">
 
 	<?php if ( ! empty( $config['search_enabled'] ) ) : ?>
-	<input
-		type="text"
-		class="memdir-directory__search"
-		placeholder="<?php echo esc_attr( $config['search_placeholder'] ?? 'Search members...' ); ?>"
-		value="<?php echo esc_attr( $search ); ?>"
-		data-memdir-search
-	>
+	<div class="memdir-directory__search-wrap">
+		<svg class="memdir-directory__search-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+		<input
+			type="text"
+			class="memdir-directory__search"
+			placeholder="<?php echo esc_attr( $config['search_placeholder'] ?? 'Search members...' ); ?>"
+			value="<?php echo esc_attr( $search ); ?>"
+			data-memdir-search
+		>
+	</div>
 	<?php endif; ?>
+
+	<?php // Unified filter stack: all active pills from every taxonomy. ?>
+	<div class="memdir-directory__filter-stack" data-filter-stack>
+		<?php if ( ! empty( $all_active_pills ) ) : ?>
+			<?php foreach ( $all_active_pills as $pill ) : ?>
+				<button class="memdir-directory__filter-pill" data-term="<?php echo esc_attr( $pill['slug'] ); ?>" data-taxonomy="<?php echo esc_attr( $pill['taxonomy'] ); ?>">
+					<?php echo esc_html( $pill['name'] ); ?>
+					<span class="remove">&times;</span>
+				</button>
+			<?php endforeach; ?>
+			<button class="memdir-directory__filter-clear" data-clear-all>Clear all</button>
+		<?php endif; ?>
+	</div>
 
 	<?php foreach ( $enabled_filters as $filter ) :
 		$tax   = $filter['taxonomy'] ?? '';
 		$label = $filter['label']    ?? $tax;
-		$active_terms = $active_filters[ $tax ] ?? [];
 
 		// Load all terms for the "Browse all" dialog.
 		$all_terms = get_terms( [
@@ -55,24 +89,18 @@ if ( empty( $config['search_enabled'] ) && empty( $enabled_filters ) ) {
 		if ( is_wp_error( $all_terms ) ) {
 			$all_terms = [];
 		}
+
+		$active_terms = $active_filters[ $tax ] ?? [];
+		$count        = count( $active_terms );
 	?>
 	<div class="memdir-directory__filter-group" data-taxonomy="<?php echo esc_attr( $tax ); ?>">
-		<label><?php echo esc_html( $label ); ?></label>
-
-		<div class="memdir-directory__filter-selected">
-			<?php foreach ( $active_terms as $term_slug ) :
-				// Resolve term name from slug.
-				$term_obj  = get_term_by( 'slug', $term_slug, $tax );
-				$term_name = $term_obj ? $term_obj->name : $term_slug;
-			?>
-				<button class="memdir-directory__filter-pill" data-term="<?php echo esc_attr( $term_slug ); ?>">
-					<?php echo esc_html( $term_name ); ?>
-					<span class="remove">&times;</span>
-				</button>
-			<?php endforeach; ?>
-		</div>
-
-		<button class="memdir-directory__filter-browse" data-taxonomy="<?php echo esc_attr( $tax ); ?>">Browse all</button>
+		<button class="memdir-directory__filter-header" data-taxonomy="<?php echo esc_attr( $tax ); ?>">
+			<span class="memdir-directory__filter-label"><?php echo esc_html( $label ); ?></span>
+			<?php if ( $count > 0 ) : ?>
+				<span class="memdir-directory__filter-count"><?php echo $count; ?></span>
+			<?php endif; ?>
+			<svg class="memdir-directory__filter-chevron" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+		</button>
 
 		<?php // Hidden data for JS: all terms as JSON ?>
 		<script type="application/json" class="memdir-directory__terms-data">

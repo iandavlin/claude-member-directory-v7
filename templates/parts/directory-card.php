@@ -21,7 +21,7 @@ $has_banner = ! empty( $card['banner'] );
 $has_avatar = ! empty( $card['avatar'] );
 
 ?>
-<a class="memdir-card<?php echo $has_banner ? ' memdir-card--has-banner' : ''; ?>" href="<?php echo esc_url( $card['permalink'] ); ?>">
+<a class="memdir-card<?php echo $has_banner ? ' memdir-card--has-banner' : ''; ?>" href="<?php echo esc_url( $card['permalink'] ); ?>"<?php if ( ! empty( $card['lat'] ) && ! empty( $card['lng'] ) ) : ?> data-lat="<?php echo esc_attr( $card['lat'] ); ?>" data-lng="<?php echo esc_attr( $card['lng'] ); ?>"<?php endif; ?>>
 
 	<div class="memdir-card__banner"
 		<?php if ( $has_banner ) : ?>

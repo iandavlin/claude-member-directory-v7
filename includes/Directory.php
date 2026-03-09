@@ -246,19 +246,19 @@ class Directory {
 			'nonce'   => wp_create_nonce( 'memdir_directory_nonce' ),
 		] ) ) . '\'>';
 
-		// Filters.
-		if ( ! empty( $config['search_enabled'] ) || ! empty( $config['filters'] ) ) {
-			$filter_data = [
-				'config'         => $config,
-				'active_filters' => $active_filters,
-				'search'         => $search,
-			];
-			include dirname( __DIR__ ) . '/templates/parts/directory-filters.php';
-		}
+		// ── Two-column layout: main (map + cards) | sidebar (filters) ──
+
+		echo '<div class="memdir-directory__layout">';
+
+		// Main column: map + card grid.
+		echo '<div class="memdir-directory__main">';
+
+		// Map container (Leaflet will mount here).
+		echo '<div id="memdir-directory__map" class="memdir-directory__map"></div>';
 
 		// Grid.
 		echo '<div class="memdir-directory__grid">';
-		self::render_cards( $query, $viewer, $config );
+		$markers = self::render_cards( $query, $viewer, $config );
 		echo '</div>';
 
 		// Pagination.
@@ -271,7 +271,30 @@ class Directory {
 			echo '<p class="memdir-directory__empty">No members found.</p>';
 		}
 
-		echo '</div>';
+		echo '</div>'; // .memdir-directory__main
+
+		// Sidebar: filters.
+		if ( ! empty( $config['search_enabled'] ) || ! empty( $config['filters'] ) ) {
+			$filter_data = [
+				'config'         => $config,
+				'active_filters' => $active_filters,
+				'search'         => $search,
+			];
+			echo '<aside class="memdir-directory__sidebar">';
+			include dirname( __DIR__ ) . '/templates/parts/directory-filters.php';
+			echo '</aside>';
+		}
+
+		echo '</div>'; // .memdir-directory__layout
+
+		// Initial marker data for JS (embedded as JSON).
+		if ( ! empty( $markers ) ) {
+			echo '<script type="application/json" id="memdir-directory__markers">';
+			echo wp_json_encode( $markers );
+			echo '</script>';
+		}
+
+		echo '</div>'; // .memdir-directory
 
 		wp_reset_postdata();
 
@@ -314,7 +337,7 @@ class Directory {
 		$query = self::build_query( $active_filters, $search, $page, $per_page, $sort, $config, $section );
 
 		ob_start();
-		self::render_cards( $query, $viewer, $config );
+		$markers = self::render_cards( $query, $viewer, $config );
 		$html = ob_get_clean();
 
 		ob_start();
@@ -331,6 +354,7 @@ class Directory {
 			'found_posts' => (int) $query->found_posts,
 			'max_pages'   => (int) $query->max_num_pages,
 			'page'        => $page,
+			'markers'     => $markers,
 		] );
 	}
 
@@ -629,6 +653,11 @@ class Directory {
 			$loc_precision = get_field( 'member_directory_location_display_precision', $post_id ) ?: 'city';
 			if ( is_array( $loc_value ) && ! empty( $loc_value['address'] ) ) {
 				$card['location'] = FieldRenderer::format_location( $loc_value, $loc_precision );
+				// Preserve raw coordinates for map markers.
+				if ( ! empty( $loc_value['lat'] ) && ! empty( $loc_value['lng'] ) ) {
+					$card['lat'] = (float) $loc_value['lat'];
+					$card['lng'] = (float) $loc_value['lng'];
+				}
 			}
 		}
 
@@ -640,11 +669,15 @@ class Directory {
 	// -----------------------------------------------------------------------
 
 	/**
-	 * Render all cards from a WP_Query.
+	 * Render all cards from a WP_Query and collect marker data for the map.
+	 *
+	 * @return array[] Marker data: [ [ lat, lng, title, permalink, avatar ], ... ]
 	 */
-	private static function render_cards( \WP_Query $query, array $viewer, array $config ): void {
+	private static function render_cards( \WP_Query $query, array $viewer, array $config ): array {
+		$markers = [];
+
 		if ( ! $query->have_posts() ) {
-			return;
+			return $markers;
 		}
 
 		while ( $query->have_posts() ) {
@@ -656,7 +689,21 @@ class Directory {
 			}
 
 			include dirname( __DIR__ ) . '/templates/parts/directory-card.php';
+
+			// Collect marker for map.
+			if ( ! empty( $card['lat'] ) && ! empty( $card['lng'] ) ) {
+				$markers[] = [
+					'lat'       => $card['lat'],
+					'lng'       => $card['lng'],
+					'title'     => $card['title'],
+					'permalink' => $card['permalink'],
+					'avatar'    => $card['avatar'],
+					'location'  => $card['location'] ?? '',
+				];
+			}
 		}
+
+		return $markers;
 	}
 
 	/**
@@ -707,17 +754,32 @@ class Directory {
 	public static function enqueue_assets(): void {
 		$plugin_url = plugin_dir_url( dirname( __FILE__ ) );
 
+		// Leaflet CSS + JS from CDN.
+		wp_enqueue_style(
+			'leaflet',
+			'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
+			[],
+			'1.9.4'
+		);
+		wp_enqueue_script(
+			'leaflet',
+			'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+			[],
+			'1.9.4',
+			true
+		);
+
 		wp_enqueue_style(
 			'memdir-directory',
 			$plugin_url . 'assets/css/memdir-directory.css',
-			[],
-			'0.1.0'
+			[ 'leaflet' ],
+			'0.2.0'
 		);
 		wp_enqueue_script(
 			'memdir-directory',
 			$plugin_url . 'assets/js/memdir-directory.js',
-			[],
-			'0.1.0',
+			[ 'leaflet' ],
+			'0.2.0',
 			true
 		);
 		wp_localize_script( 'memdir-directory', 'mdDirectory', [

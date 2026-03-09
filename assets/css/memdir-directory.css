@@ -1,71 +1,153 @@
 /* ==========================================================================
    Member Directory — Directory Listing Styles
-   Scoped to .memdir-directory
+   Two-column layout: main (map + cards) | sidebar (filters)
+   Brand palette: gold (#ECB351), sage green (#87986A), warm neutrals
    ========================================================================== */
+
+/* ── Variables ────────────────────────────────────────────────────────── */
+
+.memdir-directory {
+	--dir-accent: #87986A;
+	--dir-accent-light: #A8BE8B;
+	--dir-accent-dark: #6b7a54;
+	--dir-gold: #ECB351;
+	--dir-gold-light: #F1DE83;
+	--dir-text: #1a1a1a;
+	--dir-text-muted: #6b7280;
+	--dir-bg: #f8f8f6;
+	--dir-white: #ffffff;
+	--dir-border: #e2e2dc;
+	--dir-radius: 8px;
+	--dir-radius-sm: 6px;
+	--dir-font: 'Jost', -apple-system, BlinkMacSystemFont, sans-serif;
+}
 
 /* ── Wrapper ──────────────────────────────────────────────────────────── */
 
 .memdir-directory {
-	max-width: 1200px;
+	max-width: 1400px;
 	margin: 0 auto;
-	padding: 20px 0;
+	padding: 20px;
 	position: relative;
+	font-family: var(--dir-font);
 }
 
-/* ── Filter bar ───────────────────────────────────────────────────────── */
+/* ── Two-column layout ───────────────────────────────────────────────── */
 
-.memdir-directory__filters {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: flex-start;
-	gap: 12px;
+.memdir-directory__layout {
+	display: grid;
+	grid-template-columns: 1fr 280px;
+	gap: 24px;
+	align-items: start;
+}
+
+.memdir-directory__main {
+	min-width: 0;
+}
+
+/* ── Map ──────────────────────────────────────────────────────────────── */
+
+.memdir-directory__map {
+	width: 100%;
+	height: 380px;
+	border-radius: var(--dir-radius);
+	border: 1px solid var(--dir-border);
 	margin-bottom: 24px;
-	padding: 16px;
-	background: #f9fafb;
-	border: 1px solid #e5e7eb;
-	border-radius: 8px;
+	background: var(--dir-bg);
+	z-index: 1;
+}
+
+/* Leaflet overrides — brand colors. */
+.memdir-directory__map .leaflet-popup-content-wrapper {
+	border-radius: var(--dir-radius);
+	font-family: var(--dir-font);
+	box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.memdir-directory__map .leaflet-popup-tip {
+	box-shadow: none;
+}
+
+.memdir-directory__map .leaflet-control-zoom a {
+	color: var(--dir-text);
+	border-color: var(--dir-border);
+}
+
+.memdir-directory__map .leaflet-control-zoom a:hover {
+	background: var(--dir-bg);
+}
+
+/* ── Sidebar ─────────────────────────────────────────────────────────── */
+
+.memdir-directory__sidebar {
+	position: sticky;
+	top: 100px;
+}
+
+.memdir-directory__sidebar .memdir-directory__filters {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	background: var(--dir-white);
+	border: 1px solid var(--dir-border);
+	border-radius: var(--dir-radius);
+	overflow: hidden;
+}
+
+/* ── Search ───────────────────────────────────────────────────────────── */
+
+.memdir-directory__search-wrap {
+	position: relative;
+	padding: 12px;
+	border-bottom: 1px solid var(--dir-border);
+}
+
+.memdir-directory__search-icon {
+	position: absolute;
+	left: 22px;
+	top: 50%;
+	transform: translateY(-50%);
+	color: var(--dir-text-muted);
+	pointer-events: none;
 }
 
 .memdir-directory__search {
-	flex: 1 1 260px;
-	min-width: 200px;
-	padding: 10px 14px;
-	border: 1px solid #d1d5db;
-	border-radius: 6px;
-	font-size: 14px;
-	background: #fff;
+	width: 100%;
+	padding: 9px 12px 9px 34px;
+	border: 1px solid var(--dir-border);
+	border-radius: var(--dir-radius-sm);
+	font-size: 13px;
+	font-family: var(--dir-font);
+	background: var(--dir-bg);
 	transition: border-color 0.15s;
+	box-sizing: border-box;
 }
 
 .memdir-directory__search:focus {
 	outline: none;
-	border-color: #6366f1;
-	box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+	border-color: var(--dir-accent);
+	box-shadow: 0 0 0 3px rgba(135, 152, 106, 0.12);
+	background: var(--dir-white);
 }
 
-/* ── Filter group ─────────────────────────────────────────────────────── */
+/* ── Unified filter stack ────────────────────────────────────────────── */
 
-.memdir-directory__filter-group {
-	flex: 0 1 auto;
-	min-width: 160px;
-}
-
-.memdir-directory__filter-group label {
-	display: block;
-	font-size: 11px;
-	font-weight: 600;
-	color: #6b7280;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	margin-bottom: 6px;
-}
-
-.memdir-directory__filter-selected {
+.memdir-directory__filter-stack {
 	display: flex;
 	flex-wrap: wrap;
-	gap: 4px;
-	margin-bottom: 4px;
-	min-height: 28px;
+	gap: 5px;
+	padding: 10px 12px;
+	border-bottom: 1px solid var(--dir-border);
+	min-height: 20px;
+}
+
+.memdir-directory__filter-stack:empty {
+	display: none;
+}
+
+/* Hide stack border when no pills */
+.memdir-directory__filter-stack:not(:has(.memdir-directory__filter-pill)) {
+	display: none;
 }
 
 .memdir-directory__filter-pill {
@@ -73,21 +155,23 @@
 	align-items: center;
 	gap: 4px;
 	padding: 3px 8px;
-	background: #e0e7ff;
-	color: #4338ca;
+	background: #e8edd8;
+	color: var(--dir-accent-dark);
 	border: none;
 	border-radius: 12px;
-	font-size: 12px;
+	font-size: 11px;
+	font-family: var(--dir-font);
 	cursor: pointer;
 	transition: background 0.15s;
+	line-height: 1.3;
 }
 
 .memdir-directory__filter-pill:hover {
-	background: #c7d2fe;
+	background: #d4ddc2;
 }
 
 .memdir-directory__filter-pill .remove {
-	font-size: 14px;
+	font-size: 13px;
 	line-height: 1;
 	opacity: 0.6;
 }
@@ -96,19 +180,77 @@
 	opacity: 1;
 }
 
-.memdir-directory__filter-browse {
+.memdir-directory__filter-clear {
 	display: inline-block;
-	font-size: 12px;
-	color: #6366f1;
+	padding: 3px 6px;
+	font-size: 11px;
+	font-family: var(--dir-font);
+	color: var(--dir-text-muted);
 	cursor: pointer;
 	text-decoration: none;
 	border: none;
 	background: none;
-	padding: 0;
+	transition: color 0.15s;
 }
 
-.memdir-directory__filter-browse:hover {
+.memdir-directory__filter-clear:hover {
+	color: var(--dir-text);
 	text-decoration: underline;
+}
+
+/* ── Filter group (accordion-like header) ────────────────────────────── */
+
+.memdir-directory__filter-group {
+	border-bottom: 1px solid var(--dir-border);
+}
+
+.memdir-directory__filter-group:last-child {
+	border-bottom: none;
+}
+
+.memdir-directory__filter-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	width: 100%;
+	padding: 10px 12px;
+	border: none;
+	background: none;
+	cursor: pointer;
+	font-family: var(--dir-font);
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--dir-text);
+	text-align: left;
+	transition: background 0.15s;
+}
+
+.memdir-directory__filter-header:hover {
+	background: var(--dir-bg);
+}
+
+.memdir-directory__filter-label {
+	flex: 1;
+}
+
+.memdir-directory__filter-count {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: 18px;
+	height: 18px;
+	padding: 0 5px;
+	background: var(--dir-accent);
+	color: var(--dir-white);
+	border-radius: 9px;
+	font-size: 10px;
+	font-weight: 600;
+}
+
+.memdir-directory__filter-chevron {
+	color: var(--dir-text-muted);
+	flex-shrink: 0;
+	transition: transform 0.15s;
 }
 
 /* ── Browse-all dialog ────────────────────────────────────────────────── */
@@ -117,27 +259,29 @@ dialog.memdir-directory__browse-dialog {
 	border: none;
 	border-radius: 12px;
 	padding: 0;
-	max-width: 440px;
+	max-width: 400px;
 	width: 90vw;
-	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+	box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+	font-family: var(--dir-font);
 }
 
 dialog.memdir-directory__browse-dialog::backdrop {
-	background: rgba(0, 0, 0, 0.4);
+	background: rgba(0, 0, 0, 0.35);
 }
 
 .memdir-directory__browse-header {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 16px 20px;
-	border-bottom: 1px solid #e5e7eb;
+	padding: 14px 18px;
+	border-bottom: 1px solid var(--dir-border);
 }
 
 .memdir-directory__browse-header h3 {
 	margin: 0;
-	font-size: 16px;
+	font-size: 15px;
 	font-weight: 600;
+	color: var(--dir-text);
 }
 
 .memdir-directory__browse-close {
@@ -145,17 +289,36 @@ dialog.memdir-directory__browse-dialog::backdrop {
 	background: none;
 	font-size: 20px;
 	cursor: pointer;
-	color: #9ca3af;
+	color: var(--dir-text-muted);
 	padding: 4px;
 	line-height: 1;
 }
 
 .memdir-directory__browse-close:hover {
-	color: #374151;
+	color: var(--dir-text);
+}
+
+.memdir-directory__browse-search-wrap {
+	padding: 10px 18px 0;
+}
+
+.memdir-directory__browse-search {
+	width: 100%;
+	padding: 8px 12px;
+	border: 1px solid var(--dir-border);
+	border-radius: var(--dir-radius-sm);
+	font-size: 13px;
+	font-family: var(--dir-font);
+	box-sizing: border-box;
+}
+
+.memdir-directory__browse-search:focus {
+	outline: none;
+	border-color: var(--dir-accent);
 }
 
 .memdir-directory__browse-body {
-	padding: 16px 20px;
+	padding: 10px 18px;
 	max-height: 50vh;
 	overflow-y: auto;
 }
@@ -164,42 +327,48 @@ dialog.memdir-directory__browse-dialog::backdrop {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	padding: 6px 0;
-	font-size: 14px;
+	padding: 5px 0;
+	font-size: 13px;
 	cursor: pointer;
+	color: var(--dir-text);
 }
 
 .memdir-directory__browse-body label:hover {
-	color: #4338ca;
+	color: var(--dir-accent-dark);
+}
+
+.memdir-directory__browse-body input[type="checkbox"] {
+	accent-color: var(--dir-accent);
 }
 
 .memdir-directory__browse-footer {
-	padding: 12px 20px;
-	border-top: 1px solid #e5e7eb;
+	padding: 10px 18px;
+	border-top: 1px solid var(--dir-border);
 	text-align: right;
 }
 
 .memdir-directory__browse-done {
-	padding: 8px 20px;
-	background: #4f46e5;
-	color: #fff;
+	padding: 7px 18px;
+	background: var(--dir-accent);
+	color: var(--dir-white);
 	border: none;
-	border-radius: 6px;
-	font-size: 14px;
+	border-radius: var(--dir-radius-sm);
+	font-size: 13px;
+	font-family: var(--dir-font);
 	cursor: pointer;
 	transition: background 0.15s;
 }
 
 .memdir-directory__browse-done:hover {
-	background: #4338ca;
+	background: var(--dir-accent-dark);
 }
 
 /* ── Card grid ────────────────────────────────────────────────────────── */
 
 .memdir-directory__grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-	gap: 20px;
+	grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+	gap: 18px;
 }
 
 /* ── Card ─────────────────────────────────────────────────────────────── */
@@ -207,9 +376,9 @@ dialog.memdir-directory__browse-dialog::backdrop {
 .memdir-card {
 	display: flex;
 	flex-direction: column;
-	background: #fff;
-	border: 1px solid #e5e7eb;
-	border-radius: 10px;
+	background: var(--dir-white);
+	border: 1px solid var(--dir-border);
+	border-radius: var(--dir-radius);
 	overflow: hidden;
 	text-decoration: none;
 	color: inherit;
@@ -217,20 +386,20 @@ dialog.memdir-directory__browse-dialog::backdrop {
 }
 
 .memdir-card:hover {
-	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 	transform: translateY(-2px);
 }
 
 .memdir-card:focus-visible {
-	outline: 2px solid #6366f1;
+	outline: 2px solid var(--dir-accent);
 	outline-offset: 2px;
 }
 
 /* Banner area */
 .memdir-card__banner {
 	position: relative;
-	height: 100px;
-	background-color: #e5e7eb;
+	height: 90px;
+	background-color: var(--dir-bg);
 	background-size: cover;
 	background-position: center;
 }
@@ -239,38 +408,37 @@ dialog.memdir-directory__browse-dialog::backdrop {
 	background-color: transparent;
 }
 
-/* Avatar — overlaps the banner bottom edge */
+/* Avatar */
 .memdir-card__avatar {
 	position: absolute;
-	bottom: -24px;
-	left: 16px;
-	width: 56px;
-	height: 56px;
+	bottom: -22px;
+	left: 14px;
+	width: 50px;
+	height: 50px;
 	border-radius: 50%;
-	border: 3px solid #fff;
+	border: 3px solid var(--dir-white);
 	object-fit: cover;
 	background: #f3f4f6;
 }
 
 /* Body */
 .memdir-card__body {
-	padding: 32px 16px 16px;
+	padding: 28px 14px 14px;
 	flex: 1;
 	display: flex;
 	flex-direction: column;
-	gap: 6px;
+	gap: 5px;
 }
 
-/* When there's no avatar, less top padding needed */
 .memdir-card:not(.memdir-card--has-banner) .memdir-card__body {
-	padding-top: 16px;
+	padding-top: 14px;
 }
 
 .memdir-card__name {
 	margin: 0;
-	font-size: 16px;
+	font-size: 15px;
 	font-weight: 600;
-	color: #111827;
+	color: var(--dir-text);
 	line-height: 1.3;
 }
 
@@ -283,17 +451,17 @@ dialog.memdir-directory__browse-dialog::backdrop {
 .memdir-card__badge {
 	display: inline-block;
 	padding: 2px 8px;
-	background: #ede9fe;
-	color: #5b21b6;
+	background: #e8edd8;
+	color: var(--dir-accent-dark);
 	border-radius: 10px;
-	font-size: 11px;
+	font-size: 10px;
 	font-weight: 500;
 }
 
 .memdir-card__location {
 	margin: 0;
-	font-size: 13px;
-	color: #6b7280;
+	font-size: 12px;
+	color: var(--dir-text-muted);
 	display: flex;
 	align-items: center;
 	gap: 4px;
@@ -302,8 +470,8 @@ dialog.memdir-directory__browse-dialog::backdrop {
 .memdir-card__location::before {
 	content: '';
 	display: inline-block;
-	width: 12px;
-	height: 12px;
+	width: 11px;
+	height: 11px;
 	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z'/%3E%3Ccircle cx='12' cy='10' r='3'/%3E%3C/svg%3E");
 	background-repeat: no-repeat;
 	background-size: contain;
@@ -325,7 +493,7 @@ dialog.memdir-directory__browse-dialog::backdrop {
 }
 
 .memdir-card:hover .memdir-card__social-icon {
-	color: #6b7280;
+	color: var(--dir-text-muted);
 }
 
 /* ── Pagination ───────────────────────────────────────────────────────── */
@@ -335,41 +503,42 @@ dialog.memdir-directory__browse-dialog::backdrop {
 	justify-content: center;
 	align-items: center;
 	gap: 4px;
-	margin-top: 32px;
+	margin-top: 28px;
 	flex-wrap: wrap;
 }
 
 .memdir-directory__page-btn {
-	padding: 8px 14px;
-	border: 1px solid #d1d5db;
-	border-radius: 6px;
-	background: #fff;
-	color: #374151;
-	font-size: 14px;
+	padding: 7px 13px;
+	border: 1px solid var(--dir-border);
+	border-radius: var(--dir-radius-sm);
+	background: var(--dir-white);
+	color: var(--dir-text);
+	font-size: 13px;
+	font-family: var(--dir-font);
 	cursor: pointer;
 	transition: all 0.15s;
 }
 
 .memdir-directory__page-btn:hover {
-	background: #f3f4f6;
-	border-color: #9ca3af;
+	background: var(--dir-bg);
+	border-color: #c8c8c0;
 }
 
 .memdir-directory__page-btn--active {
-	background: #4f46e5;
-	color: #fff;
-	border-color: #4f46e5;
+	background: var(--dir-accent);
+	color: var(--dir-white);
+	border-color: var(--dir-accent);
 }
 
 .memdir-directory__page-btn--active:hover {
-	background: #4338ca;
-	border-color: #4338ca;
+	background: var(--dir-accent-dark);
+	border-color: var(--dir-accent-dark);
 }
 
 .memdir-directory__page-dots {
-	padding: 8px 6px;
-	color: #9ca3af;
-	font-size: 14px;
+	padding: 7px 5px;
+	color: var(--dir-text-muted);
+	font-size: 13px;
 }
 
 /* ── Loading overlay ──────────────────────────────────────────────────── */
@@ -382,15 +551,15 @@ dialog.memdir-directory__browse-dialog::backdrop {
 	align-items: center;
 	justify-content: center;
 	z-index: 10;
-	border-radius: 8px;
+	border-radius: var(--dir-radius);
 	pointer-events: all;
 }
 
 .memdir-directory__spinner {
-	width: 36px;
-	height: 36px;
-	border: 3px solid #e5e7eb;
-	border-top-color: #6366f1;
+	width: 32px;
+	height: 32px;
+	border: 3px solid var(--dir-border);
+	border-top-color: var(--dir-accent);
 	border-radius: 50%;
 	animation: memdir-spin 0.7s linear infinite;
 }
@@ -404,33 +573,44 @@ dialog.memdir-directory__browse-dialog::backdrop {
 .memdir-directory__empty {
 	grid-column: 1 / -1;
 	text-align: center;
-	color: #6b7280;
-	font-size: 15px;
+	color: var(--dir-text-muted);
+	font-size: 14px;
 	padding: 40px 20px;
 }
 
 /* ── Responsive ───────────────────────────────────────────────────────── */
 
-@media (max-width: 640px) {
-	.memdir-directory__grid {
+@media (max-width: 900px) {
+	.memdir-directory__layout {
 		grid-template-columns: 1fr;
 	}
 
-	.memdir-directory__filters {
-		flex-direction: column;
+	.memdir-directory__sidebar {
+		position: static;
+		order: -1;
 	}
 
-	.memdir-directory__search {
-		flex: 1 1 100%;
+	.memdir-directory__map {
+		height: 280px;
 	}
 
-	.memdir-directory__filter-group {
-		width: 100%;
+	.memdir-directory__grid {
+		grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
 	}
 }
 
-@media (min-width: 641px) and (max-width: 900px) {
+@media (max-width: 600px) {
+	.memdir-directory {
+		padding: 12px;
+	}
+
+	.memdir-directory__map {
+		height: 220px;
+		border-radius: var(--dir-radius-sm);
+	}
+
 	.memdir-directory__grid {
-		grid-template-columns: repeat(2, 1fr);
+		grid-template-columns: 1fr;
+		gap: 12px;
 	}
 }
