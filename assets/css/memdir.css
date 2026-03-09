@@ -151,14 +151,16 @@ body.single-member-directory .select2-dropdown--above {
   border-radius: var(--md-radius) var(--md-radius) 0 0;
 }
 
-/* When banner is present, only the avatar straddles the boundary.
-   Name, badges, and socials all sit below the cover image. */
+/* When banner is present, avatar overlaps the banner bottom edge.
+   The info row (name, badges, socials) sits entirely below the cover. */
 .memdir-header__body--with-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
   margin-top: -48px;
   position: relative;
   z-index: 1;
-  padding: 0 12px 0;
-  flex-wrap: wrap;
+  padding: 0 12px;
 }
 
 /* Avatar gets a thicker white ring to stand out over the banner. */
@@ -169,24 +171,26 @@ body.single-member-directory .select2-dropdown--above {
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
-/* Identity cluster: avatar at bottom of banner, text drops below */
-.memdir-header--has-banner .memdir-header__identity {
-  align-items: flex-end;
-}
-
-/* Text block (name + location + badges) sits below the cover line */
-.memdir-header--has-banner .memdir-header__text {
-  padding-top: 4px;
-  padding-bottom: 0;
-  align-self: flex-end;
-}
-
-/* Meta (socials) wraps to its own row below the identity */
-.memdir-header--has-banner .memdir-header__meta {
+/* Info row spans full width below the avatar, holds text left + socials right */
+.memdir-header__info-row {
+  display: flex;
+  align-items: flex-start;
   width: 100%;
-  margin-left: 0;
   padding: 6px 0 0;
-  justify-content: flex-end;
+  gap: 16px;
+}
+
+/* Text fills available space, socials push right */
+.memdir-header__info-row .memdir-header__text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Socials align to the right, vertically centered with the name */
+.memdir-header__info-row .memdir-header__meta {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding-top: 2px;
 }
 
 /* ── Banner empty state (edit mode — no image yet) ───────── */
@@ -2126,8 +2130,15 @@ dialog.memdir-header-modal--media {
 
   .memdir-header__meta {
     margin-left: 0;
-    width: 100%;
     justify-content: flex-start;
+  }
+
+  .memdir-header__info-row {
+    flex-wrap: wrap;
+  }
+
+  .memdir-header__info-row .memdir-header__meta {
+    width: 100%;
   }
 
   .memdir-header__title {

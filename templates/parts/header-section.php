@@ -291,6 +291,84 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 
 	<div class="memdir-header__body<?php echo $show_banner ? ' memdir-header__body--with-banner' : ''; ?>">
 
+		<?php if ( $show_banner ) : ?>
+		<?php // ── Banner layout: avatar overlaps banner, info row below ── ?>
+
+		<div class="memdir-header__avatar-col">
+			<?php if ( $avatar_value ) : ?>
+			<div class="memdir-header__avatar-wrap">
+				<?php if ( is_array( $avatar_value ) ) : ?>
+					<img
+						class="memdir-header__avatar"
+						src="<?php echo esc_url( $avatar_value['sizes']['thumbnail'] ?? $avatar_value['url'] ?? '' ); ?>"
+						alt="<?php echo esc_attr( $avatar_value['alt'] ?? '' ); ?>"
+					>
+				<?php else : ?>
+					<?php $img_src = wp_get_attachment_image_url( (int) $avatar_value, 'thumbnail' ); ?>
+					<?php if ( $img_src ) : ?>
+					<img
+						class="memdir-header__avatar"
+						src="<?php echo esc_url( $img_src ); ?>"
+						alt="<?php echo esc_attr( $title_value ); ?>"
+					>
+					<?php endif; ?>
+				<?php endif; ?>
+			</div>
+			<?php endif; ?>
+		</div>
+
+		<div class="memdir-header__info-row">
+			<div class="memdir-header__text">
+				<h1 class="memdir-header__title"><?php echo esc_html( $title_value ); ?></h1>
+				<?php
+				$loc_value     = get_field( 'member_directory_location_location', $post_id );
+				$loc_precision = get_field( 'member_directory_location_display_precision', $post_id ) ?: 'city';
+				if ( is_array( $loc_value ) && ! empty( $loc_value['address'] ) ) {
+					$loc_display = \MemberDirectory\FieldRenderer::format_location( $loc_value, $loc_precision );
+					if ( ! empty( $loc_display ) ) :
+				?>
+				<p class="memdir-header__location"><?php echo esc_html( $loc_display ); ?></p>
+				<?php endif; } ?>
+
+				<?php if ( ! empty( $badge_names ) ) : ?>
+				<div class="memdir-header__taxo">
+					<?php foreach ( $badge_names as $badge_name ) : ?>
+						<span class="memdir-header__taxo-badge"><?php echo esc_html( $badge_name ); ?></span>
+					<?php endforeach; ?>
+				</div>
+				<?php elseif ( $is_edit_mode ) : ?>
+				<div class="memdir-header__taxo">
+					<span class="memdir-header__placeholder">Edit Quick Focus</span>
+				</div>
+				<?php endif; ?>
+			</div>
+
+			<?php if ( ! empty( $social_links ) || $is_edit_mode ) : ?>
+			<div class="memdir-header__meta">
+				<?php if ( ! empty( $social_links ) ) : ?>
+				<div class="memdir-header__social">
+					<?php foreach ( $social_links as $link ) : ?>
+						<a
+							href="<?php echo esc_url( $link['url'] ); ?>"
+							class="memdir-social-link memdir-social-link--<?php echo esc_attr( $link['platform'] ); ?>"
+							target="_blank"
+							rel="noopener noreferrer"
+							aria-label="<?php echo esc_attr( $link['label'] ); ?>"
+						><?php echo $link['svg']; ?></a>
+					<?php endforeach; ?>
+				</div>
+				<?php elseif ( $is_edit_mode ) : ?>
+				<div class="memdir-header__social">
+					<span class="memdir-header__placeholder">Add Links</span>
+				</div>
+				<?php endif; ?>
+			</div>
+			<?php endif; ?>
+		</div>
+
+		<?php else : ?>
+		<?php // ── No-banner layout: original single-row identity + meta ── ?>
+
 		<div class="memdir-header__identity">
 
 			<div class="memdir-header__avatar-col">
@@ -319,7 +397,6 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 			<div class="memdir-header__text">
 				<h1 class="memdir-header__title"><?php echo esc_html( $title_value ); ?></h1>
 				<?php
-				// Location subtitle — pulled from the Location section's google_map field.
 				$loc_value     = get_field( 'member_directory_location_location', $post_id );
 				$loc_precision = get_field( 'member_directory_location_display_precision', $post_id ) ?: 'city';
 				if ( is_array( $loc_value ) && ! empty( $loc_value['address'] ) ) {
@@ -346,7 +423,6 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 
 		<?php if ( ! empty( $social_links ) || $is_edit_mode ) : ?>
 		<div class="memdir-header__meta">
-
 			<?php if ( ! empty( $social_links ) ) : ?>
 			<div class="memdir-header__social">
 				<?php foreach ( $social_links as $link ) : ?>
@@ -364,8 +440,9 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 				<span class="memdir-header__placeholder">Add Links</span>
 			</div>
 			<?php endif; ?>
-
 		</div>
+		<?php endif; ?>
+
 		<?php endif; ?>
 
 	</div>
