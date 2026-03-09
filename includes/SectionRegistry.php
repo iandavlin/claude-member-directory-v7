@@ -198,6 +198,7 @@ class SectionRegistry {
 				'always_on'      => $existing['always_on'] ?? ( $data['always_on'] ?? false ),
 				'acf_group_key'  => $acf_group_key,
 				'default_avatar' => $existing['default_avatar'] ?? null,
+				'default_banner' => $existing['default_banner'] ?? null,
 			];
 
 			$loaded[] = $filename;

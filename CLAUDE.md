@@ -11,7 +11,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 ### Complete
 - `SectionRegistry` — JSON→DB sync (immutable pointers); runtime DB cache; mutable metadata in DB only
 - `TemplateLoader` — routes `member-directory` single/archive to plugin templates
-- `AdminSync` — admin page that triggers `SectionRegistry::sync()`; section editor UI (rename, reorder, toggle primary, toggle always_on, default avatar, delete); Add Section form; collapsible Plugin Guide panel with instructions for all major features
+- `AdminSync` — admin page that triggers `SectionRegistry::sync()`; section editor UI (rename, reorder, toggle primary, toggle always_on, default avatar, default banner, delete); Add Section form; collapsible Plugin Guide panel with instructions for all major features
 - `PmpResolver` — PMP waterfall resolution + viewer context + view-as spoofing
 - `FieldRenderer` — field-to-HTML rendering for view mode (text, textarea, url, wysiwyg, image, gallery, file, google_map, true_false, checkbox, radio, taxonomy, select). Images/galleries render with GLightbox links + `<figcaption>` captions.
 - `GlobalFields` — ACF group for global PMP + primary section controls (**⚠ debug code present — see Known Issues**)
@@ -107,7 +107,7 @@ includes/
                               conflicting scripts (elementor, buddypress).
   SectionRegistry.php         Section metadata store. sync() = sections/*.json → merge with DB option.
                               JSON files are immutable (acf_group_key only); mutable metadata
-                              (label, can_be_primary, always_on, default_avatar, order) in DB only.
+                              (label, can_be_primary, always_on, default_avatar, default_banner, order) in DB only.
                               load_from_db() = DB option → in-memory cache.
                               Public API: get_sections(), get_section(), update_section_meta(),
                               validate_for_upload(), removed_content_keys() (always []),
@@ -180,7 +180,8 @@ templates/
                                 Unmatched image → avatar fallback (backward compat)
                               Banner renders as background-image div above header body;
                               avatar overlaps bottom edge with white ring.
-                              Fallback avatar from section default_avatar.
+                              Fallback avatar from section default_avatar;
+                              fallback banner from section default_banner.
                               Inline SVG icons for 9 social platforms
                               (website, linkedin, instagram, twitter, facebook, youtube,
                               tiktok, vimeo, linktree). Location section special-case:
@@ -240,8 +241,8 @@ docs/
 1. Edit the field group in ACF admin → click Save
 2. Done — ACF saves to its DB, next page load both surfaces reflect the change. No sync needed.
 
-### Modify section metadata (label, order, can_be_primary, always_on, default_avatar)
-- Use the AdminSync UI controls (rename, reorder arrows, checkbox toggle, avatar upload) — all DB-only, no file writes needed
+### Modify section metadata (label, order, can_be_primary, always_on, default_avatar, default_banner)
+- Use the AdminSync UI controls (rename, reorder arrows, checkbox toggle, avatar upload, banner upload) — all DB-only, no file writes needed
 
 ### Delete a section
 1. Delete or deactivate the field group in ACF admin
@@ -346,14 +347,16 @@ Recognized suffixes: `_photo`, `_avatar`, `_headshot`, `_portrait`
 - ACF field name example: `member_directory_profile_photo`
 - Renders as a 75×75 circular image in the identity cluster
 - Fallback: if no image field matches an avatar suffix, the first unmatched image field is used as the avatar (backward compatibility)
-- Section `default_avatar` provides a final fallback when no member image is set
+- Section `default_avatar` provides a final fallback when no member avatar is set
 
 ### Banner (full-width background image)
 Recognized suffixes: `_banner`, `_cover`, `_header_image`
 - ACF field name example: `member_directory_profile_banner`
 - Renders as a full-width background image (140px tall desktop, 100px mobile) above the header body
 - The avatar overlaps the banner's bottom edge with a white ring for visual depth
-- When no banner field is present (or empty), the header renders without a banner — no placeholder
+- Section `default_banner` provides a fallback when no member banner is set
+- When no banner field or default banner is present, the header renders without a banner
+- In edit mode, an empty banner area shows a dashed placeholder with "Add Banner" camera overlay
 - Each section can have its own banner image
 
 ### Matching priority
@@ -542,7 +545,7 @@ Both reuse `md_save_nonce`:
   "acf_group_key": "group_md_05_business"
 }
 ```
-The section `key` is derived from the filename (`business.json` → `business`). Mutable metadata (`label`, `can_be_primary`, `always_on`, `default_avatar`, position order) lives in the `member_directory_sections` DB option, managed through the AdminSync UI. JSON files are never modified after creation.
+The section `key` is derived from the filename (`business.json` → `business`). Mutable metadata (`label`, `can_be_primary`, `always_on`, `default_avatar`, `default_banner`, position order) lives in the `member_directory_sections` DB option, managed through the AdminSync UI. JSON files are never modified after creation.
 
 ### ACF field group (managed in ACF admin, stored in ACF's DB)
 Field ordering convention inside each field group:
@@ -581,7 +584,7 @@ The `sections/` directory is gitignored. Each environment maintains its own JSON
 | `business` | `group_md_05_business` |
 | `location` | `group_69ac2395a43da` |
 
-Label, can_be_primary, always_on, default_avatar, and order live in the DB option only (managed via AdminSync UI).
+Label, can_be_primary, always_on, default_avatar, default_banner, and order live in the DB option only (managed via AdminSync UI).
 
 > **On a new server: create `sections/*.json` files manually, then run AdminSync Sync.**
 

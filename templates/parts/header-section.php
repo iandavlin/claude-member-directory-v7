@@ -213,6 +213,12 @@ if ( ! $found_avatar && ! empty( $section['default_avatar'] ) ) {
 	$found_avatar = true;
 }
 
+// Fallback banner: section default_banner if member hasn't set one.
+if ( ! $found_banner && ! empty( $section['default_banner'] ) ) {
+	$banner_value = (int) $section['default_banner'];
+	$found_banner = true;
+}
+
 // Fallback title: post title.
 if ( empty( $title_value ) ) {
 	$title_value = (string) get_the_title( $post_id );
