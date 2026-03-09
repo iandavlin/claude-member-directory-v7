@@ -1051,6 +1051,25 @@ class AdminSync {
 					The marker is stripped from the visible label automatically.
 				</p>
 
+				<h4 style="margin:16px 0 6px; font-size:13px; color:#1d2327;">Hidden / System Fields</h4>
+				<p style="margin:0 0 4px; font-size:13px; color:#50575e;">
+					Fields whose ACF key contains any of these substrings are automatically hidden from both the
+					edit and view surfaces (they still save and store data normally):
+				</p>
+				<ul style="margin:0 0 4px; padding-left:20px; font-size:13px; color:#50575e;">
+					<li><code>_enabled</code> &mdash; section enabled toggle</li>
+					<li><code>_privacy_mode</code>, <code>_privacy_level</code> &mdash; section PMP controls</li>
+					<li><code>_pmp_</code> &mdash; per-field PMP companion fields</li>
+					<li><code>_display_precision</code> &mdash; location specificity selector</li>
+					<li><code>_vis0</code> &mdash; general-purpose &ldquo;hide from front end&rdquo; marker</li>
+				</ul>
+				<p style="margin:4px 0 4px; font-size:12px; color:#787c82;">
+					<strong>Tip:</strong> To hide any ACF field from the front end, add <code>_vis0</code> to
+					its field key (e.g.&nbsp;<code>field_md_location_vis0_precision</code>). The field will still
+					be editable in wp-admin and its value is available to PHP, but it won&rsquo;t render
+					in section edit or view mode.
+				</p>
+
 				<h4 style="margin:16px 0 6px; font-size:13px; color:#1d2327;">PMP (Visibility Control)</h4>
 				<p style="margin:0 0 4px; font-size:13px; color:#50575e;">
 					Every field has a three-level visibility waterfall: <strong>Field &rarr; Section &rarr; Global</strong>.
