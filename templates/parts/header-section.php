@@ -283,7 +283,7 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 	></div>
 	<?php endif; ?>
 
-	<div class="memdir-header__body<?php echo $has_banner ? ' memdir-header__body--with-banner' : ''; ?>">
+	<div class="memdir-header__body<?php echo $show_banner ? ' memdir-header__body--with-banner' : ''; ?>">
 
 		<div class="memdir-header__identity">
 
