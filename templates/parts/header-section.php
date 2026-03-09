@@ -318,7 +318,21 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 
 		<div class="memdir-header__info-row">
 			<div class="memdir-header__text">
-				<h1 class="memdir-header__title"><?php echo esc_html( $title_value ); ?></h1>
+				<div class="memdir-header__name-row">
+					<h1 class="memdir-header__title"><?php echo esc_html( $title_value ); ?></h1>
+
+					<?php if ( ! empty( $badge_names ) ) : ?>
+					<div class="memdir-header__taxo">
+						<?php foreach ( $badge_names as $badge_name ) : ?>
+							<span class="memdir-header__taxo-badge"><?php echo esc_html( $badge_name ); ?></span>
+						<?php endforeach; ?>
+					</div>
+					<?php elseif ( $is_edit_mode ) : ?>
+					<div class="memdir-header__taxo">
+						<span class="memdir-header__placeholder">Edit Quick Focus</span>
+					</div>
+					<?php endif; ?>
+				</div>
 				<?php
 				$loc_value     = get_field( 'member_directory_location_location', $post_id );
 				$loc_precision = get_field( 'member_directory_location_display_precision', $post_id ) ?: 'city';
@@ -328,18 +342,6 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 				?>
 				<p class="memdir-header__location"><?php echo esc_html( $loc_display ); ?></p>
 				<?php endif; } ?>
-
-				<?php if ( ! empty( $badge_names ) ) : ?>
-				<div class="memdir-header__taxo">
-					<?php foreach ( $badge_names as $badge_name ) : ?>
-						<span class="memdir-header__taxo-badge"><?php echo esc_html( $badge_name ); ?></span>
-					<?php endforeach; ?>
-				</div>
-				<?php elseif ( $is_edit_mode ) : ?>
-				<div class="memdir-header__taxo">
-					<span class="memdir-header__placeholder">Edit Quick Focus</span>
-				</div>
-				<?php endif; ?>
 			</div>
 
 			<?php if ( ! empty( $social_links ) || $is_edit_mode ) : ?>
@@ -394,7 +396,21 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 			</div>
 
 			<div class="memdir-header__text">
-				<h1 class="memdir-header__title"><?php echo esc_html( $title_value ); ?></h1>
+				<div class="memdir-header__name-row">
+					<h1 class="memdir-header__title"><?php echo esc_html( $title_value ); ?></h1>
+
+					<?php if ( ! empty( $badge_names ) ) : ?>
+					<div class="memdir-header__taxo">
+						<?php foreach ( $badge_names as $badge_name ) : ?>
+							<span class="memdir-header__taxo-badge"><?php echo esc_html( $badge_name ); ?></span>
+						<?php endforeach; ?>
+					</div>
+					<?php elseif ( $is_edit_mode ) : ?>
+					<div class="memdir-header__taxo">
+						<span class="memdir-header__placeholder">Edit Quick Focus</span>
+					</div>
+					<?php endif; ?>
+				</div>
 				<?php
 				$loc_value     = get_field( 'member_directory_location_location', $post_id );
 				$loc_precision = get_field( 'member_directory_location_display_precision', $post_id ) ?: 'city';
@@ -404,18 +420,6 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 				?>
 				<p class="memdir-header__location"><?php echo esc_html( $loc_display ); ?></p>
 				<?php endif; } ?>
-
-				<?php if ( ! empty( $badge_names ) ) : ?>
-				<div class="memdir-header__taxo">
-					<?php foreach ( $badge_names as $badge_name ) : ?>
-						<span class="memdir-header__taxo-badge"><?php echo esc_html( $badge_name ); ?></span>
-					<?php endforeach; ?>
-				</div>
-				<?php elseif ( $is_edit_mode ) : ?>
-				<div class="memdir-header__taxo">
-					<span class="memdir-header__placeholder">Edit Quick Focus</span>
-				</div>
-				<?php endif; ?>
 			</div>
 
 		</div>
