@@ -72,7 +72,7 @@ class SectionRegistry {
 	 * Substrings that, if present in a field key, mark it as a system field.
 	 * Used by is_system_field() when filtering acf_get_fields() output.
 	 */
-	const SKIP_KEY_PATTERNS = [ '_enabled', '_privacy_mode', '_privacy_level', '_pmp_', '_display_precision' ];
+	const SKIP_KEY_PATTERNS = [ '_enabled', '_privacy_mode', '_privacy_level', '_pmp_', '_display_precision', '_vis0' ];
 
 	/**
 	 * In-memory cache of the loaded sections for the current request.
