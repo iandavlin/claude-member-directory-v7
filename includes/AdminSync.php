@@ -782,18 +782,23 @@ class AdminSync {
 		$config['card']['show_location'] = ! empty( $_POST['dir_show_location'] );
 		$config['card']['show_social']   = ! empty( $_POST['dir_show_social'] );
 
-		// Filter enabled/label updates.
-		$filter_enabled = $_POST['dir_filter_enabled'] ?? [];
-		$filter_labels  = $_POST['dir_filter_label']   ?? [];
+		// Filter enabled/label updates — only when filter form data is present.
+		// The filter checkboxes live in per-row forms inside the Taxonomy Filters
+		// panel, not in the General & Card Display form. Without this guard,
+		// saving general settings would wipe all filter enabled states.
+		if ( isset( $_POST['dir_filter_label'] ) ) {
+			$filter_enabled = $_POST['dir_filter_enabled'] ?? [];
+			$filter_labels  = $_POST['dir_filter_label']   ?? [];
 
-		foreach ( $config['filters'] as &$f ) {
-			$tax = $f['taxonomy'] ?? '';
-			$f['enabled'] = ! empty( $filter_enabled[ $tax ] );
-			if ( isset( $filter_labels[ $tax ] ) ) {
-				$f['label'] = sanitize_text_field( wp_unslash( $filter_labels[ $tax ] ) );
+			foreach ( $config['filters'] as &$f ) {
+				$tax = $f['taxonomy'] ?? '';
+				$f['enabled'] = ! empty( $filter_enabled[ $tax ] );
+				if ( isset( $filter_labels[ $tax ] ) ) {
+					$f['label'] = sanitize_text_field( wp_unslash( $filter_labels[ $tax ] ) );
+				}
 			}
+			unset( $f );
 		}
-		unset( $f );
 
 		Directory::update_config( $config );
 
@@ -931,6 +936,7 @@ class AdminSync {
 						echo '<form method="post" action="" style="margin:0;display:flex;align-items:center;gap:8px;flex:1;">';
 						wp_nonce_field( self::DIR_CONFIG_NONCE_ACTION, self::DIR_CONFIG_NONCE_FIELD );
 						// Pass through all current general settings as hidden fields.
+						echo '<input type="hidden" name="dir_directory_page_id" value="' . esc_attr( (string) ( $config['directory_page_id'] ?? 0 ) ) . '">';
 						echo '<input type="hidden" name="dir_per_page" value="' . esc_attr( (string) $config['per_page'] ) . '">';
 						echo '<input type="hidden" name="dir_default_sort" value="' . esc_attr( $config['default_sort'] ) . '">';
 						echo '<input type="hidden" name="dir_sort_order" value="' . esc_attr( $config['sort_order'] ) . '">';
