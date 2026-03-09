@@ -91,6 +91,7 @@ class Directory {
 			'sort_order'         => 'ASC',
 			'search_enabled'     => true,
 			'search_placeholder' => 'Search members...',
+			'map_pin_style'      => 'circle',  // circle | pin | avatar
 			'filters'            => [],
 			'card'               => [
 				'show_avatar'   => true,
@@ -250,11 +251,42 @@ class Directory {
 
 		echo '<div class="memdir-directory__layout">';
 
-		// Main column: map + card grid.
+		// Main column: map + filter stack + card grid.
 		echo '<div class="memdir-directory__main">';
 
 		// Map container (Leaflet will mount here).
 		echo '<div id="memdir-directory__map" class="memdir-directory__map"></div>';
+
+		// Unified filter stack: active pills from all taxonomies (rendered in main area).
+		$all_active_pills = [];
+		foreach ( $config['filters'] as $filter ) {
+			if ( empty( $filter['enabled'] ) ) {
+				continue;
+			}
+			$tax   = $filter['taxonomy'] ?? '';
+			$terms = $active_filters[ $tax ] ?? [];
+			foreach ( $terms as $term_slug ) {
+				$term_obj  = get_term_by( 'slug', $term_slug, $tax );
+				$term_name = $term_obj ? $term_obj->name : $term_slug;
+				$all_active_pills[] = [
+					'taxonomy' => $tax,
+					'slug'     => $term_slug,
+					'name'     => $term_name,
+				];
+			}
+		}
+
+		echo '<div class="memdir-directory__filter-stack" data-filter-stack>';
+		if ( ! empty( $all_active_pills ) ) {
+			foreach ( $all_active_pills as $pill ) {
+				echo '<button class="memdir-directory__filter-pill" data-term="' . esc_attr( $pill['slug'] ) . '" data-taxonomy="' . esc_attr( $pill['taxonomy'] ) . '">';
+				echo esc_html( $pill['name'] );
+				echo ' <span class="remove">&times;</span>';
+				echo '</button>';
+			}
+			echo '<button class="memdir-directory__filter-clear" data-clear-all>Clear all</button>';
+		}
+		echo '</div>';
 
 		// Grid.
 		echo '<div class="memdir-directory__grid">';
@@ -753,6 +785,8 @@ class Directory {
 	 */
 	public static function enqueue_assets(): void {
 		$plugin_url = plugin_dir_url( dirname( __FILE__ ) );
+		$config     = self::get_config();
+		$pin_style  = $config['map_pin_style'] ?? 'circle';
 
 		// Leaflet CSS + JS from CDN.
 		wp_enqueue_style(
@@ -769,22 +803,49 @@ class Directory {
 			true
 		);
 
+		$js_deps = [ 'leaflet' ];
+
+		// MarkerCluster for avatar pin mode.
+		if ( $pin_style === 'avatar' ) {
+			wp_enqueue_style(
+				'leaflet-markercluster',
+				'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css',
+				[ 'leaflet' ],
+				'1.5.3'
+			);
+			wp_enqueue_style(
+				'leaflet-markercluster-default',
+				'https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css',
+				[ 'leaflet-markercluster' ],
+				'1.5.3'
+			);
+			wp_enqueue_script(
+				'leaflet-markercluster',
+				'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js',
+				[ 'leaflet' ],
+				'1.5.3',
+				true
+			);
+			$js_deps[] = 'leaflet-markercluster';
+		}
+
 		wp_enqueue_style(
 			'memdir-directory',
 			$plugin_url . 'assets/css/memdir-directory.css',
 			[ 'leaflet' ],
-			'0.2.0'
+			'0.3.0'
 		);
 		wp_enqueue_script(
 			'memdir-directory',
 			$plugin_url . 'assets/js/memdir-directory.js',
-			[ 'leaflet' ],
-			'0.2.0',
+			$js_deps,
+			'0.3.0',
 			true
 		);
 		wp_localize_script( 'memdir-directory', 'mdDirectory', [
-			'ajaxurl' => admin_url( 'admin-ajax.php' ),
-			'nonce'   => wp_create_nonce( 'memdir_directory_nonce' ),
+			'ajaxurl'  => admin_url( 'admin-ajax.php' ),
+			'nonce'    => wp_create_nonce( 'memdir_directory_nonce' ),
+			'pinStyle' => $pin_style,
 		] );
 	}
 

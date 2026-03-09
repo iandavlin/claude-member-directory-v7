@@ -4,7 +4,8 @@
  * Handles search debounce, taxonomy filter interactions (inline multi-select
  * search + browse-all dialogs, mirroring the profile edit form pattern),
  * AJAX live reload, pagination, URL state management, Leaflet map with
- * markers, and the unified filter-stack for the [memdir_directory] shortcode.
+ * markers (circle / pin / avatar+cluster), and the unified filter-stack
+ * for the [memdir_directory] shortcode.
  */
 
 (function () {
@@ -20,6 +21,7 @@
 
 	var ajaxurl = cfg.ajaxurl || '';
 	var nonce = cfg.nonce || '';
+	var pinStyle = cfg.pinStyle || 'circle';
 
 	if (!ajaxurl) return;
 
@@ -44,7 +46,7 @@
 			state.search = searchInput.value;
 		}
 
-		// Read active filter pills from the filter stack.
+		// Read active filter pills from the filter stack (now in main column).
 		container.querySelectorAll('[data-filter-stack] .memdir-directory__filter-pill').forEach(function (pill) {
 			var tax = pill.dataset.taxonomy;
 			var term = pill.dataset.term;
@@ -84,7 +86,7 @@
 		});
 	}
 
-	// ── Unified filter stack (top pills area) ─────────────────────────
+	// ── Unified filter stack (main column pills area) ────────────────
 
 	function initFilterStack() {
 		container.addEventListener('click', function (e) {
@@ -489,7 +491,26 @@
 			maxZoom: 18,
 		}).addTo(map);
 
-		markersLayer = L.layerGroup().addTo(map);
+		// Use MarkerClusterGroup for avatar mode, plain LayerGroup otherwise.
+		if (pinStyle === 'avatar' && typeof L.markerClusterGroup === 'function') {
+			markersLayer = L.markerClusterGroup({
+				maxClusterRadius: 50,
+				spiderfyOnMaxZoom: true,
+				showCoverageOnHover: false,
+				iconCreateFunction: function (cluster) {
+					var count = cluster.getChildCount();
+					var size = count < 10 ? 'small' : count < 50 ? 'medium' : 'large';
+					return L.divIcon({
+						html: '<div class="memdir-cluster memdir-cluster--' + size + '">' + count + '</div>',
+						className: 'memdir-cluster-icon',
+						iconSize: L.point(40, 40),
+					});
+				},
+			});
+		} else {
+			markersLayer = L.layerGroup();
+		}
+		markersLayer.addTo(map);
 
 		var markersEl = document.getElementById('memdir-directory__markers');
 		if (markersEl) {
@@ -516,27 +537,23 @@
 			var lng = parseFloat(m.lng);
 			if (isNaN(lat) || isNaN(lng)) return;
 
-			var avatarHtml = m.avatar
-				? '<img src="' + escAttr(m.avatar) + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;margin-right:8px;vertical-align:middle;">'
-				: '';
+			var popupContent = buildPopup(m);
+			var marker;
 
-			var popupContent =
-				'<div style="display:flex;align-items:center;min-width:160px;">' +
-					avatarHtml +
-					'<div>' +
-						'<strong style="font-size:13px;">' + escHtml(m.title) + '</strong>' +
-						(m.location ? '<br><span style="font-size:11px;color:#6b7280;">' + escHtml(m.location) + '</span>' : '') +
-						'<br><a href="' + escAttr(m.permalink) + '" style="font-size:11px;color:#87986A;">View Profile &rarr;</a>' +
-					'</div>' +
-				'</div>';
-
-			var marker = L.circleMarker([lat, lng], {
-				radius: 7,
-				fillColor: '#87986A',
-				color: '#fff',
-				weight: 2,
-				fillOpacity: 0.9,
-			});
+			if (pinStyle === 'avatar') {
+				marker = createAvatarMarker(m, lat, lng);
+			} else if (pinStyle === 'pin') {
+				marker = L.marker([lat, lng]);
+			} else {
+				// Default: circle marker.
+				marker = L.circleMarker([lat, lng], {
+					radius: 7,
+					fillColor: '#87986A',
+					color: '#fff',
+					weight: 2,
+					fillOpacity: 0.9,
+				});
+			}
 
 			marker.bindPopup(popupContent, { maxWidth: 260 });
 			markersLayer.addLayer(marker);
@@ -546,6 +563,37 @@
 		if (bounds.length > 0) {
 			map.fitBounds(bounds, { padding: [30, 30], maxZoom: 12 });
 		}
+	}
+
+	function createAvatarMarker(m, lat, lng) {
+		var imgHtml = m.avatar
+			? '<img src="' + escAttr(m.avatar) + '" alt="' + escAttr(m.title) + '">'
+			: '<span class="memdir-avatar-pin__fallback">' + escHtml(m.title.charAt(0)) + '</span>';
+
+		var icon = L.divIcon({
+			html: '<div class="memdir-avatar-pin">' + imgHtml + '</div>',
+			className: 'memdir-avatar-pin-wrapper',
+			iconSize: [38, 38],
+			iconAnchor: [19, 38],
+			popupAnchor: [0, -34],
+		});
+
+		return L.marker([lat, lng], { icon: icon });
+	}
+
+	function buildPopup(m) {
+		var avatarHtml = m.avatar
+			? '<img src="' + escAttr(m.avatar) + '" style="width:36px;height:36px;border-radius:50%;object-fit:cover;margin-right:8px;vertical-align:middle;">'
+			: '';
+
+		return '<div style="display:flex;align-items:center;min-width:160px;">' +
+				avatarHtml +
+				'<div>' +
+					'<strong style="font-size:13px;">' + escHtml(m.title) + '</strong>' +
+					(m.location ? '<br><span style="font-size:11px;color:#6b7280;">' + escHtml(m.location) + '</span>' : '') +
+					'<br><a href="' + escAttr(m.permalink) + '" style="font-size:11px;color:#87986A;">View Profile &rarr;</a>' +
+				'</div>' +
+			'</div>';
 	}
 
 	// ── Pagination ────────────────────────────────────────────────────

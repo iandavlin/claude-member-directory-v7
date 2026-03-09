@@ -774,6 +774,8 @@ class AdminSync {
 		$config['sort_order']         = sanitize_text_field( wp_unslash( $_POST['dir_sort_order'] ?? 'ASC' ) );
 		$config['search_enabled']     = ! empty( $_POST['dir_search_enabled'] );
 		$config['search_placeholder'] = sanitize_text_field( wp_unslash( $_POST['dir_search_placeholder'] ?? 'Search members...' ) );
+		$pin_style = sanitize_text_field( wp_unslash( $_POST['dir_map_pin_style'] ?? 'circle' ) );
+		$config['map_pin_style'] = in_array( $pin_style, [ 'circle', 'pin', 'avatar' ], true ) ? $pin_style : 'circle';
 
 		// Card display toggles.
 		$config['card']['show_avatar']   = ! empty( $_POST['dir_show_avatar'] );
@@ -861,6 +863,20 @@ class AdminSync {
 								<label><input type="checkbox" name="dir_search_enabled" value="1" <?php checked( ! empty( $config['search_enabled'] ) ); ?>> Enable search bar</label>
 								<br>
 								<input type="text" name="dir_search_placeholder" value="<?php echo esc_attr( $config['search_placeholder'] ); ?>" style="margin-top:4px;width:260px;" placeholder="Search placeholder text">
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="dir_map_pin_style">Map pin style</label></th>
+							<td>
+								<select id="dir_map_pin_style" name="dir_map_pin_style">
+									<?php
+									$pin_style = $config['map_pin_style'] ?? 'circle';
+									foreach ( [ 'circle' => 'Circle marker (sage green)', 'pin' => 'Default pin', 'avatar' => 'Avatar photos (with clustering)' ] as $v => $l ) :
+									?>
+										<option value="<?php echo esc_attr( $v ); ?>" <?php selected( $pin_style, $v ); ?>><?php echo esc_html( $l ); ?></option>
+									<?php endforeach; ?>
+								</select>
+								<p class="description">How members appear on the map. "Avatar photos" groups nearby members into clusters at low zoom.</p>
 							</td>
 						</tr>
 						<tr>

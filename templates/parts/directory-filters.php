@@ -1,7 +1,10 @@
 <?php
 /**
- * Partial: Directory Filters — sidebar layout with search, unified filter
- * stack, and per-taxonomy multi-select search fields with "Browse all".
+ * Partial: Directory Filters — sidebar with search bar and per-taxonomy
+ * multi-select search fields with "Browse all".
+ *
+ * The unified filter stack (active pills) is rendered in the main column
+ * by Directory::render_shortcode(), not here.
  *
  * Visual pattern mirrors the profile edit form taxonomy search (memdir-taxo-search).
  *
@@ -29,24 +32,6 @@ if ( empty( $config['search_enabled'] ) && empty( $enabled_filters ) ) {
 	return;
 }
 
-// Collect all active pills across taxonomies for the unified filter stack.
-$all_active_pills = [];
-foreach ( $enabled_filters as $filter ) {
-	$tax   = $filter['taxonomy'] ?? '';
-	$label = $filter['label']    ?? $tax;
-	$terms = $active_filters[ $tax ] ?? [];
-	foreach ( $terms as $term_slug ) {
-		$term_obj  = get_term_by( 'slug', $term_slug, $tax );
-		$term_name = $term_obj ? $term_obj->name : $term_slug;
-		$all_active_pills[] = [
-			'taxonomy'  => $tax,
-			'slug'      => $term_slug,
-			'name'      => $term_name,
-			'tax_label' => $label,
-		];
-	}
-}
-
 ?>
 <div class="memdir-directory__filters">
 
@@ -62,19 +47,6 @@ foreach ( $enabled_filters as $filter ) {
 		>
 	</div>
 	<?php endif; ?>
-
-	<?php // Unified filter stack: all active pills from every taxonomy. ?>
-	<div class="memdir-directory__filter-stack" data-filter-stack>
-		<?php if ( ! empty( $all_active_pills ) ) : ?>
-			<?php foreach ( $all_active_pills as $pill ) : ?>
-				<button class="memdir-directory__filter-pill" data-term="<?php echo esc_attr( $pill['slug'] ); ?>" data-taxonomy="<?php echo esc_attr( $pill['taxonomy'] ); ?>">
-					<?php echo esc_html( $pill['name'] ); ?>
-					<span class="remove">&times;</span>
-				</button>
-			<?php endforeach; ?>
-			<button class="memdir-directory__filter-clear" data-clear-all>Clear all</button>
-		<?php endif; ?>
-	</div>
 
 	<?php foreach ( $enabled_filters as $filter ) :
 		$tax   = $filter['taxonomy'] ?? '';
