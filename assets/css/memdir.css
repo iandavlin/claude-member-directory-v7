@@ -126,12 +126,43 @@ body.single-member-directory .select2-dropdown--above {
 
 /* ─────────────────────────────────────────────────────────────
    HEADER — modern spread layout
-   Identity (avatar + name) left, badges + social icons right.
+   Optional banner image across full width, then identity
+   (avatar + name) left, badges + social icons right.
 ───────────────────────────────────────────────────────────── */
 
 .memdir-header {
   padding: 16px 12px 10px;
   position: relative;
+}
+
+/* When a banner is present, remove top padding — the banner covers it. */
+.memdir-header--has-banner {
+  padding-top: 0;
+}
+
+/* ── Banner image ──────────────────────────────────────────── */
+.memdir-header__banner {
+  width: 100%;
+  height: 140px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-color: var(--md-green-pale);
+  border-radius: var(--md-radius) var(--md-radius) 0 0;
+}
+
+/* When banner is present, body overlaps the bottom edge slightly. */
+.memdir-header__body--with-banner {
+  margin-top: -30px;
+  position: relative;
+  z-index: 1;
+  padding: 0 4px;
+}
+
+/* Avatar gets a thicker white ring to stand out over the banner. */
+.memdir-header--has-banner .memdir-header__avatar-wrap {
+  border: 3px solid var(--md-white);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
 }
 
 /* Main flex row — spreads identity left, meta right */
@@ -2007,6 +2038,15 @@ dialog.memdir-header-modal--media {
 
   .memdir-section {
     grid-template-columns: 1fr;
+  }
+
+  .memdir-header__banner {
+    height: 100px;
+    border-radius: 0;
+  }
+
+  .memdir-header__body--with-banner {
+    margin-top: -24px;
   }
 
   .memdir-header__body {

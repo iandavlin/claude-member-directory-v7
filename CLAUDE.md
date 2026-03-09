@@ -20,7 +20,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 - `templates/parts/section-edit.php` — edit partial (left controls panel + ACF form)
 - `templates/parts/section-view.php` — view partial (PMP waterfall + FieldRenderer per field)
 - `templates/parts/right-panel.php` — author/admin panel: View As button group, Global Default block, Primary Section block, Section toggles (edit mode), Notes block
-- `templates/parts/header-section.php` — generic data-driven sticky header (scans for ACF tab with "header" in label; maps fields to slots: text→title, image→avatar, taxonomy→badges, url→social icons). Edit-mode fallbacks: "Edit Quick Focus" and "Add Links" placeholder text when badges/socials are empty
+- `templates/parts/header-section.php` — generic data-driven sticky header (scans for ACF tab with "header" in label; maps fields to slots by type and suffix: text→title, image→avatar or banner by suffix, taxonomy→badges, url→social icons). Suffix-based image detection: avatar suffixes (`_photo`, `_avatar`, `_headshot`, `_portrait`) → circular avatar, banner suffixes (`_banner`, `_cover`, `_header_image`) → full-width banner image. Unmatched images default to avatar. Banner renders as a background-image div above the header body with avatar overlapping the bottom edge. Edit-mode fallbacks: "Edit Quick Focus" and "Add Links" placeholder text when badges/socials are empty
 - `templates/parts/pill-nav.php` — pill navigation row; All Sections + per-section pills (navigation only; enable/disable toggles live in right panel)
 - Custom image/gallery uploaders — "image in, image out" pattern for all image and gallery fields in edit mode. Replaces ACF's native media library UI with inline upload/remove buttons + caption inputs. Old attachments auto-deleted on replace/remove. Galleries use thumbnail grid with per-image captions.
 - GLightbox integration — view-mode images and galleries open in a lightbox with captions. Galleries support prev/next navigation. Initialized via `initLightbox()` in JS boot sequence. GLightbox 3.3.0 loaded from jsDelivr CDN.
@@ -171,9 +171,17 @@ templates/
   archive-member-directory.php Scaffold only — no real implementation.
   parts/
     header-section.php        Generic sticky header. Scans ACF fields for a tab with "header"
-                              in label; maps fields to slots by type (text→title, image→avatar,
-                              taxonomy→badges, url→social icons). Fallback avatar from
-                              section default_avatar. Inline SVG icons for 9 social platforms
+                              in label; maps fields to slots by type and suffix:
+                              text→title, image→avatar or banner (suffix-based),
+                              taxonomy→badges, url→social icons.
+                              Image suffix detection:
+                                Avatar: _photo, _avatar, _headshot, _portrait → circular
+                                Banner: _banner, _cover, _header_image → full-width bg
+                                Unmatched image → avatar fallback (backward compat)
+                              Banner renders as background-image div above header body;
+                              avatar overlaps bottom edge with white ring.
+                              Fallback avatar from section default_avatar.
+                              Inline SVG icons for 9 social platforms
                               (website, linkedin, instagram, twitter, facebook, youtube,
                               tiktok, vimeo, linktree). Location section special-case:
                               pulls google_map field + display_precision.
@@ -328,6 +336,31 @@ The `_enabled` field defaults to `1` (enabled), so a section that has never been
 
 ### Use case
 In the Location section, parking details, accessibility details, and a storefront image sit under a tab labelled `Storefront [if:business]`. These fields only appear when the member has their Business section enabled.
+
+## Header Image Slots (Avatar + Banner)
+
+Image fields under the header tab are mapped to display slots using **suffix-based detection** on the ACF field name:
+
+### Avatar (circular profile image)
+Recognized suffixes: `_photo`, `_avatar`, `_headshot`, `_portrait`
+- ACF field name example: `member_directory_profile_photo`
+- Renders as a 75×75 circular image in the identity cluster
+- Fallback: if no image field matches an avatar suffix, the first unmatched image field is used as the avatar (backward compatibility)
+- Section `default_avatar` provides a final fallback when no member image is set
+
+### Banner (full-width background image)
+Recognized suffixes: `_banner`, `_cover`, `_header_image`
+- ACF field name example: `member_directory_profile_banner`
+- Renders as a full-width background image (140px tall desktop, 100px mobile) above the header body
+- The avatar overlaps the banner's bottom edge with a white ring for visual depth
+- When no banner field is present (or empty), the header renders without a banner — no placeholder
+- Each section can have its own banner image
+
+### Matching priority
+1. Banner suffixes are checked first
+2. Avatar suffixes are checked second
+3. Unmatched images fall through to avatar (first one wins)
+4. Only one avatar and one banner are used — subsequent matches are ignored
 
 ## Header Editing System
 

@@ -898,13 +898,26 @@ class AdminSync {
 				</p>
 				<ul style="margin:0 0 4px; padding-left:20px; font-size:13px; color:#50575e;">
 					<li>First <strong>text</strong> field &rarr; profile title</li>
-					<li>First <strong>image</strong> field &rarr; avatar</li>
+					<li><strong>Image</strong> fields &rarr; avatar or banner (matched by field name suffix):
+						<ul style="margin:4px 0 2px; padding-left:16px;">
+							<li><strong>Avatar</strong> (circular): <code>_photo</code>, <code>_avatar</code>,
+								<code>_headshot</code>, <code>_portrait</code></li>
+							<li><strong>Banner</strong> (full-width): <code>_banner</code>, <code>_cover</code>,
+								<code>_header_image</code></li>
+							<li>Any image field without a recognized suffix defaults to <strong>avatar</strong></li>
+						</ul>
+					</li>
 					<li><strong>Taxonomy</strong> fields &rarr; category badges</li>
 					<li><strong>URL</strong> fields &rarr; social icons (matched by suffix: <code>_website</code>,
 						<code>_linkedin</code>, <code>_instagram</code>, <code>_twitter</code>,
 						<code>_facebook</code>, <code>_youtube</code>, <code>_tiktok</code>,
 						<code>_vimeo</code>, <code>_linktree</code>)</li>
 				</ul>
+				<p style="margin:4px 0 4px; font-size:12px; color:#787c82;">
+					<strong>Tip:</strong> Each section can have its own banner. To add one, create an image field
+					under the header tab with a name ending in <code>_banner</code> (e.g.&nbsp;<code>member_directory_profile_banner</code>).
+					The banner renders as a full-width background image above the header bar.
+				</p>
 
 				<h4 style="margin:16px 0 6px; font-size:13px; color:#1d2327;">Conditional Tabs</h4>
 				<p style="margin:0 0 4px; font-size:13px; color:#50575e;">

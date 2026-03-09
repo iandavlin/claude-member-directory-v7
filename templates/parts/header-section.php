@@ -7,12 +7,16 @@
  * are mapped to display slots by type and field-name suffix:
  *
  *   First text field   → title (h1)
- *   First image field  → avatar (circular)
+ *   Image fields       → avatar or banner (matched by suffix):
+ *     Avatar suffixes:  _photo, _avatar, _headshot, _portrait → circular avatar
+ *     Banner suffixes:  _banner, _cover, _header_image        → full-width banner
+ *     Unmatched image:  first unmatched → avatar fallback
  *   taxonomy fields    → category badge pills
  *   url fields         → social icon links (matched by name suffix to
  *                        platform icons via inline SVGs)
  *
- * Layout: identity (avatar + name) left, badges + social icons right.
+ * Layout: optional banner across full width, then identity (avatar + name)
+ * left, badges + social icons right.
  *
  * Social platform suffixes (field name must end with one of):
  *   _website, _linkedin, _instagram, _twitter, _facebook,
@@ -77,6 +81,10 @@ $social_platforms = [
 	],
 ];
 
+// Suffix lists for image field slot detection.
+$avatar_suffixes = [ '_photo', '_avatar', '_headshot', '_portrait' ];
+$banner_suffixes = [ '_banner', '_cover', '_header_image' ];
+
 // ---------------------------------------------------------------------------
 // PERF: Use cached ACF fields if the parent template pre-fetched them.
 // Avoids a duplicate acf_get_fields() call — the same group was already
@@ -111,12 +119,14 @@ if ( empty( $header_fields ) ) {
 
 // Resolve display slots from header tab fields.
 $title_value  = '';
-$image_value  = null;
-$taxo_terms   = []; // grouped: [ [ WP_Term|int|string, ... ], ... ]
+$avatar_value = null;   // circular avatar image
+$banner_value = null;   // full-width banner image
+$taxo_terms   = [];     // grouped: [ [ WP_Term|int|string, ... ], ... ]
 $social_links = [];
 
-$found_title = false;
-$found_image = false;
+$found_title  = false;
+$found_avatar = false;
+$found_banner = false;
 
 foreach ( $header_fields as $f ) {
 	$ftype = $f['type'] ?? '';
@@ -139,9 +149,37 @@ foreach ( $header_fields as $f ) {
 			break;
 
 		case 'image':
-			if ( ! $found_image && ! empty( $value ) ) {
-				$image_value = $value;
-				$found_image = true;
+			if ( ! empty( $value ) ) {
+				// Match by suffix: avatar suffixes → avatar slot, banner suffixes → banner slot.
+				$matched = false;
+
+				if ( ! $found_banner ) {
+					foreach ( $banner_suffixes as $sfx ) {
+						if ( str_ends_with( $fname, $sfx ) ) {
+							$banner_value = $value;
+							$found_banner = true;
+							$matched      = true;
+							break;
+						}
+					}
+				}
+
+				if ( ! $matched && ! $found_avatar ) {
+					foreach ( $avatar_suffixes as $sfx ) {
+						if ( str_ends_with( $fname, $sfx ) ) {
+							$avatar_value = $value;
+							$found_avatar = true;
+							$matched      = true;
+							break;
+						}
+					}
+				}
+
+				// Fallback: first unmatched image → avatar (backward compat).
+				if ( ! $matched && ! $found_avatar ) {
+					$avatar_value = $value;
+					$found_avatar = true;
+				}
 			}
 			break;
 
@@ -170,14 +208,25 @@ foreach ( $header_fields as $f ) {
 }
 
 // Fallback avatar: section default_avatar if member hasn't set one.
-if ( ! $found_image && ! empty( $section['default_avatar'] ) ) {
-	$image_value = (int) $section['default_avatar'];
-	$found_image = true;
+if ( ! $found_avatar && ! empty( $section['default_avatar'] ) ) {
+	$avatar_value = (int) $section['default_avatar'];
+	$found_avatar = true;
 }
 
 // Fallback title: post title.
 if ( empty( $title_value ) ) {
 	$title_value = (string) get_the_title( $post_id );
+}
+
+// Resolve banner image URL for the background.
+$banner_url = '';
+if ( $banner_value ) {
+	if ( is_array( $banner_value ) ) {
+		// ACF array return — prefer large size, fall back to full URL.
+		$banner_url = $banner_value['sizes']['large'] ?? $banner_value['url'] ?? '';
+	} else {
+		$banner_url = (string) wp_get_attachment_image_url( (int) $banner_value, 'large' );
+	}
 }
 
 // Flatten taxonomy term groups into a single list of display names.
@@ -200,26 +249,31 @@ foreach ( $taxo_terms as $group ) {
 }
 
 $has_meta       = ! empty( $badge_names ) || ! empty( $social_links );
+$has_banner     = ! empty( $banner_url );
 $is_edit_mode   = ! empty( $is_edit ); // inherited from single-member-directory.php
 
 ?>
-<header class="memdir-header memdir-header--<?php echo esc_attr( $section_key ); ?>">
+<header class="memdir-header memdir-header--<?php echo esc_attr( $section_key ); ?><?php echo $has_banner ? ' memdir-header--has-banner' : ''; ?>">
 
-	<div class="memdir-header__body">
+	<?php if ( $has_banner ) : ?>
+	<div class="memdir-header__banner" style="background-image: url(<?php echo esc_url( $banner_url ); ?>);" role="img" aria-label="<?php echo esc_attr( $title_value ); ?> banner"></div>
+	<?php endif; ?>
+
+	<div class="memdir-header__body<?php echo $has_banner ? ' memdir-header__body--with-banner' : ''; ?>">
 
 		<div class="memdir-header__identity">
 
 			<div class="memdir-header__avatar-col">
-				<?php if ( $image_value ) : ?>
+				<?php if ( $avatar_value ) : ?>
 				<div class="memdir-header__avatar-wrap">
-					<?php if ( is_array( $image_value ) ) : ?>
+					<?php if ( is_array( $avatar_value ) ) : ?>
 						<img
 							class="memdir-header__avatar"
-							src="<?php echo esc_url( $image_value['sizes']['thumbnail'] ?? $image_value['url'] ?? '' ); ?>"
-							alt="<?php echo esc_attr( $image_value['alt'] ?? '' ); ?>"
+							src="<?php echo esc_url( $avatar_value['sizes']['thumbnail'] ?? $avatar_value['url'] ?? '' ); ?>"
+							alt="<?php echo esc_attr( $avatar_value['alt'] ?? '' ); ?>"
 						>
 					<?php else : ?>
-						<?php $img_src = wp_get_attachment_image_url( (int) $image_value, 'thumbnail' ); ?>
+						<?php $img_src = wp_get_attachment_image_url( (int) $avatar_value, 'thumbnail' ); ?>
 						<?php if ( $img_src ) : ?>
 						<img
 							class="memdir-header__avatar"

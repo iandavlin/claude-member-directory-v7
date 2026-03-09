@@ -54,6 +54,8 @@ Present your interpretation and ask the user to confirm or correct — all in on
                     If a header tab already exists, skip this question entirely.
 
 If a header tab IS already present, also ask in the same message:
+  Add banner image: ? (yes/no — adds a full-width banner image field above the header bar)
+                      Skip if an image field with a banner suffix already exists under the tab.
   Taxonomy slug(s) for badge pills: ? (comma-separated, e.g. member_category — or "none")
                                       Skip if taxonomy fields already exist under the tab.
   Social platforms: ? (comma-separated from: website, linkedin, instagram, twitter,
@@ -61,6 +63,7 @@ If a header tab IS already present, also ask in the same message:
                       Skip if url fields already exist under the tab.
 
 If no header tab exists and the user says yes to adding one, ask in a follow-up:
+  Add banner image: ? (yes/no)
   Taxonomy slug(s) for badge pills: ?
   Social platforms: ?
 
@@ -194,12 +197,22 @@ tab and the next tab (or end of fields). Map them to slots:
   Slot          Match rule
   ─────────     ───────────────────────────────────────────────
   Title         First text field  (type == "text")
-  Avatar        First image field (type == "image")
+  Avatar        Image field with avatar suffix (type == "image")
+                Recognized avatar suffixes: _photo, _avatar, _headshot, _portrait
+                Fallback: first image without a recognized suffix → avatar
+  Banner        Image field with banner suffix (type == "image")
+                Recognized banner suffixes: _banner, _cover, _header_image
   Badges        All taxonomy fields (type == "taxonomy")
   Social icons  All url fields (type == "url")
 
+Image slot matching priority:
+  1. Banner suffixes checked first
+  2. Avatar suffixes checked second
+  3. Unmatched images fall through to avatar (first one wins)
+  4. Only one avatar and one banner — subsequent matches ignored
 
-5c. Auto-inject Title (text) and Avatar (image) if missing
+
+5c. Auto-inject Title (text), Avatar (image), and optionally Banner (image) if missing
 
 Insert these fields at the end of the header tab's content block (after any existing
 header fields, before the next tab or end of array). Each field is followed immediately
@@ -230,7 +243,8 @@ If no text field exists under the header tab:
     "layout":        "horizontal"
   }
 
-If no image field exists under the header tab:
+If no image field with an avatar suffix exists under the header tab (and no unmatched
+image field that would fall through to avatar):
 
   Content field:
   {
@@ -247,6 +261,32 @@ If no image field exists under the header tab:
     "key":           "field_md_{key}_pmp_photo",
     "label":         "Photo Visibility",
     "name":          "member_directory_field_pmp_{key}_photo",
+    "type":          "button_group",
+    "choices":       { "inherit": "Inherit", "public": "Public",
+                       "member": "Member", "private": "Private" },
+    "default_value": "inherit",
+    "return_format": "value",
+    "allow_null":    0,
+    "layout":        "horizontal"
+  }
+
+If the user wants a banner and no image field with a banner suffix exists:
+
+  Content field:
+  {
+    "key":           "field_md_{key}_banner",
+    "label":         "Banner",
+    "name":          "member_directory_{key}_banner",
+    "type":          "image",
+    "return_format": "array",
+    "preview_size":  "medium",
+    "library":       "all"
+  }
+  PMP companion:
+  {
+    "key":           "field_md_{key}_pmp_banner",
+    "label":         "Banner Visibility",
+    "name":          "member_directory_field_pmp_{key}_banner",
     "type":          "button_group",
     "choices":       { "inherit": "Inherit", "public": "Public",
                        "member": "Member", "private": "Private" },
@@ -314,6 +354,7 @@ After injection, show a summary table of the header tab result:
   ─────────     ───────────────────────────────────   ──────────────────────
   Title         field_md_{key}_name                  ✅ already present / ➕ added
   Avatar        field_md_{key}_photo                 ✅ already present / ➕ added
+  Banner        field_md_{key}_banner                ✅ already present / ➕ added / — not requested
   Badges        field_md_{key}_{taxonomy_slug}        ✅ already present / ➕ added
   Social        field_md_{key}_linkedin               ✅ already present / ➕ added
   Social        field_md_{key}_website                ➕ added
@@ -323,6 +364,9 @@ Warnings:
   • URL fields with no recognised platform suffix will be silently ignored by the
     header template. Recognised suffixes: _website, _linkedin, _instagram, _twitter,
     _facebook, _youtube, _tiktok, _vimeo, _linktree.
+  • Image fields are mapped by name suffix. Avatar suffixes: _photo, _avatar,
+    _headshot, _portrait. Banner suffixes: _banner, _cover, _header_image.
+    Unmatched image fields default to the avatar slot.
   • If can_be_primary and title or avatar are still missing after injection:
     "⚠ This section can be primary but is missing a title/avatar in the header tab."
 
