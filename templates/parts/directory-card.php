@@ -29,12 +29,14 @@ $has_avatar = ! empty( $card['avatar'] );
 		<?php endif; ?>
 	>
 		<?php if ( $has_avatar ) : ?>
-		<img
-			class="memdir-card__avatar"
-			src="<?php echo esc_url( $card['avatar'] ); ?>"
-			alt="<?php echo esc_attr( $card['title'] ); ?>"
-			loading="lazy"
-		>
+		<div class="memdir-card__avatar-wrap">
+			<img
+				class="memdir-card__avatar"
+				src="<?php echo esc_url( $card['avatar'] ); ?>"
+				alt="<?php echo esc_attr( $card['title'] ); ?>"
+				loading="lazy"
+			>
+		</div>
 		<?php endif; ?>
 	</div>
 

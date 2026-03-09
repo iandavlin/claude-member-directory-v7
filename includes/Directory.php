@@ -836,13 +836,13 @@ class Directory {
 			'memdir-directory',
 			$plugin_url . 'assets/css/memdir-directory.css',
 			[ 'leaflet' ],
-			'0.4.0'
+			'0.4.1'
 		);
 		wp_enqueue_script(
 			'memdir-directory',
 			$plugin_url . 'assets/js/memdir-directory.js',
 			$js_deps,
-			'0.4.0',
+			'0.4.1',
 			true
 		);
 		$js_data = [
