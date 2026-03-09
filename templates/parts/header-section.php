@@ -314,7 +314,6 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 					<?php endif; ?>
 				</div>
 				<?php endif; ?>
-				<p class="memdir-header__eyebrow"><?php echo esc_html( strtoupper( $section_label ) ); ?></p>
 			</div>
 
 			<div class="memdir-header__text">

@@ -241,12 +241,11 @@ body.single-member-directory .select2-dropdown--above {
   flex-shrink: 0;
 }
 
-/* Avatar + eyebrow stacked vertically, centered */
+/* Avatar stacked vertically, centered */
 .memdir-header__avatar-col {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
   flex-shrink: 0;
 }
 
@@ -283,16 +282,6 @@ body.single-member-directory .select2-dropdown--above {
   align-items: center;
   gap: 4px;
   white-space: nowrap;
-}
-
-.memdir-header__eyebrow {
-  font-family: var(--md-font);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--md-green-sage);
-  margin: 0 0 2px;
 }
 
 .memdir-header__location {
