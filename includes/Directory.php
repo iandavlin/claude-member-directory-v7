@@ -85,6 +85,7 @@ class Directory {
 		$stored = get_option( self::CONFIG_OPTION, [] );
 
 		$defaults = [
+			'directory_page_id'  => 0,
 			'per_page'           => 12,
 			'default_sort'       => 'title',
 			'sort_order'         => 'ASC',
@@ -723,6 +724,38 @@ class Directory {
 			'ajaxurl' => admin_url( 'admin-ajax.php' ),
 			'nonce'   => wp_create_nonce( 'memdir_directory_nonce' ),
 		] );
+	}
+
+	// -----------------------------------------------------------------------
+	// Taxonomy link helpers
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Get the directory page permalink, or empty string if not configured.
+	 */
+	public static function get_directory_url(): string {
+		$config  = self::get_config();
+		$page_id = (int) ( $config['directory_page_id'] ?? 0 );
+		if ( $page_id < 1 ) {
+			return '';
+		}
+		$url = get_permalink( $page_id );
+		return $url ? (string) $url : '';
+	}
+
+	/**
+	 * Build a URL to the directory page with a single taxonomy filter active.
+	 *
+	 * @param string $taxonomy   Taxonomy slug (e.g. 'mp2t_instruments').
+	 * @param string $term_slug  Term slug (e.g. 'guitar').
+	 * @return string Full URL or empty string if directory page not set.
+	 */
+	public static function get_term_filter_url( string $taxonomy, string $term_slug ): string {
+		$base = self::get_directory_url();
+		if ( empty( $base ) || empty( $taxonomy ) || empty( $term_slug ) ) {
+			return '';
+		}
+		return add_query_arg( $taxonomy, $term_slug, $base );
 	}
 
 	// -----------------------------------------------------------------------

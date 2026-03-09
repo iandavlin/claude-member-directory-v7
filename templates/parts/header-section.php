@@ -121,7 +121,7 @@ if ( empty( $header_fields ) ) {
 $title_value  = '';
 $avatar_value = null;   // circular avatar image
 $banner_value = null;   // full-width banner image
-$taxo_terms   = [];     // grouped: [ [ WP_Term|int|string, ... ], ... ]
+$taxo_groups  = [];     // [ [ 'taxonomy' => slug, 'terms' => [ WP_Term|... ] ], ... ]
 $social_links = [];
 
 $found_title  = false;
@@ -185,7 +185,10 @@ foreach ( $header_fields as $f ) {
 
 		case 'taxonomy':
 			if ( ! empty( $value ) ) {
-				$taxo_terms[] = is_array( $value ) ? $value : [ $value ];
+				$taxo_groups[] = [
+					'taxonomy' => $f['taxonomy'] ?? '',
+					'terms'    => is_array( $value ) ? $value : [ $value ],
+				];
 			}
 			break;
 
@@ -235,26 +238,28 @@ if ( $banner_value ) {
 	}
 }
 
-// Flatten taxonomy term groups into a single list of display names.
-$badge_names = [];
-foreach ( $taxo_terms as $group ) {
-	foreach ( $group as $term ) {
+// Flatten taxonomy term groups into a single list of badge data.
+// Each badge: [ 'name' => string, 'slug' => string, 'taxonomy' => string ]
+$badges = [];
+foreach ( $taxo_groups as $group ) {
+	$tax_slug = $group['taxonomy'];
+	foreach ( $group['terms'] as $term ) {
 		if ( $term instanceof WP_Term ) {
-			$badge_names[] = $term->name;
+			$badges[] = [ 'name' => $term->name, 'slug' => $term->slug, 'taxonomy' => $tax_slug ];
 		} elseif ( is_array( $term ) && isset( $term['name'] ) ) {
-			$badge_names[] = $term['name'];
+			$badges[] = [ 'name' => $term['name'], 'slug' => $term['slug'] ?? sanitize_title( $term['name'] ), 'taxonomy' => $tax_slug ];
 		} elseif ( is_int( $term ) ) {
 			$t = get_term( $term );
 			if ( $t instanceof WP_Term ) {
-				$badge_names[] = $t->name;
+				$badges[] = [ 'name' => $t->name, 'slug' => $t->slug, 'taxonomy' => $tax_slug ];
 			}
 		} elseif ( is_string( $term ) && ! empty( $term ) ) {
-			$badge_names[] = $term;
+			$badges[] = [ 'name' => $term, 'slug' => sanitize_title( $term ), 'taxonomy' => $tax_slug ];
 		}
 	}
 }
 
-$has_meta       = ! empty( $badge_names ) || ! empty( $social_links );
+$has_meta       = ! empty( $badges ) || ! empty( $social_links );
 $has_banner     = ! empty( $banner_url );
 $is_edit_mode   = ! empty( $is_edit ); // inherited from single-member-directory.php
 
@@ -321,10 +326,16 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 				<div class="memdir-header__name-row">
 					<h1 class="memdir-header__title"><?php echo esc_html( $title_value ); ?></h1>
 
-					<?php if ( ! empty( $badge_names ) ) : ?>
+					<?php if ( ! empty( $badges ) ) : ?>
 					<div class="memdir-header__taxo">
-						<?php foreach ( $badge_names as $badge_name ) : ?>
-							<span class="memdir-header__taxo-badge"><?php echo esc_html( $badge_name ); ?></span>
+						<?php foreach ( $badges as $badge ) :
+							$badge_url = ( ! $is_edit_mode ) ? \MemberDirectory\Directory::get_term_filter_url( $badge['taxonomy'], $badge['slug'] ) : '';
+						?>
+							<?php if ( ! empty( $badge_url ) ) : ?>
+								<a href="<?php echo esc_url( $badge_url ); ?>" class="memdir-header__taxo-badge"><?php echo esc_html( $badge['name'] ); ?></a>
+							<?php else : ?>
+								<span class="memdir-header__taxo-badge"><?php echo esc_html( $badge['name'] ); ?></span>
+							<?php endif; ?>
 						<?php endforeach; ?>
 					</div>
 					<?php elseif ( $is_edit_mode ) : ?>
@@ -399,10 +410,16 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 				<div class="memdir-header__name-row">
 					<h1 class="memdir-header__title"><?php echo esc_html( $title_value ); ?></h1>
 
-					<?php if ( ! empty( $badge_names ) ) : ?>
+					<?php if ( ! empty( $badges ) ) : ?>
 					<div class="memdir-header__taxo">
-						<?php foreach ( $badge_names as $badge_name ) : ?>
-							<span class="memdir-header__taxo-badge"><?php echo esc_html( $badge_name ); ?></span>
+						<?php foreach ( $badges as $badge ) :
+							$badge_url = ( ! $is_edit_mode ) ? \MemberDirectory\Directory::get_term_filter_url( $badge['taxonomy'], $badge['slug'] ) : '';
+						?>
+							<?php if ( ! empty( $badge_url ) ) : ?>
+								<a href="<?php echo esc_url( $badge_url ); ?>" class="memdir-header__taxo-badge"><?php echo esc_html( $badge['name'] ); ?></a>
+							<?php else : ?>
+								<span class="memdir-header__taxo-badge"><?php echo esc_html( $badge['name'] ); ?></span>
+							<?php endif; ?>
 						<?php endforeach; ?>
 					</div>
 					<?php elseif ( $is_edit_mode ) : ?>

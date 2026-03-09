@@ -469,7 +469,12 @@ class FieldRenderer {
 		echo '<ul class="memdir-field-list">';
 
 		foreach ( $terms as $term ) {
-			echo '<li>' . esc_html( $term->name ) . '</li>';
+			$url = Directory::get_term_filter_url( $taxonomy, $term->slug );
+			if ( ! empty( $url ) ) {
+				echo '<li><a href="' . esc_url( $url ) . '" class="memdir-field-link">' . esc_html( $term->name ) . '</a></li>';
+			} else {
+				echo '<li>' . esc_html( $term->name ) . '</li>';
+			}
 		}
 
 		echo '</ul>';

@@ -768,6 +768,7 @@ class AdminSync {
 		}
 
 		// General settings save.
+		$config['directory_page_id']  = max( 0, (int) ( $_POST['dir_directory_page_id'] ?? 0 ) );
 		$config['per_page']           = max( 1, (int) ( $_POST['dir_per_page'] ?? 12 ) );
 		$config['default_sort']       = sanitize_text_field( wp_unslash( $_POST['dir_default_sort'] ?? 'title' ) );
 		$config['sort_order']         = sanitize_text_field( wp_unslash( $_POST['dir_sort_order'] ?? 'ASC' ) );
@@ -816,6 +817,21 @@ class AdminSync {
 					<?php wp_nonce_field( self::DIR_CONFIG_NONCE_ACTION, self::DIR_CONFIG_NONCE_FIELD ); ?>
 
 					<table class="form-table" role="presentation">
+						<tr>
+							<th scope="row"><label for="dir_directory_page_id">Directory page</label></th>
+							<td>
+								<?php
+								wp_dropdown_pages( [
+									'name'              => 'dir_directory_page_id',
+									'id'                => 'dir_directory_page_id',
+									'selected'          => (int) ( $config['directory_page_id'] ?? 0 ),
+									'show_option_none'  => '&mdash; Select page &mdash;',
+									'option_none_value' => '0',
+								] );
+								?>
+								<p class="description">Page with the <code>[memdir_directory]</code> shortcode. Taxonomy terms on profiles will link here.</p>
+							</td>
+						</tr>
 						<tr>
 							<th scope="row"><label for="dir_per_page">Cards per page</label></th>
 							<td><input type="number" id="dir_per_page" name="dir_per_page" value="<?php echo esc_attr( (string) $config['per_page'] ); ?>" min="1" max="100" style="width:80px;"></td>

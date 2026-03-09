@@ -340,6 +340,27 @@ body.single-member-directory .select2-dropdown--above {
   line-height: 1.4;
 }
 
+/* Taxonomy badge links — inherit badge styling, add hover */
+a.memdir-header__taxo-badge {
+  text-decoration: none;
+  color: var(--md-text-muted);
+  transition: border-color 0.15s, color 0.15s;
+}
+a.memdir-header__taxo-badge:hover {
+  border-color: var(--md-accent);
+  color: var(--md-accent);
+}
+
+/* Section body taxonomy links */
+.memdir-field-list a.memdir-field-link {
+  text-decoration: none;
+  color: inherit;
+  transition: color 0.15s;
+}
+.memdir-field-list a.memdir-field-link:hover {
+  color: var(--md-accent);
+}
+
 /* Edit-mode placeholders for empty badges / social links */
 .memdir-header__placeholder {
   font-family: var(--md-font);
