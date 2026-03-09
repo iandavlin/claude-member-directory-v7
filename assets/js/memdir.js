@@ -1805,21 +1805,41 @@
 			}
 			if ( ! headerFieldKeys.length ) { return; }
 
-			// Classify header fields by type
-			var imageField     = null;
+			// Classify header fields by type.
+			// Image fields are split into avatar vs banner by ACF field name suffix.
+			var AVATAR_SUFFIXES = [ "_photo", "_avatar", "_headshot", "_portrait" ];
+			var BANNER_SUFFIXES = [ "_banner", "_cover", "_header_image" ];
+
+			var imageField     = null;  // avatar
 			var imageFieldKey  = null;
+			var bannerField    = null;
+			var bannerFieldKey = null;
 			var textFields     = [];
 			var taxonomyFields = [];
 			var socialFields   = [];
 
+			function endsWithAny( str, suffixes ) {
+				for ( var i = 0; i < suffixes.length; i++ ) {
+					if ( str.length > suffixes[ i ].length && str.substring( str.length - suffixes[ i ].length ) === suffixes[ i ] ) { return true; }
+				}
+				return false;
+			}
+
 			fieldContent.querySelectorAll( '.acf-field[data-key]' ).forEach( function ( field ) {
 				var key  = field.dataset.key  || '';
 				var type = field.dataset.type || '';
+				var name = field.dataset.name || '';
 				if ( headerFieldKeys.indexOf( key ) === -1 ) { return; }
 
-				if ( type === 'image' && ! imageField ) {
-					imageField    = field;
-					imageFieldKey = key;
+				if ( type === 'image' ) {
+					if ( ! bannerField && endsWithAny( name, BANNER_SUFFIXES ) ) {
+						bannerField    = field;
+						bannerFieldKey = key;
+					} else if ( ! imageField ) {
+						// Avatar suffixes or unmatched fallback → avatar.
+						imageField    = field;
+						imageFieldKey = key;
+					}
 				} else if ( type === 'text' ) {
 					textFields.push( field );
 				} else if ( type === 'taxonomy' ) {
@@ -1829,7 +1849,7 @@
 				}
 			} );
 
-			var hasAnyField = imageField || textFields.length || taxonomyFields.length || socialFields.length;
+			var hasAnyField = imageField || bannerField || textFields.length || taxonomyFields.length || socialFields.length;
 			if ( ! hasAnyField ) { return; }
 
 			// Find header elements in the rendered header
@@ -2127,6 +2147,147 @@
 				} );
 
 				overlay.addEventListener( 'click', function () { showDialogSafe( avDialog ); } );
+			}
+
+			// ========================================
+			// Banner — camera overlay + modal
+			// ========================================
+			var bannerDiv = headerWrap.querySelector( ".memdir-header__banner" );
+			if ( bannerField && bannerDiv ) {
+				bannerField.style.display = 'none';
+
+				var bnAcfInput  = bannerField.querySelector( 'input[type="hidden"]' );
+				var bnHasImage  = bnAcfInput && bnAcfInput.value && bnAcfInput.value !== '0';
+
+				// Camera overlay on the banner div
+				var bnOverlay = document.createElement( 'div' );
+				bnOverlay.className = 'memdir-header__banner-edit';
+				bnOverlay.innerHTML = cameraSvg + '<span>' + ( bnHasImage ? 'Change Banner' : 'Add Banner' ) + '</span>';
+				bnOverlay.title = bnHasImage ? 'Change banner image' : 'Add a banner image';
+				bannerDiv.appendChild( bnOverlay );
+
+				// Build modal content
+				var bnFragment = document.createElement( 'div' );
+
+				var bnPreview = document.createElement( 'img' );
+				bnPreview.className = 'memdir-header-modal__banner-preview';
+				bnPreview.src = bnHasImage && bannerDiv.style.backgroundImage
+					? bannerDiv.style.backgroundImage.replace( /^url\(["']?/, '' ).replace( /["']?\)$/, '' )
+					: '';
+				bnPreview.alt = 'Current banner';
+				if ( ! bnHasImage ) { bnPreview.style.display = 'none'; }
+				bnFragment.appendChild( bnPreview );
+
+				var bnStatus = document.createElement( 'p' );
+				bnStatus.className = 'memdir-header-modal__avatar-status';
+				bnStatus.textContent = '';
+				bnFragment.appendChild( bnStatus );
+
+				var bnFileInput = document.createElement( 'input' );
+				bnFileInput.type = 'file';
+				bnFileInput.accept = 'image/*';
+				bnFileInput.style.display = 'none';
+				bnFragment.appendChild( bnFileInput );
+
+				var bnUploadBtn = document.createElement( 'button' );
+				bnUploadBtn.type = 'button';
+				bnUploadBtn.className = 'memdir-header-modal__avatar-btn';
+				bnUploadBtn.textContent = 'Choose Banner Image';
+				bnFragment.appendChild( bnUploadBtn );
+
+				var bnDeleteBtn = document.createElement( 'button' );
+				bnDeleteBtn.type = 'button';
+				bnDeleteBtn.className = 'memdir-header-modal__avatar-btn memdir-header-modal__avatar-btn--delete';
+				bnDeleteBtn.textContent = 'Remove Banner';
+				if ( ! bnHasImage ) { bnDeleteBtn.style.display = 'none'; }
+				bnFragment.appendChild( bnDeleteBtn );
+
+				// Delete handler
+				bnDeleteBtn.addEventListener( 'click', function () {
+					if ( ! confirm( 'Remove the banner image?' ) ) { return; }
+
+					bnStatus.textContent = 'Removing\u2026';
+					bnDeleteBtn.disabled = true;
+					bnUploadBtn.disabled = true;
+
+					var fd = new FormData();
+					fd.append( 'action',  'md_save_section' );
+					fd.append( 'nonce',   window.mdAjax.nonce );
+					fd.append( 'post_id', postId );
+					fd.append( 'acf[' + bannerFieldKey + ']', '' );
+
+					fetch( window.mdAjax.ajaxurl, { method: 'POST', body: fd } )
+						.then( function ( r ) { return r.json(); } )
+						.then( function ( res ) {
+							if ( res.success ) {
+								bnPreview.src = '';
+								bnPreview.style.display = 'none';
+								bannerDiv.style.backgroundImage = '';
+								bannerDiv.classList.add( 'memdir-header__banner--empty' );
+								bnStatus.textContent = 'Banner removed.';
+								bnDeleteBtn.style.display = 'none';
+								bnOverlay.innerHTML = cameraSvg + '<span>Add Banner</span>';
+								if ( bnAcfInput ) { bnAcfInput.value = ''; }
+							} else {
+								bnStatus.textContent = 'Error: ' + ( res.data && res.data.message ? res.data.message : 'Remove failed.' );
+							}
+							bnDeleteBtn.disabled = false;
+							bnUploadBtn.disabled = false;
+						} )
+						.catch( function () {
+							bnStatus.textContent = 'Network error.';
+							bnDeleteBtn.disabled = false;
+							bnUploadBtn.disabled = false;
+						} );
+				} );
+
+				var bnDialog = createMiniModal( 'Update Banner', [], {
+					customContent: bnFragment,
+					modifier: 'banner',
+					noSave: true
+				} );
+
+				bnUploadBtn.addEventListener( 'click', function () { bnFileInput.click(); } );
+				bnFileInput.addEventListener( 'change', function () {
+					var file = bnFileInput.files[ 0 ];
+					if ( ! file ) { return; }
+
+					bnStatus.textContent = 'Uploading\u2026';
+					bnUploadBtn.disabled = true;
+
+					var fd = new FormData();
+					fd.append( 'action',    'memdir_ajax_upload_avatar' );
+					fd.append( 'nonce',     window.mdAjax.nonce );
+					fd.append( 'post_id',   postId );
+					fd.append( 'field_key', bannerFieldKey );
+					fd.append( 'image',     file );
+
+					fetch( window.mdAjax.ajaxurl, { method: 'POST', body: fd } )
+						.then( function ( r ) { return r.json(); } )
+						.then( function ( res ) {
+							if ( res.success && res.data && res.data.url ) {
+								bnPreview.src = res.data.url;
+								bnPreview.style.display = '';
+								bannerDiv.style.backgroundImage = 'url(' + res.data.url + ')';
+								bannerDiv.classList.remove( 'memdir-header__banner--empty' );
+								bnStatus.textContent = 'Banner updated.';
+								bnDeleteBtn.style.display = '';
+								bnOverlay.innerHTML = cameraSvg + '<span>Change Banner</span>';
+								if ( bnAcfInput && res.data.id ) { bnAcfInput.value = res.data.id; }
+							} else {
+								bnStatus.textContent = 'Error: ' + ( res.data && res.data.message ? res.data.message : 'Upload failed.' );
+							}
+							bnUploadBtn.disabled = false;
+							bnFileInput.value = '';
+						} )
+						.catch( function () {
+							bnStatus.textContent = 'Network error.';
+							bnUploadBtn.disabled = false;
+							bnFileInput.value = '';
+						} );
+				} );
+
+				bnOverlay.addEventListener( 'click', function () { showDialogSafe( bnDialog ); } );
 			}
 
 			// ========================================
