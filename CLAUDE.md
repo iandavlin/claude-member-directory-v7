@@ -59,12 +59,12 @@ WordPress plugin: section-based member profile and directory system powered by A
   - `memdir_ajax_trust_toggle` → `TrustNetwork::handle_toggle`
   - `memdir_ajax_send_message` → `Messaging::handle_send_message`
   - `memdir_ajax_save_messaging_access` → `Messaging::handle_save_access`
+  - `memdir_directory_filter` → `Directory::handle_filter` (also nopriv)
+- `Directory` — `[memdir_directory]` shortcode for searchable, filterable member card grid. Admin-configurable taxonomy filters via AdminSync dashboard. AJAX live filtering, search debounce, pagination, URL state. Card data extraction mirrors header-section.php suffix patterns. PMP-aware: ghosted profiles/fields hidden. Config stored in `member_directory_directory_config` DB option.
 
 ### Not Started / Scaffold Only
-- `includes/DirectoryQuery.php` — 🔜 not created yet
 - `templates/archive-member-directory.php` — placeholder `<div>` only
 - `templates/parts/sidebar.php` — not created
-- `templates/parts/directory-card.php` — not created
 
 ## Architecture Rules — Never Violate
 
@@ -158,7 +158,13 @@ includes/
                               handle_send_message() enforces access + bypasses BB friendship
                               filter when plugin access allows. handle_save_access() AJAX.
                               Logged-in only (wp_ajax).
-  DirectoryQuery.php          🔜 Not yet created.
+  Directory.php               [memdir_directory] shortcode. Static class: init(),
+                              get_config(), update_config(), detect_taxonomies(),
+                              render_shortcode(), handle_filter(), build_query(),
+                              extract_card_data(). AJAX: memdir_directory_filter
+                              (+ nopriv). Config: member_directory_directory_config
+                              DB option. Card extraction mirrors header-section.php
+                              suffix patterns. PMP-aware ghost logic.
 sections/                         ⚠ GITIGNORED — not tracked in git. Created per-environment.
   *.json                      Immutable section pointers. { acf_group_key }. Key from filename.
                               Current sections on dev: profile, discovery, business, location.
@@ -203,6 +209,12 @@ templates/
                               Primary Section block, Section toggles (edit mode only).
                               Hard-coded Trust toggle (data-trust-toggle="1") appended
                               after the SectionRegistry toggle loop.
+    directory-card.php        Card partial for [memdir_directory] grid. Receives $card
+                              array from Directory::extract_card_data(). Renders
+                              banner, avatar, name, badges, location, social icons.
+    directory-filters.php     Filter bar partial. Search input + taxonomy filter groups
+                              with selected pills, "Browse all" dialog, and JSON term
+                              data for JS. Receives $filter_data array.
 assets/
   css/memdir.css              All plugin styles. Scoped to .memdir-profile. Includes modal,
                               header editing, taxonomy search, import button, PMP control,
@@ -211,11 +223,20 @@ assets/
                               Trust network styles: .memdir-trust-* (block, list, card, btn, badge).
                               Messaging styles: .memdir-pill--message (pill-row button),
                               dialog.memdir-msg-modal (compose form), .memdir-msg-sent (toast).
+  css/memdir-directory.css    Directory listing styles. Scoped to .memdir-directory.
+                              Card grid (CSS Grid auto-fill), card hover effects,
+                              filter bar, browse-all dialog, pagination, loading spinner.
+                              Responsive: 1 col mobile, 2 col tablet, 3-4 col desktop.
   js/memdir.js                All frontend JS. ⚠ CRLF line endings — use Write tool or Node.js
                               scripts for edits (Edit tool fails on this file).
                               Boot sequence: initHeaderEditing() → initImageUploaders() →
                               initTaxonomySearch() → initLightbox() → initTrustNetwork() →
                               initMessaging().
+  js/memdir-directory.js      Directory listing JS (separate file, no CRLF issues).
+                              IIFE boot: initSearch() → initFilters() → initPagination().
+                              AJAX live filtering via fetchResults(). Debounced search (300ms).
+                              Browse-all dialog for taxonomy terms. URL state via replaceState().
+                              Localized data: mdDirectory { ajaxurl, nonce }.
 tools/
   acf-field-prep.md           Claude skill: enrich a bare ACF field group export with full
                               iPMP apparatus (section system fields + per-field PMP companions)
@@ -535,6 +556,55 @@ Both reuse `md_save_nonce`:
 - `messagingEnabled` — bool from `Messaging::is_available()`
 - `messagingAccess` — string from `Messaging::get_access()` (current profile's setting)
 - `profileAuthorId` — int, profile author's user ID (0 on non-profile pages)
+
+## Directory Shortcode (`[memdir_directory]`)
+
+Searchable, filterable member card grid. Place on any WordPress page. Uses a shortcode (not CPT archive) for BuddyBoss compatibility.
+
+### Shortcode attributes (all optional, override admin config)
+- `per_page` — cards per page (default: 12)
+- `sort` — title|date|modified|rand (default: title)
+- `section` — filter to members with a specific primary section
+
+### Admin configuration
+WP Admin → Settings → Member Directory Sync → Directory Settings. Two collapsible panels:
+- **General & Card Display**: per_page, sort, search toggle/placeholder, card element toggles (avatar, banner, badges, location, social)
+- **Taxonomy Filters**: auto-detected from ACF field groups. Per-filter: enabled toggle, label, reorder arrows. "Re-detect Taxonomies" button.
+
+### DB option: `member_directory_directory_config`
+```php
+[
+    'per_page'           => 12,
+    'default_sort'       => 'title',       // title|date|modified|rand
+    'sort_order'         => 'ASC',         // ASC|DESC
+    'search_enabled'     => true,
+    'search_placeholder' => 'Search members...',
+    'filters' => [
+        [
+            'taxonomy'    => 'mp2t_instruments',
+            'label'       => 'Instruments',
+            'enabled'     => true,
+            'section_key' => 'profile',
+            'field_key'   => 'field_md_profile_instruments',
+        ],
+    ],
+    'card' => [
+        'show_avatar'   => true,
+        'show_banner'   => true,
+        'show_badges'   => true,
+        'show_location' => true,
+        'show_social'   => false,
+    ],
+]
+```
+
+### AJAX
+| Action | Handler | Who | What |
+|--------|---------|-----|------|
+| `memdir_directory_filter` | `Directory::handle_filter()` | Any (incl. nopriv) | Returns filtered card HTML + pagination via JSON |
+
+### Card data extraction
+Mirrors `header-section.php`: scans primary section's header tab, maps fields by type + suffix. Per-field PMP checked — hidden fields omitted from card. If entire profile is globally PMP-hidden, card is not rendered (ghost). Location pulled from location section's `google_map` field with `display_precision`.
 
 ## Section JSON Schema
 

@@ -69,6 +69,12 @@ class AdminSync {
 	/** Nonce field name in banner upload/remove forms. */
 	const BANNER_NONCE_FIELD = 'member_directory_banner_nonce';
 
+	/** Nonce action used to validate directory config submissions. */
+	const DIR_CONFIG_NONCE_ACTION = 'member_directory_dir_config';
+
+	/** Nonce field name in directory config forms. */
+	const DIR_CONFIG_NONCE_FIELD = 'member_directory_dir_config_nonce';
+
 	/** Admin page slug registered with WordPress. */
 	const PAGE_SLUG = 'member-directory-sync';
 
@@ -175,6 +181,15 @@ class AdminSync {
 					<?php submit_button( 'Add Section', 'secondary', 'add_submit', false ); ?>
 				</p>
 			</form>
+
+			<hr>
+			<h2>Directory Settings</h2>
+			<p>Configure the <code>[memdir_directory]</code> shortcode: card grid, search, taxonomy filters, and card display options.</p>
+
+			<?php
+			self::maybe_handle_directory_config();
+			self::render_directory_settings();
+			?>
 
 			<hr>
 			<h2>Claude Skill</h2>
@@ -672,6 +687,286 @@ class AdminSync {
 			true,
 			'Section <strong>' . esc_html( $section_key ) . '</strong> added and synced successfully.'
 		);
+	}
+
+	// -----------------------------------------------------------------------
+	// Directory Settings
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Handle POST for directory config save.
+	 */
+	private static function maybe_handle_directory_config(): void {
+		if ( $_SERVER['REQUEST_METHOD'] !== 'POST' ) {
+			return;
+		}
+		if ( ! isset( $_POST[ self::DIR_CONFIG_NONCE_FIELD ] ) ) {
+			return;
+		}
+		if ( ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST[ self::DIR_CONFIG_NONCE_FIELD ] ) ), self::DIR_CONFIG_NONCE_ACTION ) ) {
+			wp_die( esc_html__( 'Security check failed.' ) );
+		}
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'Permission denied.' ) );
+		}
+
+		$config = Directory::get_config();
+
+		// Handle re-detect button.
+		if ( ! empty( $_POST['dir_redetect'] ) ) {
+			$detected = Directory::detect_taxonomies();
+
+			// Merge with existing filters: preserve enabled/label for known taxonomies.
+			$existing_by_tax = [];
+			foreach ( $config['filters'] as $f ) {
+				$existing_by_tax[ $f['taxonomy'] ] = $f;
+			}
+
+			$merged = [];
+			foreach ( $detected as $d ) {
+				if ( isset( $existing_by_tax[ $d['taxonomy'] ] ) ) {
+					// Preserve admin customizations.
+					$existing          = $existing_by_tax[ $d['taxonomy'] ];
+					$existing['field_key']   = $d['field_key'];
+					$existing['section_key'] = $d['section_key'];
+					$merged[] = $existing;
+				} else {
+					$merged[] = $d;
+				}
+			}
+
+			$config['filters'] = $merged;
+			Directory::update_config( $config );
+
+			self::render_upload_result( true, 'Taxonomy filters re-detected. Found ' . count( $merged ) . ' taxonomy field(s).' );
+			return;
+		}
+
+		// Handle filter reorder.
+		if ( ! empty( $_POST['dir_filter_move'] ) && ! empty( $_POST['dir_filter_direction'] ) ) {
+			$move_tax  = sanitize_text_field( wp_unslash( $_POST['dir_filter_move'] ) );
+			$direction = sanitize_text_field( wp_unslash( $_POST['dir_filter_direction'] ) );
+			$filters   = $config['filters'];
+			$idx       = null;
+
+			foreach ( $filters as $i => $f ) {
+				if ( ( $f['taxonomy'] ?? '' ) === $move_tax ) {
+					$idx = $i;
+					break;
+				}
+			}
+
+			if ( $idx !== null ) {
+				$swap = ( $direction === 'up' ) ? $idx - 1 : $idx + 1;
+				if ( $swap >= 0 && $swap < count( $filters ) ) {
+					[ $filters[ $idx ], $filters[ $swap ] ] = [ $filters[ $swap ], $filters[ $idx ] ];
+					$config['filters'] = array_values( $filters );
+					Directory::update_config( $config );
+				}
+			}
+			return;
+		}
+
+		// General settings save.
+		$config['per_page']           = max( 1, (int) ( $_POST['dir_per_page'] ?? 12 ) );
+		$config['default_sort']       = sanitize_text_field( wp_unslash( $_POST['dir_default_sort'] ?? 'title' ) );
+		$config['sort_order']         = sanitize_text_field( wp_unslash( $_POST['dir_sort_order'] ?? 'ASC' ) );
+		$config['search_enabled']     = ! empty( $_POST['dir_search_enabled'] );
+		$config['search_placeholder'] = sanitize_text_field( wp_unslash( $_POST['dir_search_placeholder'] ?? 'Search members...' ) );
+
+		// Card display toggles.
+		$config['card']['show_avatar']   = ! empty( $_POST['dir_show_avatar'] );
+		$config['card']['show_banner']   = ! empty( $_POST['dir_show_banner'] );
+		$config['card']['show_badges']   = ! empty( $_POST['dir_show_badges'] );
+		$config['card']['show_location'] = ! empty( $_POST['dir_show_location'] );
+		$config['card']['show_social']   = ! empty( $_POST['dir_show_social'] );
+
+		// Filter enabled/label updates.
+		$filter_enabled = $_POST['dir_filter_enabled'] ?? [];
+		$filter_labels  = $_POST['dir_filter_label']   ?? [];
+
+		foreach ( $config['filters'] as &$f ) {
+			$tax = $f['taxonomy'] ?? '';
+			$f['enabled'] = ! empty( $filter_enabled[ $tax ] );
+			if ( isset( $filter_labels[ $tax ] ) ) {
+				$f['label'] = sanitize_text_field( wp_unslash( $filter_labels[ $tax ] ) );
+			}
+		}
+		unset( $f );
+
+		Directory::update_config( $config );
+
+		self::render_upload_result( true, 'Directory settings saved.' );
+	}
+
+	/**
+	 * Render the Directory Settings UI.
+	 */
+	private static function render_directory_settings(): void {
+		$config = Directory::get_config();
+		$card   = $config['card'] ?? [];
+
+		?>
+		<details style="margin-bottom:8px;border:1px solid #ddd;border-radius:3px;">
+			<summary style="padding:10px 14px;cursor:pointer;background:#f6f7f7;font-weight:600;list-style:none;">
+				General &amp; Card Display
+			</summary>
+			<div style="padding:14px;">
+				<form method="post" action="">
+					<?php wp_nonce_field( self::DIR_CONFIG_NONCE_ACTION, self::DIR_CONFIG_NONCE_FIELD ); ?>
+
+					<table class="form-table" role="presentation">
+						<tr>
+							<th scope="row"><label for="dir_per_page">Cards per page</label></th>
+							<td><input type="number" id="dir_per_page" name="dir_per_page" value="<?php echo esc_attr( (string) $config['per_page'] ); ?>" min="1" max="100" style="width:80px;"></td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="dir_default_sort">Default sort</label></th>
+							<td>
+								<select id="dir_default_sort" name="dir_default_sort">
+									<?php foreach ( [ 'title' => 'Title', 'date' => 'Date created', 'modified' => 'Date modified', 'rand' => 'Random' ] as $v => $l ) : ?>
+										<option value="<?php echo esc_attr( $v ); ?>" <?php selected( $config['default_sort'], $v ); ?>><?php echo esc_html( $l ); ?></option>
+									<?php endforeach; ?>
+								</select>
+								<select name="dir_sort_order" style="margin-left:4px;">
+									<option value="ASC" <?php selected( $config['sort_order'], 'ASC' ); ?>>A-Z / Oldest</option>
+									<option value="DESC" <?php selected( $config['sort_order'], 'DESC' ); ?>>Z-A / Newest</option>
+								</select>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">Search</th>
+							<td>
+								<label><input type="checkbox" name="dir_search_enabled" value="1" <?php checked( ! empty( $config['search_enabled'] ) ); ?>> Enable search bar</label>
+								<br>
+								<input type="text" name="dir_search_placeholder" value="<?php echo esc_attr( $config['search_placeholder'] ); ?>" style="margin-top:4px;width:260px;" placeholder="Search placeholder text">
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">Card display</th>
+							<td>
+								<label style="display:block;margin-bottom:4px;"><input type="checkbox" name="dir_show_avatar" value="1" <?php checked( ! empty( $card['show_avatar'] ) ); ?>> Show avatar</label>
+								<label style="display:block;margin-bottom:4px;"><input type="checkbox" name="dir_show_banner" value="1" <?php checked( ! empty( $card['show_banner'] ) ); ?>> Show banner</label>
+								<label style="display:block;margin-bottom:4px;"><input type="checkbox" name="dir_show_badges" value="1" <?php checked( ! empty( $card['show_badges'] ) ); ?>> Show badges</label>
+								<label style="display:block;margin-bottom:4px;"><input type="checkbox" name="dir_show_location" value="1" <?php checked( ! empty( $card['show_location'] ) ); ?>> Show location</label>
+								<label style="display:block;margin-bottom:4px;"><input type="checkbox" name="dir_show_social" value="1" <?php checked( ! empty( $card['show_social'] ) ); ?>> Show social icons</label>
+							</td>
+						</tr>
+					</table>
+
+					<?php submit_button( 'Save Settings', 'primary', 'dir_save', false ); ?>
+				</form>
+			</div>
+		</details>
+
+		<details style="margin-bottom:8px;border:1px solid #ddd;border-radius:3px;">
+			<summary style="padding:10px 14px;cursor:pointer;background:#f6f7f7;font-weight:600;list-style:none;">
+				Taxonomy Filters
+			</summary>
+			<div style="padding:14px;">
+				<?php
+				$filters = $config['filters'];
+
+				if ( empty( $filters ) ) {
+					echo '<p style="color:#666;">No taxonomy filters detected. Click <strong>Re-detect Taxonomies</strong> to scan your ACF field groups.</p>';
+				} else {
+					echo '<p style="font-size:12px;color:#666;margin-bottom:12px;">Enable, rename, or reorder taxonomy filters. Changes are saved with the general settings above.</p>';
+
+					$filter_count = count( $filters );
+
+					foreach ( $filters as $i => $filter ) {
+						$tax     = $filter['taxonomy'] ?? '';
+						$label   = $filter['label']    ?? $tax;
+						$enabled = ! empty( $filter['enabled'] );
+						$is_first = ( $i === 0 );
+						$is_last  = ( $i === $filter_count - 1 );
+
+						echo '<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #eee;">';
+
+						// Reorder arrows.
+						echo '<span style="display:flex;flex-direction:column;gap:2px;">';
+
+						if ( ! $is_first ) {
+							echo '<form method="post" action="" style="margin:0;">';
+							wp_nonce_field( self::DIR_CONFIG_NONCE_ACTION, self::DIR_CONFIG_NONCE_FIELD );
+							echo '<input type="hidden" name="dir_filter_move" value="' . esc_attr( $tax ) . '">';
+							echo '<input type="hidden" name="dir_filter_direction" value="up">';
+							echo '<button type="submit" style="padding:0 4px;line-height:1.2;cursor:pointer;" title="Move up">&#9650;</button>';
+							echo '</form>';
+						} else {
+							echo '<span style="padding:0 4px;opacity:0.2;">&#9650;</span>';
+						}
+
+						if ( ! $is_last ) {
+							echo '<form method="post" action="" style="margin:0;">';
+							wp_nonce_field( self::DIR_CONFIG_NONCE_ACTION, self::DIR_CONFIG_NONCE_FIELD );
+							echo '<input type="hidden" name="dir_filter_move" value="' . esc_attr( $tax ) . '">';
+							echo '<input type="hidden" name="dir_filter_direction" value="down">';
+							echo '<button type="submit" style="padding:0 4px;line-height:1.2;cursor:pointer;" title="Move down">&#9660;</button>';
+							echo '</form>';
+						} else {
+							echo '<span style="padding:0 4px;opacity:0.2;">&#9660;</span>';
+						}
+
+						echo '</span>';
+
+						// The enabled/label fields are part of the general settings form above,
+						// but since they're in a separate <details>, we render standalone mini-forms.
+						echo '<form method="post" action="" style="margin:0;display:flex;align-items:center;gap:8px;flex:1;">';
+						wp_nonce_field( self::DIR_CONFIG_NONCE_ACTION, self::DIR_CONFIG_NONCE_FIELD );
+						// Pass through all current general settings as hidden fields.
+						echo '<input type="hidden" name="dir_per_page" value="' . esc_attr( (string) $config['per_page'] ) . '">';
+						echo '<input type="hidden" name="dir_default_sort" value="' . esc_attr( $config['default_sort'] ) . '">';
+						echo '<input type="hidden" name="dir_sort_order" value="' . esc_attr( $config['sort_order'] ) . '">';
+						if ( ! empty( $config['search_enabled'] ) ) {
+							echo '<input type="hidden" name="dir_search_enabled" value="1">';
+						}
+						echo '<input type="hidden" name="dir_search_placeholder" value="' . esc_attr( $config['search_placeholder'] ) . '">';
+						// Card display hidden fields.
+						foreach ( [ 'show_avatar', 'show_banner', 'show_badges', 'show_location', 'show_social' ] as $ckey ) {
+							if ( ! empty( $card[ $ckey ] ) ) {
+								echo '<input type="hidden" name="dir_' . esc_attr( $ckey ) . '" value="1">';
+							}
+						}
+						// All other filters' enabled/label as hidden.
+						foreach ( $filters as $of ) {
+							$otax = $of['taxonomy'] ?? '';
+							if ( $otax === $tax ) {
+								continue;
+							}
+							if ( ! empty( $of['enabled'] ) ) {
+								echo '<input type="hidden" name="dir_filter_enabled[' . esc_attr( $otax ) . ']" value="1">';
+							}
+							echo '<input type="hidden" name="dir_filter_label[' . esc_attr( $otax ) . ']" value="' . esc_attr( $of['label'] ?? '' ) . '">';
+						}
+
+						echo '<label style="display:flex;align-items:center;gap:4px;cursor:pointer;">';
+						echo '<input type="checkbox" name="dir_filter_enabled[' . esc_attr( $tax ) . ']" value="1"'
+							. checked( $enabled, true, false )
+							. ' onchange="this.form.submit();">';
+						echo '</label>';
+
+						echo '<input type="text" name="dir_filter_label[' . esc_attr( $tax ) . ']" value="' . esc_attr( $label ) . '" style="width:160px;font-size:13px;">';
+						echo '<code style="font-size:11px;color:#999;">' . esc_html( $tax ) . '</code>';
+
+						echo '<button type="submit" class="button button-small" style="margin-left:auto;">Save</button>';
+						echo '</form>';
+
+						echo '</div>';
+					}
+				}
+				?>
+
+				<div style="margin-top:12px;">
+					<form method="post" action="" style="display:inline;">
+						<?php wp_nonce_field( self::DIR_CONFIG_NONCE_ACTION, self::DIR_CONFIG_NONCE_FIELD ); ?>
+						<input type="hidden" name="dir_redetect" value="1">
+						<?php submit_button( 'Re-detect Taxonomies', 'secondary', 'dir_redetect_btn', false ); ?>
+					</form>
+				</div>
+			</div>
+		</details>
+		<?php
 	}
 
 	// -----------------------------------------------------------------------

@@ -19,7 +19,7 @@
  *   ✅ TrustNetwork.php     — available
  *   ✅ Onboarding.php       — available
  *   ✅ Messaging.php        — available
- *   🔜 DirectoryQuery.php   — coming next
+ *   ✅ Directory.php        — available
  */
 
 namespace MemberDirectory;
@@ -38,7 +38,7 @@ require_once __DIR__ . '/AcfFormHelper.php';
 require_once __DIR__ . '/TrustNetwork.php';
 require_once __DIR__ . '/Onboarding.php';
 require_once __DIR__ . '/Messaging.php';
-// require_once __DIR__ . '/DirectoryQuery.php';
+require_once __DIR__ . '/Directory.php';
 
 class Plugin {
 
@@ -85,6 +85,7 @@ class Plugin {
 		TrustNetwork::init();
 		Onboarding::init();
 		Messaging::init();
+		Directory::init();
 	}
 
 	// -----------------------------------------------------------------------
@@ -156,8 +157,33 @@ class Plugin {
 	 * with a shortcode, and this condition is harmless when false.
 	 */
 	public function enqueue_assets(): void {
-		if ( ! is_singular( 'member-directory' ) && ! is_post_type_archive( 'member-directory' ) ) {
+		// Detect pages with the [memdir_directory] shortcode.
+		global $post;
+		$has_directory = is_a( $post, 'WP_Post' ) && has_shortcode( $post->post_content, 'memdir_directory' );
+
+		if ( ! is_singular( 'member-directory' ) && ! is_post_type_archive( 'member-directory' ) && ! $has_directory ) {
 			return;
+		}
+
+		// Enqueue directory-specific assets (separate files, no CRLF issues).
+		if ( $has_directory ) {
+			wp_enqueue_style(
+				'memdir-directory',
+				$this->plugin_url . 'assets/css/memdir-directory.css',
+				[],
+				'0.1.0'
+			);
+			wp_enqueue_script(
+				'memdir-directory',
+				$this->plugin_url . 'assets/js/memdir-directory.js',
+				[],
+				'0.1.0',
+				true
+			);
+			wp_localize_script( 'memdir-directory', 'mdDirectory', [
+				'ajaxurl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'memdir_directory_nonce' ),
+			] );
 		}
 
 		// Dequeue scripts with beforeunload handlers on member-directory pages.
