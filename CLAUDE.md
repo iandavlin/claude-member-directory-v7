@@ -60,7 +60,7 @@ WordPress plugin: section-based member profile and directory system powered by A
   - `memdir_ajax_send_message` → `Messaging::handle_send_message`
   - `memdir_ajax_save_messaging_access` → `Messaging::handle_save_access`
   - `memdir_directory_filter` → `Directory::handle_filter` (also nopriv)
-- `Directory` — `[memdir_directory]` shortcode for searchable, filterable member card grid with interactive Leaflet map. Two-column layout: wide main area (map + card grid) left, filter sidebar right. Admin-configurable taxonomy filters via AdminSync dashboard. Admin-configurable directory page selector for taxonomy link targets. AJAX live filtering, search debounce, pagination, URL state. Card data extraction mirrors header-section.php suffix patterns. PMP-aware: ghosted profiles/fields hidden. Config stored in `member_directory_directory_config` DB option. Leaflet 1.9.4 from unpkg CDN with OpenStreetMap tiles. Map markers use sage green circle markers with popups (avatar + name + location + profile link). Unified "filter stack" consolidates all active filter pills in one area with Clear All. Filter groups use inline multi-select search fields (type-to-search dropdown, selected term badge pills, "Browse all" dialog) matching the profile form taxonomy search pattern. Taxonomy terms on member profiles link to directory page with filters pre-applied. Brand sage green palette throughout.
+- `Directory` — `[memdir_directory]` shortcode for searchable, filterable member card grid with interactive Leaflet map. Two-column layout: wide main area (map + card grid) left, filter sidebar right. Admin-configurable taxonomy filters via AdminSync dashboard. Admin-configurable directory page selector for taxonomy link targets. AJAX live filtering, search debounce, pagination, URL state. Card data extraction mirrors header-section.php suffix patterns. PMP-aware: ghosted profiles/fields hidden. Config stored in `member_directory_directory_config` DB option. Leaflet 1.9.4 from unpkg CDN with OpenStreetMap tiles. Map markers use sage green circle markers with popups (avatar + name + location + profile link). Unified "filter stack" in main column (between map and cards) consolidates all active filter pills with Clear All. Filter groups in sidebar use inline multi-select search fields (type-to-search dropdown, selected term badge pills, "Browse all" dialog) matching the profile form taxonomy search pattern. Admin-configurable map pin style: circle marker (default), standard pin, or avatar photo pins with Leaflet.markercluster clustering. Taxonomy terms on member profiles link to directory page with filters pre-applied. Brand sage green palette throughout.
 
 ### Not Started / Scaffold Only
 - `templates/archive-member-directory.php` — placeholder `<div>` only
@@ -215,9 +215,10 @@ templates/
                               data-lat/data-lng attributes for map markers.
     directory-filters.php     Filter sidebar partial. Search input + per-taxonomy filter
                               groups with inline multi-select search (type-to-search
-                              dropdown, selected badge pills, "Browse all" link) + unified
-                              filter stack with all active pills + Clear All. JSON term
+                              dropdown, selected badge pills, "Browse all" link). JSON term
                               data embedded per group for JS. Receives $filter_data array.
+                              Note: unified filter stack rendered by render_shortcode()
+                              in the main column, not here.
 assets/
   css/memdir.css              All plugin styles. Scoped to .memdir-profile. Includes modal,
                               header editing, taxonomy search, import button, PMP control,
@@ -577,8 +578,9 @@ Searchable, filterable member card grid with interactive map. Place on any WordP
 
 ### Layout
 Two-column grid: wide main area (map + card grid) left, filter sidebar right.
-- **Map**: Leaflet 1.9.4 + OpenStreetMap tiles. Shows sage green circle markers for members with coordinates. Popups with avatar, name, location, profile link. Markers update on AJAX filter/search.
-- **Sidebar**: Sticky filter panel with search input, unified "filter stack" (all active pills consolidated), and per-taxonomy filter groups with inline multi-select search fields (type-to-search dropdown, selected term badge pills with × remove, "Browse all" checkbox dialog). Matches profile form taxonomy search pattern.
+- **Map**: Leaflet 1.9.4 + OpenStreetMap tiles. Three pin styles (admin-configurable): circle markers (sage green), default Leaflet pins, or avatar photo pins with MarkerCluster grouping. Popups with avatar, name, location, profile link. Markers update on AJAX filter/search.
+- **Filter stack**: Between map and cards in the main column. Unified area showing all active filter pills consolidated from all taxonomies, with "Clear all" button.
+- **Sidebar**: Sticky filter panel with search input and per-taxonomy filter groups with inline multi-select search fields (type-to-search dropdown, selected term badge pills with × remove, "Browse all" checkbox dialog). Matches profile form taxonomy search pattern.
 - **Responsive**: Stacks vertically on mobile/tablet (sidebar moves above map/cards).
 
 ### Shortcode attributes (all optional, override admin config)
@@ -588,7 +590,7 @@ Two-column grid: wide main area (map + card grid) left, filter sidebar right.
 
 ### Admin configuration
 WP Admin → Settings → Member Directory Sync → Directory Settings. Two collapsible panels:
-- **General & Card Display**: per_page, sort, search toggle/placeholder, card element toggles (avatar, banner, badges, location, social), directory page selector (for taxonomy link targets)
+- **General & Card Display**: per_page, sort, search toggle/placeholder, map pin style (circle/pin/avatar), card element toggles (avatar, banner, badges, location, social), directory page selector (for taxonomy link targets)
 - **Taxonomy Filters**: auto-detected from ACF field groups. Per-filter: enabled toggle, label, reorder arrows. "Re-detect Taxonomies" button.
 
 ### DB option: `member_directory_directory_config`
@@ -600,6 +602,7 @@ WP Admin → Settings → Member Directory Sync → Directory Settings. Two coll
     'sort_order'         => 'ASC',         // ASC|DESC
     'search_enabled'     => true,
     'search_placeholder' => 'Search members...',
+    'map_pin_style'      => 'circle',      // circle|pin|avatar
     'filters' => [
         [
             'taxonomy'    => 'mp2t_instruments',
@@ -634,7 +637,13 @@ Members with ACF `google_map` field data (lat/lng) appear as markers on the Leaf
 All taxonomy terms on member profiles (header badges + FieldRenderer lists) link to the directory page with the corresponding filter pre-applied (e.g., `?mp2t_work_on=mandolin`). Requires `directory_page_id` to be set in admin config. Helper methods: `Directory::get_directory_url()`, `Directory::get_term_filter_url()`.
 
 ### Unified filter stack
-All active filter pills from all taxonomies are consolidated in a single `.memdir-directory__filter-stack` area at the top of the sidebar, with a "Clear all" button.
+All active filter pills from all taxonomies are consolidated in a single `.memdir-directory__filter-stack` area in the main column (between map and card grid), with a "Clear all" button. Rendered by `Directory::render_shortcode()`, not by `directory-filters.php`.
+
+### Map pin styles
+Admin-configurable via `map_pin_style` in Directory Settings:
+- **circle** (default): Sage green `L.circleMarker` with white border
+- **pin**: Standard Leaflet `L.marker` (default blue pin icon)
+- **avatar**: `L.divIcon` with member avatar `<img>` (circular, white border, shadow). Uses Leaflet.markercluster 1.5.3 (CDN) to group nearby markers. Cluster icons show count with branded sage green palette (small/medium/large sizing). MarkerCluster CSS/JS only loaded when avatar mode is active.
 
 ### Filter groups (multi-select search)
 Each taxonomy filter group provides an inline multi-select search field matching the profile form pattern (`memdir-taxo-search`):
