@@ -1394,9 +1394,17 @@
 						clearBtn.innerHTML = '&times;';
 						clearBtn.title = 'Clear selection';
 						clearBtn.addEventListener( 'click', function () {
-							Array.from( selectElement.options ).forEach( function ( o ) { o.selected = false; } );
+							// Ensure an empty option exists so the select can truly be cleared.
+							// Single-select elements auto-select the first option when all are
+							// deselected — without an empty option, the clear appears to fail.
 							var emptyOpt = selectElement.querySelector( 'option[value=""]' );
-							if ( emptyOpt ) { emptyOpt.selected = true; }
+							if ( ! emptyOpt ) {
+								emptyOpt = document.createElement( 'option' );
+								emptyOpt.value = '';
+								emptyOpt.textContent = '';
+								selectElement.insertBefore( emptyOpt, selectElement.firstChild );
+							}
+							selectElement.value = '';
 							selectElement.dispatchEvent( new Event( 'change', { bubbles: true } ) );
 							updateSelectedDisplay();
 						} );
