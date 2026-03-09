@@ -25,7 +25,24 @@
       "Bash(ls:*)",
       "Bash(git -C \"C:\\\\Users\\\\ianda\\\\git-repos\\\\claude-member-directory-v7\" log --oneline)",
       "WebFetch(domain:www.advancedcustomfields.com)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(Visibility\" heading:*)",
+      "Bash(grep -n \"member_directory_sections\" includes/*.php)",
+      "Bash(del patch-taxo-select2.js)",
+      "Bash(/tmp/cleanup-comment.js:*)",
+      "Bash(selection…\" after picking a term.:*)",
+      "Bash(grep -r \"get_field\" /c/Users/ianda/git-repos/claude-member-directory-v7/includes/*.php)",
+      "Bash(git status -u)",
+      "Bash(grep -n \"wp_safe_remote\\\\|wp_redirect\\\\|header.*Location\\\\|$_ET\\\\|$_OST\\\\|$_EQUEST\" /c/Users/ianda/git-repos/claude-member-directory-v7/includes/*.php)",
+      "Bash(grep -n \"view_as\\\\|REQUEST_METHOD\" /c/Users/ianda/git-repos/claude-member-directory-v7/includes/*.php)",
+      "WebFetch(domain:dev.loothgroup.com)",
+      "Bash(del \"C:\\\\Users\\\\ianda\\\\git-repos\\\\claude-member-directory-v7\\\\patch-gallery-multi.js\")",
+      "Bash(del \"C:\\\\Users\\\\ianda\\\\git-repos\\\\claude-member-directory-v7\\\\patch-modal-upload.js\")",
+      "Bash(git checkout 96301e9 -- assets/js/memdir.js)",
+      "Bash(tar tzf \"download-2026.3.8_14.43.16-ubuntu-\\(ip-172-31-35-201\\).tar.gz\")",
+      "Bash(tar xzf \"download-2026.3.8_14.43.16-ubuntu-\\(ip-172-31-35-201\\).tar.gz\" -C /tmp/)",
+      "WebFetch(domain:www.buddyboss.com)",
+      "WebSearch"
     ]
   }
 }
