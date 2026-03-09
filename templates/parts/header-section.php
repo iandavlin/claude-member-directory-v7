@@ -328,28 +328,24 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 				?>
 				<p class="memdir-header__location"><?php echo esc_html( $loc_display ); ?></p>
 				<?php endif; } ?>
+
+				<?php if ( ! empty( $badge_names ) ) : ?>
+				<div class="memdir-header__taxo">
+					<?php foreach ( $badge_names as $badge_name ) : ?>
+						<span class="memdir-header__taxo-badge"><?php echo esc_html( $badge_name ); ?></span>
+					<?php endforeach; ?>
+				</div>
+				<?php elseif ( $is_edit_mode ) : ?>
+				<div class="memdir-header__taxo">
+					<span class="memdir-header__placeholder">Edit Quick Focus</span>
+				</div>
+				<?php endif; ?>
 			</div>
 
 		</div>
 
-		<?php if ( $has_meta || $is_edit_mode ) : ?>
+		<?php if ( ! empty( $social_links ) || $is_edit_mode ) : ?>
 		<div class="memdir-header__meta">
-
-			<?php if ( ! empty( $badge_names ) ) : ?>
-			<div class="memdir-header__taxo">
-				<?php foreach ( $badge_names as $badge_name ) : ?>
-					<span class="memdir-header__taxo-badge"><?php echo esc_html( $badge_name ); ?></span>
-				<?php endforeach; ?>
-			</div>
-			<?php elseif ( $is_edit_mode ) : ?>
-			<div class="memdir-header__taxo">
-				<span class="memdir-header__placeholder">Edit Quick Focus</span>
-			</div>
-			<?php endif; ?>
-
-			<?php if ( ( ! empty( $badge_names ) || $is_edit_mode ) && ( ! empty( $social_links ) || $is_edit_mode ) ) : ?>
-			<span class="memdir-header__divider" aria-hidden="true"></span>
-			<?php endif; ?>
 
 			<?php if ( ! empty( $social_links ) ) : ?>
 			<div class="memdir-header__social">
