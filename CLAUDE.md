@@ -60,7 +60,7 @@ WordPress plugin: section-based member profile and directory system powered by A
   - `memdir_ajax_send_message` → `Messaging::handle_send_message`
   - `memdir_ajax_save_messaging_access` → `Messaging::handle_save_access`
   - `memdir_directory_filter` → `Directory::handle_filter` (also nopriv)
-- `Directory` — `[memdir_directory]` shortcode for searchable, filterable member card grid. Admin-configurable taxonomy filters via AdminSync dashboard. AJAX live filtering, search debounce, pagination, URL state. Card data extraction mirrors header-section.php suffix patterns. PMP-aware: ghosted profiles/fields hidden. Config stored in `member_directory_directory_config` DB option.
+- `Directory` — `[memdir_directory]` shortcode for searchable, filterable member card grid with interactive Leaflet map. Two-column layout: wide main area (map + card grid) left, filter sidebar right. Admin-configurable taxonomy filters via AdminSync dashboard. Admin-configurable directory page selector for taxonomy link targets. AJAX live filtering, search debounce, pagination, URL state. Card data extraction mirrors header-section.php suffix patterns. PMP-aware: ghosted profiles/fields hidden. Config stored in `member_directory_directory_config` DB option. Leaflet 1.9.4 from unpkg CDN with OpenStreetMap tiles. Map markers use sage green circle markers with popups (avatar + name + location + profile link). Unified "filter stack" consolidates all active filter pills in one area with Clear All. Filter groups open browse-all dialogs on click. Taxonomy terms on member profiles link to directory page with filters pre-applied. Brand sage green palette throughout.
 
 ### Not Started / Scaffold Only
 - `templates/archive-member-directory.php` — placeholder `<div>` only
@@ -224,18 +224,24 @@ assets/
                               Messaging styles: .memdir-pill--message (pill-row button),
                               dialog.memdir-msg-modal (compose form), .memdir-msg-sent (toast).
   css/memdir-directory.css    Directory listing styles. Scoped to .memdir-directory.
-                              Card grid (CSS Grid auto-fill), card hover effects,
-                              filter bar, browse-all dialog, pagination, loading spinner.
-                              Responsive: 1 col mobile, 2 col tablet, 3-4 col desktop.
+                              Two-column layout (CSS Grid: main + 280px sidebar).
+                              Map container, Leaflet popup overrides, sidebar filter panel,
+                              unified filter stack, browse-all dialog, card grid, pagination,
+                              loading spinner. Brand sage green palette via CSS vars.
+                              Responsive: stacks vertically on mobile/tablet.
   js/memdir.js                All frontend JS. ⚠ CRLF line endings — use Write tool or Node.js
                               scripts for edits (Edit tool fails on this file).
                               Boot sequence: initHeaderEditing() → initImageUploaders() →
                               initTaxonomySearch() → initLightbox() → initTrustNetwork() →
                               initMessaging().
   js/memdir-directory.js      Directory listing JS (separate file, no CRLF issues).
-                              IIFE boot: initSearch() → initFilters() → initPagination().
+                              IIFE boot: initSearch() → initFilters() → initPagination()
+                              → initMap(). Leaflet map with circle markers + popups.
+                              updateMapMarkers() on AJAX response. Unified filter stack:
+                              pills with taxonomy data attrs, Clear All button.
+                              Browse-all dialog with in-dialog search for 10+ terms.
                               AJAX live filtering via fetchResults(). Debounced search (300ms).
-                              Browse-all dialog for taxonomy terms. URL state via replaceState().
+                              URL state via replaceState().
                               Localized data: mdDirectory { ajaxurl, nonce }.
 tools/
   acf-field-prep.md           Claude skill: enrich a bare ACF field group export with full
@@ -559,7 +565,13 @@ Both reuse `md_save_nonce`:
 
 ## Directory Shortcode (`[memdir_directory]`)
 
-Searchable, filterable member card grid. Place on any WordPress page. Uses a shortcode (not CPT archive) for BuddyBoss compatibility.
+Searchable, filterable member card grid with interactive map. Place on any WordPress page. Uses a shortcode (not CPT archive) for BuddyBoss compatibility.
+
+### Layout
+Two-column grid: wide main area (map + card grid) left, filter sidebar right.
+- **Map**: Leaflet 1.9.4 + OpenStreetMap tiles. Shows sage green circle markers for members with coordinates. Popups with avatar, name, location, profile link. Markers update on AJAX filter/search.
+- **Sidebar**: Sticky filter panel with search input, unified "filter stack" (all active pills consolidated), and filter groups that open browse-all dialogs on click.
+- **Responsive**: Stacks vertically on mobile/tablet (sidebar moves above map/cards).
 
 ### Shortcode attributes (all optional, override admin config)
 - `per_page` — cards per page (default: 12)
@@ -568,12 +580,13 @@ Searchable, filterable member card grid. Place on any WordPress page. Uses a sho
 
 ### Admin configuration
 WP Admin → Settings → Member Directory Sync → Directory Settings. Two collapsible panels:
-- **General & Card Display**: per_page, sort, search toggle/placeholder, card element toggles (avatar, banner, badges, location, social)
+- **General & Card Display**: per_page, sort, search toggle/placeholder, card element toggles (avatar, banner, badges, location, social), directory page selector (for taxonomy link targets)
 - **Taxonomy Filters**: auto-detected from ACF field groups. Per-filter: enabled toggle, label, reorder arrows. "Re-detect Taxonomies" button.
 
 ### DB option: `member_directory_directory_config`
 ```php
 [
+    'directory_page_id'  => 0,              // WP page ID for taxonomy link targets
     'per_page'           => 12,
     'default_sort'       => 'title',       // title|date|modified|rand
     'sort_order'         => 'ASC',         // ASC|DESC
@@ -601,10 +614,19 @@ WP Admin → Settings → Member Directory Sync → Directory Settings. Two coll
 ### AJAX
 | Action | Handler | Who | What |
 |--------|---------|-----|------|
-| `memdir_directory_filter` | `Directory::handle_filter()` | Any (incl. nopriv) | Returns filtered card HTML + pagination via JSON |
+| `memdir_directory_filter` | `Directory::handle_filter()` | Any (incl. nopriv) | Returns filtered card HTML + pagination + markers via JSON |
 
 ### Card data extraction
-Mirrors `header-section.php`: scans primary section's header tab, maps fields by type + suffix. Per-field PMP checked — hidden fields omitted from card. If entire profile is globally PMP-hidden, card is not rendered (ghost). Location pulled from location section's `google_map` field with `display_precision`.
+Mirrors `header-section.php`: scans primary section's header tab, maps fields by type + suffix. Per-field PMP checked — hidden fields omitted from card. If entire profile is globally PMP-hidden, card is not rendered (ghost). Location pulled from location section's `google_map` field with `display_precision`. Raw lat/lng preserved for map markers.
+
+### Map markers
+Members with ACF `google_map` field data (lat/lng) appear as markers on the Leaflet map. Members without coordinates show as cards but not on the map. Initial markers loaded from embedded `<script type="application/json">` in PHP; AJAX responses include `markers` array for live updates. Card `<a>` elements include `data-lat` and `data-lng` attributes.
+
+### Taxonomy links
+All taxonomy terms on member profiles (header badges + FieldRenderer lists) link to the directory page with the corresponding filter pre-applied (e.g., `?mp2t_work_on=mandolin`). Requires `directory_page_id` to be set in admin config. Helper methods: `Directory::get_directory_url()`, `Directory::get_term_filter_url()`.
+
+### Unified filter stack
+All active filter pills from all taxonomies are consolidated in a single `.memdir-directory__filter-stack` area at the top of the sidebar, with a "Clear all" button. Individual filter groups show a count badge and open a browse-all dialog (with in-dialog search for 10+ terms).
 
 ## Section JSON Schema
 
