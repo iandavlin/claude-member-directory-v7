@@ -151,32 +151,28 @@ body.single-member-directory .select2-dropdown--above {
   border-radius: var(--md-radius) var(--md-radius) 0 0;
 }
 
-/* When banner is present, avatar overlaps the banner bottom edge.
-   The info row (name, badges, socials) sits entirely below the cover. */
-.memdir-header__body--with-banner {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  margin-top: -48px;
-  position: relative;
-  z-index: 1;
-  padding: 0 12px;
-}
-
-/* Avatar gets a thicker white ring to stand out over the banner. */
+/* Avatar pinned inside the banner at bottom-left */
 .memdir-header--has-banner .memdir-header__avatar-wrap {
+  position: absolute;
+  bottom: 8px;
+  left: 12px;
+  z-index: 2;
   width: 96px;
   height: 96px;
   border: 4px solid var(--md-white);
   box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
-/* Info row spans full width below the avatar, holds text left + socials right */
+/* Info row sits right below the banner bottom edge */
+.memdir-header__body--with-banner {
+  padding: 3px 12px 0;
+}
+
+/* Info row: name+badges left, socials right — single tight row */
 .memdir-header__info-row {
   display: flex;
   align-items: flex-start;
   width: 100%;
-  padding: 6px 0 0;
   gap: 16px;
 }
 
@@ -2115,13 +2111,11 @@ dialog.memdir-header-modal--media {
     border-radius: 0;
   }
 
-  .memdir-header__body--with-banner {
-    margin-top: -36px;
-  }
-
   .memdir-header--has-banner .memdir-header__avatar-wrap {
-    width: 80px;
-    height: 80px;
+    width: 72px;
+    height: 72px;
+    bottom: 6px;
+    left: 8px;
   }
 
   .memdir-header__body {

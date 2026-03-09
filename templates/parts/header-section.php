@@ -286,36 +286,35 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 		role="img"
 		aria-label="<?php echo esc_attr( $title_value ); ?> banner"
 		<?php if ( $is_edit_mode && $banner_field_key ) : ?> data-banner-field-key="<?php echo esc_attr( $banner_field_key ); ?>"<?php endif; ?>
-	></div>
+	>
+		<?php // Avatar sits inside the banner, pinned to bottom-left ?>
+		<?php if ( $avatar_value ) : ?>
+		<div class="memdir-header__avatar-wrap">
+			<?php if ( is_array( $avatar_value ) ) : ?>
+				<img
+					class="memdir-header__avatar"
+					src="<?php echo esc_url( $avatar_value['sizes']['thumbnail'] ?? $avatar_value['url'] ?? '' ); ?>"
+					alt="<?php echo esc_attr( $avatar_value['alt'] ?? '' ); ?>"
+				>
+			<?php else : ?>
+				<?php $img_src = wp_get_attachment_image_url( (int) $avatar_value, 'thumbnail' ); ?>
+				<?php if ( $img_src ) : ?>
+				<img
+					class="memdir-header__avatar"
+					src="<?php echo esc_url( $img_src ); ?>"
+					alt="<?php echo esc_attr( $title_value ); ?>"
+				>
+				<?php endif; ?>
+			<?php endif; ?>
+		</div>
+		<?php endif; ?>
+	</div>
 	<?php endif; ?>
 
 	<div class="memdir-header__body<?php echo $show_banner ? ' memdir-header__body--with-banner' : ''; ?>">
 
 		<?php if ( $show_banner ) : ?>
-		<?php // ── Banner layout: avatar overlaps banner, info row below ── ?>
-
-		<div class="memdir-header__avatar-col">
-			<?php if ( $avatar_value ) : ?>
-			<div class="memdir-header__avatar-wrap">
-				<?php if ( is_array( $avatar_value ) ) : ?>
-					<img
-						class="memdir-header__avatar"
-						src="<?php echo esc_url( $avatar_value['sizes']['thumbnail'] ?? $avatar_value['url'] ?? '' ); ?>"
-						alt="<?php echo esc_attr( $avatar_value['alt'] ?? '' ); ?>"
-					>
-				<?php else : ?>
-					<?php $img_src = wp_get_attachment_image_url( (int) $avatar_value, 'thumbnail' ); ?>
-					<?php if ( $img_src ) : ?>
-					<img
-						class="memdir-header__avatar"
-						src="<?php echo esc_url( $img_src ); ?>"
-						alt="<?php echo esc_attr( $title_value ); ?>"
-					>
-					<?php endif; ?>
-				<?php endif; ?>
-			</div>
-			<?php endif; ?>
-		</div>
+		<?php // ── Banner layout: info row right below the cover edge ── ?>
 
 		<div class="memdir-header__info-row">
 			<div class="memdir-header__text">
