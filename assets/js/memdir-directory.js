@@ -22,6 +22,9 @@
 	var ajaxurl = cfg.ajaxurl || '';
 	var nonce = cfg.nonce || '';
 	var pinStyle = cfg.pinStyle || 'circle';
+	var customPinIcon = cfg.customPinIcon || '';
+	var customPinWidth = cfg.customPinWidth || 25;
+	var customPinHeight = cfg.customPinHeight || 41;
 
 	if (!ajaxurl) return;
 
@@ -101,9 +104,6 @@
 					removeTerm(tax, term);
 					pill.remove();
 
-					// Also remove the inline badge from the filter group.
-					removeInlineBadge(tax, term);
-
 					maybeHideClearAll();
 					state.page = 1;
 					fetchResults();
@@ -118,12 +118,7 @@
 				var stack = container.querySelector('[data-filter-stack]');
 				if (stack) stack.innerHTML = '';
 
-				// Clear all inline badges.
-				container.querySelectorAll('[data-filter-pills]').forEach(function (c) {
-					c.innerHTML = '';
-				});
-
-				state.page = 1;
+			state.page = 1;
 				fetchResults();
 			}
 		});
@@ -146,7 +141,6 @@
 
 			var input = group.querySelector('[data-filter-input]');
 			var resultsDiv = group.querySelector('[data-filter-results]');
-			var pillsDiv = group.querySelector('[data-filter-pills]');
 			var browseBtn = group.querySelector('[data-filter-browse]');
 
 			if (!input || !resultsDiv) return;
@@ -169,7 +163,7 @@
 						return t.name.toLowerCase().indexOf(q) !== -1;
 					});
 
-					renderDropdown(resultsDiv, matches, tax, pillsDiv, input);
+					renderDropdown(resultsDiv, matches, tax, input);
 				}, 150);
 			});
 
@@ -179,7 +173,7 @@
 					var matches = allTerms.filter(function (t) {
 						return t.name.toLowerCase().indexOf(q) !== -1;
 					});
-					renderDropdown(resultsDiv, matches, tax, pillsDiv, input);
+					renderDropdown(resultsDiv, matches, tax, input);
 				}
 			});
 
@@ -190,36 +184,17 @@
 				}
 			});
 
-			// ── Inline badge remove (event delegation on pills container) ──
-			if (pillsDiv) {
-				pillsDiv.addEventListener('click', function (e) {
-					var removeBtn = e.target.closest('[data-remove-term]');
-					if (removeBtn) {
-						e.preventDefault();
-						var termSlug = removeBtn.dataset.removeTerm;
-						var badge = removeBtn.closest('.memdir-directory__filter-badge');
-						if (badge) badge.remove();
-
-						removeTerm(tax, termSlug);
-						removeStackPill(tax, termSlug);
-						maybeHideClearAll();
-						state.page = 1;
-						fetchResults();
-					}
-				});
-			}
-
 			// ── Browse all button ──
 			if (browseBtn) {
 				browseBtn.addEventListener('click', function (e) {
 					e.preventDefault();
-					openBrowseDialog(tax, allTerms, group, pillsDiv, input);
+					openBrowseDialog(tax, allTerms, group, input);
 				});
 			}
 		});
 	}
 
-	function renderDropdown(resultsDiv, matches, tax, pillsDiv, input) {
+	function renderDropdown(resultsDiv, matches, tax, input) {
 		resultsDiv.innerHTML = '';
 
 		if (matches.length === 0) {
@@ -244,13 +219,11 @@
 				if (activeTerms.includes(t.slug)) {
 					// Deselect.
 					removeTerm(tax, t.slug);
-					removeInlineBadge(tax, t.slug);
 					removeStackPill(tax, t.slug);
 					item.classList.remove('is-selected');
 				} else {
 					// Select.
 					addTerm(tax, t.slug, t.name);
-					addInlineBadge(tax, t.slug, t.name, pillsDiv);
 					item.classList.add('is-selected');
 				}
 
@@ -265,30 +238,6 @@
 		});
 
 		resultsDiv.style.display = 'block';
-	}
-
-	// ── Inline badge management (per-group pills) ─────────────────────
-
-	function addInlineBadge(tax, termSlug, termName, pillsDiv) {
-		if (!pillsDiv) return;
-
-		// Don't duplicate.
-		if (pillsDiv.querySelector('[data-term="' + termSlug + '"]')) return;
-
-		var badge = document.createElement('span');
-		badge.className = 'memdir-directory__filter-badge';
-		badge.dataset.term = termSlug;
-		badge.innerHTML = escHtml(termName) +
-			' <button type="button" class="memdir-directory__filter-badge-remove" data-remove-term="' + escAttr(termSlug) + '">&times;</button>';
-
-		pillsDiv.appendChild(badge);
-	}
-
-	function removeInlineBadge(tax, termSlug) {
-		var group = container.querySelector('.memdir-directory__filter-group[data-taxonomy="' + tax + '"]');
-		if (!group) return;
-		var badge = group.querySelector('.memdir-directory__filter-badge[data-term="' + termSlug + '"]');
-		if (badge) badge.remove();
 	}
 
 	// ── Unified stack pill management ─────────────────────────────────
@@ -365,7 +314,7 @@
 
 	// ── Browse all dialog ─────────────────────────────────────────────
 
-	function openBrowseDialog(tax, terms, group, pillsDiv, filterInput) {
+	function openBrowseDialog(tax, terms, group, filterInput) {
 		// Remove existing dialog if any.
 		var existing = document.querySelector('.memdir-directory__browse-dialog');
 		if (existing) existing.remove();
@@ -425,7 +374,7 @@
 			dialog.remove();
 		});
 
-		// Done button — sync checkboxes back to state + inline badges.
+		// Done button — sync checkboxes back to state + stack pills.
 		dialog.querySelector('.memdir-directory__browse-done').addEventListener('click', function () {
 			var newTerms = [];
 			dialog.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
@@ -434,15 +383,12 @@
 				}
 			});
 
-			// Remove all stack pills + inline badges for this taxonomy.
+			// Remove all stack pills for this taxonomy.
 			var stack = container.querySelector('[data-filter-stack]');
 			if (stack) {
 				stack.querySelectorAll('.memdir-directory__filter-pill[data-taxonomy="' + tax + '"]').forEach(function (p) {
 					p.remove();
 				});
-			}
-			if (pillsDiv) {
-				pillsDiv.innerHTML = '';
 			}
 
 			// Reset filter state for this taxonomy.
@@ -451,7 +397,6 @@
 			// Re-add checked terms.
 			newTerms.forEach(function (t) {
 				addTerm(tax, t.slug, t.name);
-				addInlineBadge(tax, t.slug, t.name, pillsDiv);
 			});
 
 			if (newTerms.length === 0) {
@@ -542,6 +487,8 @@
 
 			if (pinStyle === 'avatar') {
 				marker = createAvatarMarker(m, lat, lng);
+			} else if (pinStyle === 'custom' && customPinIcon) {
+				marker = createCustomMarker(lat, lng);
 			} else if (pinStyle === 'pin') {
 				marker = L.marker([lat, lng]);
 			} else {
@@ -579,6 +526,21 @@
 		});
 
 		return L.marker([lat, lng], { icon: icon });
+	}
+
+	// Cached custom icon instance (same image for all markers).
+	var _customIcon = null;
+
+	function createCustomMarker(lat, lng) {
+		if (!_customIcon) {
+			_customIcon = L.icon({
+				iconUrl: customPinIcon,
+				iconSize: [customPinWidth, customPinHeight],
+				iconAnchor: [Math.round(customPinWidth / 2), customPinHeight],
+				popupAnchor: [0, -customPinHeight + 4],
+			});
+		}
+		return L.marker([lat, lng], { icon: _customIcon });
 	}
 
 	function buildPopup(m) {

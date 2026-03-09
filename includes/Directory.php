@@ -91,7 +91,10 @@ class Directory {
 			'sort_order'         => 'ASC',
 			'search_enabled'     => true,
 			'search_placeholder' => 'Search members...',
-			'map_pin_style'      => 'circle',  // circle | pin | avatar
+			'map_pin_style'      => 'circle',  // circle | pin | avatar | custom
+			'map_pin_icon'       => 0,         // Attachment ID for custom pin icon.
+			'map_pin_width'      => 25,        // Custom pin icon width (px).
+			'map_pin_height'     => 41,        // Custom pin icon height (px).
 			'filters'            => [],
 			'card'               => [
 				'show_avatar'   => true,
@@ -833,20 +836,35 @@ class Directory {
 			'memdir-directory',
 			$plugin_url . 'assets/css/memdir-directory.css',
 			[ 'leaflet' ],
-			'0.3.0'
+			'0.4.0'
 		);
 		wp_enqueue_script(
 			'memdir-directory',
 			$plugin_url . 'assets/js/memdir-directory.js',
 			$js_deps,
-			'0.3.0',
+			'0.4.0',
 			true
 		);
-		wp_localize_script( 'memdir-directory', 'mdDirectory', [
+		$js_data = [
 			'ajaxurl'  => admin_url( 'admin-ajax.php' ),
 			'nonce'    => wp_create_nonce( 'memdir_directory_nonce' ),
 			'pinStyle' => $pin_style,
-		] );
+		];
+
+		// Pass custom icon data when using custom pin style.
+		if ( $pin_style === 'custom' ) {
+			$icon_id = (int) ( $config['map_pin_icon'] ?? 0 );
+			if ( $icon_id > 0 ) {
+				$icon_url = wp_get_attachment_image_url( $icon_id, 'full' );
+				if ( $icon_url ) {
+					$js_data['customPinIcon'] = $icon_url;
+					$js_data['customPinWidth']  = (int) ( $config['map_pin_width'] ?? 25 );
+					$js_data['customPinHeight'] = (int) ( $config['map_pin_height'] ?? 41 );
+				}
+			}
+		}
+
+		wp_localize_script( 'memdir-directory', 'mdDirectory', $js_data );
 	}
 
 	// -----------------------------------------------------------------------

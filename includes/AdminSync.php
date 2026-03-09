@@ -97,13 +97,20 @@ class AdminSync {
 	 * Fires on admin_menu.
 	 */
 	public static function register_page(): void {
-		add_options_page(
+		$hook = add_options_page(
 			'Member Directory Sync',   // Page <title>
 			'Member Directory Sync',   // Menu label
 			'manage_options',          // Required capability
 			self::PAGE_SLUG,           // Menu slug
 			[ self::class, 'render' ]  // Callback
 		);
+
+		// Enqueue WP media uploader on this admin page (for custom pin icon upload).
+		if ( $hook ) {
+			add_action( 'load-' . $hook, function () {
+				wp_enqueue_media();
+			} );
+		}
 	}
 
 	/**
@@ -775,7 +782,12 @@ class AdminSync {
 		$config['search_enabled']     = ! empty( $_POST['dir_search_enabled'] );
 		$config['search_placeholder'] = sanitize_text_field( wp_unslash( $_POST['dir_search_placeholder'] ?? 'Search members...' ) );
 		$pin_style = sanitize_text_field( wp_unslash( $_POST['dir_map_pin_style'] ?? 'circle' ) );
-		$config['map_pin_style'] = in_array( $pin_style, [ 'circle', 'pin', 'avatar' ], true ) ? $pin_style : 'circle';
+		$config['map_pin_style'] = in_array( $pin_style, [ 'circle', 'pin', 'avatar', 'custom' ], true ) ? $pin_style : 'circle';
+
+		// Custom pin icon upload (via WP media uploader).
+		$config['map_pin_icon']   = max( 0, (int) ( $_POST['dir_map_pin_icon'] ?? 0 ) );
+		$config['map_pin_width']  = max( 8, min( 128, (int) ( $_POST['dir_map_pin_width'] ?? 25 ) ) );
+		$config['map_pin_height'] = max( 8, min( 128, (int) ( $_POST['dir_map_pin_height'] ?? 41 ) ) );
 
 		// Card display toggles.
 		$config['card']['show_avatar']   = ! empty( $_POST['dir_show_avatar'] );
@@ -871,7 +883,12 @@ class AdminSync {
 								<select id="dir_map_pin_style" name="dir_map_pin_style">
 									<?php
 									$pin_style = $config['map_pin_style'] ?? 'circle';
-									foreach ( [ 'circle' => 'Circle marker (sage green)', 'pin' => 'Default pin', 'avatar' => 'Avatar photos (with clustering)' ] as $v => $l ) :
+									foreach ( [
+										'circle' => 'Circle marker (sage green)',
+										'pin'    => 'Default pin',
+										'avatar' => 'Avatar photos (with clustering)',
+										'custom' => 'Custom icon',
+									] as $v => $l ) :
 									?>
 										<option value="<?php echo esc_attr( $v ); ?>" <?php selected( $pin_style, $v ); ?>><?php echo esc_html( $l ); ?></option>
 									<?php endforeach; ?>
@@ -879,6 +896,93 @@ class AdminSync {
 								<p class="description">How members appear on the map. "Avatar photos" groups nearby members into clusters at low zoom.</p>
 							</td>
 						</tr>
+						<tr id="dir_custom_pin_row" style="<?php echo ( $pin_style !== 'custom' ) ? 'display:none;' : ''; ?>">
+							<th scope="row"><label>Custom pin icon</label></th>
+							<td>
+								<?php
+								$pin_icon_id  = (int) ( $config['map_pin_icon'] ?? 0 );
+								$pin_icon_url = $pin_icon_id ? wp_get_attachment_image_url( $pin_icon_id, 'thumbnail' ) : '';
+								$pin_width    = (int) ( $config['map_pin_width'] ?? 25 );
+								$pin_height   = (int) ( $config['map_pin_height'] ?? 41 );
+								?>
+								<input type="hidden" id="dir_map_pin_icon" name="dir_map_pin_icon" value="<?php echo esc_attr( (string) $pin_icon_id ); ?>">
+								<div id="dir_pin_icon_preview" style="margin-bottom:8px;">
+									<?php if ( $pin_icon_url ) : ?>
+										<img src="<?php echo esc_url( $pin_icon_url ); ?>" style="max-width:60px;max-height:60px;border:1px solid #ddd;border-radius:4px;background:#f9f9f9;padding:4px;">
+									<?php else : ?>
+										<span style="color:#999;font-size:12px;">No icon uploaded</span>
+									<?php endif; ?>
+								</div>
+								<button type="button" id="dir_pin_icon_upload" class="button">Upload Icon</button>
+								<?php if ( $pin_icon_id ) : ?>
+									<button type="button" id="dir_pin_icon_remove" class="button" style="margin-left:4px;">Remove</button>
+								<?php endif; ?>
+								<p class="description" style="margin-top:6px;">Upload a PNG or SVG image (transparent background recommended). Max 128×128px display size.</p>
+
+								<div style="margin-top:12px;display:flex;align-items:center;gap:12px;">
+									<label style="font-size:13px;">
+										Width (px)
+										<input type="number" id="dir_map_pin_width" name="dir_map_pin_width" value="<?php echo esc_attr( (string) $pin_width ); ?>" min="8" max="128" style="width:70px;margin-left:4px;">
+									</label>
+									<label style="font-size:13px;">
+										Height (px)
+										<input type="number" id="dir_map_pin_height" name="dir_map_pin_height" value="<?php echo esc_attr( (string) $pin_height ); ?>" min="8" max="128" style="width:70px;margin-left:4px;">
+									</label>
+								</div>
+								<p class="description" style="margin-top:4px;">Display size of the pin icon on the map.</p>
+							</td>
+						</tr>
+						<script>
+						(function(){
+							var styleSelect = document.getElementById('dir_map_pin_style');
+							var customRow   = document.getElementById('dir_custom_pin_row');
+							if (!styleSelect || !customRow) return;
+							styleSelect.addEventListener('change', function(){
+								customRow.style.display = (this.value === 'custom') ? '' : 'none';
+							});
+
+							// WP Media uploader for custom pin icon.
+							var uploadBtn  = document.getElementById('dir_pin_icon_upload');
+							var removeBtn  = document.getElementById('dir_pin_icon_remove');
+							var hiddenInput = document.getElementById('dir_map_pin_icon');
+							var previewDiv  = document.getElementById('dir_pin_icon_preview');
+
+							if (uploadBtn && wp && wp.media) {
+								uploadBtn.addEventListener('click', function(e){
+									e.preventDefault();
+									var frame = wp.media({ title: 'Select Pin Icon', multiple: false, library: { type: 'image' } });
+									frame.on('select', function(){
+										var attachment = frame.state().get('selection').first().toJSON();
+										hiddenInput.value = attachment.id;
+										previewDiv.innerHTML = '<img src="' + attachment.url + '" style="max-width:60px;max-height:60px;border:1px solid #ddd;border-radius:4px;background:#f9f9f9;padding:4px;">';
+										// Show remove button.
+										if (!document.getElementById('dir_pin_icon_remove')) {
+											var rmBtn = document.createElement('button');
+											rmBtn.type = 'button';
+											rmBtn.id = 'dir_pin_icon_remove';
+											rmBtn.className = 'button';
+											rmBtn.style.marginLeft = '4px';
+											rmBtn.textContent = 'Remove';
+											uploadBtn.insertAdjacentElement('afterend', rmBtn);
+											bindRemoveBtn(rmBtn);
+										}
+									});
+									frame.open();
+								});
+							}
+
+							function bindRemoveBtn(btn) {
+								if (!btn) return;
+								btn.addEventListener('click', function(e){
+									e.preventDefault();
+									hiddenInput.value = '0';
+									previewDiv.innerHTML = '<span style="color:#999;font-size:12px;">No icon uploaded</span>';
+									btn.remove();
+								});
+							}
+							bindRemoveBtn(removeBtn);
+						})();
+						</script>
 						<tr>
 							<th scope="row">Card display</th>
 							<td>

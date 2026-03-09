@@ -215,10 +215,10 @@ templates/
                               data-lat/data-lng attributes for map markers.
     directory-filters.php     Filter sidebar partial. Search input + per-taxonomy filter
                               groups with inline multi-select search (type-to-search
-                              dropdown, selected badge pills, "Browse all" link). JSON term
-                              data embedded per group for JS. Receives $filter_data array.
-                              Note: unified filter stack rendered by render_shortcode()
-                              in the main column, not here.
+                              dropdown, "Browse all" link). No per-group badge pills —
+                              selections only shown in the unified filter stack in the
+                              main column. JSON term data embedded per group for JS.
+                              Receives $filter_data array.
 assets/
   css/memdir.css              All plugin styles. Scoped to .memdir-profile. Includes modal,
                               header editing, taxonomy search, import button, PMP control,
@@ -602,7 +602,10 @@ WP Admin → Settings → Member Directory Sync → Directory Settings. Two coll
     'sort_order'         => 'ASC',         // ASC|DESC
     'search_enabled'     => true,
     'search_placeholder' => 'Search members...',
-    'map_pin_style'      => 'circle',      // circle|pin|avatar
+    'map_pin_style'      => 'circle',      // circle|pin|avatar|custom
+    'map_pin_icon'       => 0,             // Attachment ID for custom pin icon
+    'map_pin_width'      => 25,            // Custom pin icon width (px)
+    'map_pin_height'     => 41,            // Custom pin icon height (px)
     'filters' => [
         [
             'taxonomy'    => 'mp2t_instruments',
@@ -644,13 +647,14 @@ Admin-configurable via `map_pin_style` in Directory Settings:
 - **circle** (default): Sage green `L.circleMarker` with white border
 - **pin**: Standard Leaflet `L.marker` (default blue pin icon)
 - **avatar**: `L.divIcon` with member avatar `<img>` (circular, white border, shadow). Uses Leaflet.markercluster 1.5.3 (CDN) to group nearby markers. Cluster icons show count with branded sage green palette (small/medium/large sizing). MarkerCluster CSS/JS only loaded when avatar mode is active.
+- **custom**: `L.icon` with admin-uploaded image. Upload via WP Media Library in Directory Settings. Configurable width/height (8–128px). Icon anchored at bottom-center. Cached single `L.icon` instance shared across all markers. Requires `map_pin_icon` (attachment ID) to be set; falls back to default pin if no icon uploaded.
 
 ### Filter groups (multi-select search)
-Each taxonomy filter group provides an inline multi-select search field matching the profile form pattern (`memdir-taxo-search`):
+Each taxonomy filter group in the sidebar provides an inline multi-select search field matching the profile form pattern (`memdir-taxo-search`):
 - **Search input**: type-to-search with debounced dropdown showing matching terms
 - **Dropdown results**: filtered term list; already-selected terms highlighted; click to toggle
-- **Badge pills**: selected terms shown as sage green pills with × remove button below the input
-- **Browse all**: link opens a `<dialog>` with full checkbox list of all terms (+ in-dialog search when 10+ terms); Done button syncs selections back to inline badges
+- **Browse all**: link opens a `<dialog>` with full checkbox list of all terms (+ in-dialog search when 10+ terms); Done button syncs selections back to the unified filter stack
+- Selected terms only appear as pills in the main-column filter stack (no per-group inline badges in sidebar)
 - Terms stored in JS `state.filters` map keyed by taxonomy slug; `fetchResults()` triggered on any change
 
 ## Section JSON Schema

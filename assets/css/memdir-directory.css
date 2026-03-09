@@ -288,44 +288,6 @@
 	font-size: 12px;
 }
 
-/* Inline badge pills (per-group selected terms) */
-.memdir-directory__filter-pills {
-	display: flex;
-	flex-wrap: wrap;
-	gap: 5px;
-	margin-top: 6px;
-}
-
-.memdir-directory__filter-pills:empty {
-	display: none;
-}
-
-.memdir-directory__filter-badge {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	padding: 3px 8px;
-	background: var(--dir-accent);
-	color: var(--dir-white);
-	border-radius: 20px;
-	font-size: 12px;
-	font-weight: 500;
-}
-
-.memdir-directory__filter-badge-remove {
-	background: none;
-	border: none;
-	color: rgba(255, 255, 255, 0.8);
-	cursor: pointer;
-	font-size: 14px;
-	line-height: 1;
-	padding: 0 2px;
-}
-
-.memdir-directory__filter-badge-remove:hover {
-	color: #fff;
-}
-
 /* Browse all link */
 .memdir-directory__filter-browse {
 	background: none;

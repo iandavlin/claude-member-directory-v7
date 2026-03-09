@@ -79,18 +79,6 @@ if ( empty( $config['search_enabled'] ) && empty( $enabled_filters ) ) {
 			<div class="memdir-directory__filter-results" data-filter-results></div>
 		</div>
 
-		<div class="memdir-directory__filter-pills" data-filter-pills>
-			<?php foreach ( $active_terms as $term_slug ) :
-				$term_obj  = get_term_by( 'slug', $term_slug, $tax );
-				$term_name = $term_obj ? $term_obj->name : $term_slug;
-			?>
-				<span class="memdir-directory__filter-badge" data-term="<?php echo esc_attr( $term_slug ); ?>">
-					<?php echo esc_html( $term_name ); ?>
-					<button type="button" class="memdir-directory__filter-badge-remove" data-remove-term="<?php echo esc_attr( $term_slug ); ?>">&times;</button>
-				</span>
-			<?php endforeach; ?>
-		</div>
-
 		<button type="button" class="memdir-directory__filter-browse" data-filter-browse>Browse all</button>
 
 		<?php // Hidden data for JS: all terms as JSON ?>
