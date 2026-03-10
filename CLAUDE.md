@@ -21,7 +21,8 @@ WordPress plugin: section-based member profile and directory system powered by A
 - `templates/parts/section-view.php` — view partial (PMP waterfall + FieldRenderer per field)
 - `templates/parts/right-panel.php` — author/admin panel: View As button group, Global Default block, Primary Section block, Section toggles (edit mode), Notes block
 - `templates/parts/header-section.php` — generic data-driven sticky header (scans for ACF tab with "header" in label; maps fields to slots by type and suffix: text→title, image→avatar or banner by suffix, taxonomy→badges, url→social icons). Suffix-based image detection: avatar suffixes (`_photo`, `_avatar`, `_headshot`, `_portrait`) → circular avatar, banner suffixes (`_banner`, `_cover`, `_header_image`) → full-width banner image. Unmatched images default to avatar. Banner renders as a background-image div above the header body with avatar overlapping the bottom edge. Edit-mode fallbacks: "Edit Quick Focus" and "Add Links" placeholder text when badges/socials are empty
-- `templates/parts/pill-nav.php` — pill navigation row; All Sections + per-section pills (navigation only; enable/disable toggles live in right panel). Message button pushed to far right (edit mode: messaging settings, view mode: send message)
+- `templates/parts/pill-nav.php` — pill navigation row; All Sections + per-section pills (navigation only; enable/disable toggles live in right panel). Message button pushed to far right (edit mode: messaging settings, view mode: send message). Edit mode: enabled pills sort left, disabled pills sort right (CSS `order`).
+- `templates/parts/right-panel.php` — always_on (non-primary) sections hidden from SECTIONS toggle list since they can't be toggled off. Primary section still shows with "Primary" badge.
 - Custom image/gallery uploaders — "image in, image out" pattern for all image and gallery fields in edit mode. Replaces ACF's native media library UI with inline upload/remove buttons + caption inputs. Old attachments auto-deleted on replace/remove. Galleries use thumbnail grid with per-image captions.
 - GLightbox integration — view-mode images and galleries open in a lightbox with captions. Galleries support prev/next navigation. Initialized via `initLightbox()` in JS boot sequence. GLightbox 3.3.0 loaded from jsDelivr CDN.
 - Header editing system — per-element pencil/camera overlays with mini-modals:
@@ -234,6 +235,10 @@ assets/
                               Trust network styles: .memdir-trust-* (block, list, card, btn, badge).
                               Messaging styles: .memdir-pill--message (pill-row button),
                               dialog.memdir-msg-modal (compose form), .memdir-msg-sent (toast).
+                              Edit-mode centered layout: header + form fields centered on page
+                              (--md-content-width: 820px), section controls overhang left.
+                              Pill sorting: enabled left, disabled right (CSS order).
+                              Responsive: centering resets at ≤768px.
   css/memdir-directory.css    Directory listing styles. Scoped to .memdir-directory.
                               Two-column layout (CSS Grid: main + 280px sidebar).
                               Map container, Leaflet popup overrides, sidebar filter panel,
@@ -579,6 +584,23 @@ Both reuse `md_save_nonce`:
 - `messagingAccess` — string from `Messaging::get_access()` (current profile's setting)
 - `profileAuthorId` — int, profile author's user ID (0 on non-profile pages)
 - `avatarLink` — string, avatar link URL from `_memdir_avatar_link` post meta (empty string on non-profile pages)
+
+## Edit-Mode Centered Layout
+
+In edit mode, the header and form fields are centered on the page. Section controls overhang to the left. The right panel stays in its own outer grid track.
+
+### CSS variables
+- `--md-content-width: 820px` — max width of the form content / visible header area
+- `--md-centered-width: calc(--md-controls-width + 16px + --md-content-width)` — total centered block (controls + gap + content = 1096px)
+
+### How it works
+1. `.memdir-profile--has-panel` widened to `max-width: 1500px` (from 1400px) for breathing room
+2. `.memdir-section--edit` gets `max-width: var(--md-centered-width); margin: 0 auto` — centers the controls+form grid
+3. `.memdir-header-wrap` and `.memdir-pills` (edit mode) get the same `max-width` + `padding-left: calc(controls + gap)` — offsets their content to align with the form area
+4. At ≤768px, all centering and left padding reset to `none`/`0` for mobile stacking
+
+### Pill sorting
+In edit mode, enabled pills sort left (`order: 0`), disabled pills sort right (`order: 1`), message button stays far-right (`order: 2` + `margin-left: auto`). View mode unaffected (disabled pills hidden).
 
 ## Directory Shortcode (`[memdir_directory]`)
 

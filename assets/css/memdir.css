@@ -90,6 +90,8 @@ body.single-member-directory .select2-dropdown--above {
   --md-radius-pill: 999px;
   --md-panel-width: 280px;
   --md-controls-width: 260px;
+  --md-content-width: 820px;
+  --md-centered-width: calc(var(--md-controls-width) + 16px + var(--md-content-width));
   --md-font:        'Jost', sans-serif;
 }
 
@@ -109,11 +111,57 @@ body.single-member-directory .select2-dropdown--above {
 
 .memdir-profile--has-panel {
   grid-template-columns: 1fr var(--md-panel-width);
-  max-width: 1400px;
+  max-width: 1500px;
 }
 
 .memdir-profile__main {
   min-width: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   EDIT-MODE CENTERED LAYOUT
+   Header and form fields are centered on the page. Section
+   controls overhang to the left of the centered content area.
+   The right panel stays in its own outer grid track.
+───────────────────────────────────────────────────────────── */
+
+/* Center header content, offset left for controls alignment.
+   padding-left = controls-width + gap so visible header aligns
+   with the form content area inside the section grid. */
+.memdir-profile--edit .memdir-header-wrap {
+  max-width: var(--md-centered-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: calc(var(--md-controls-width) + 16px);
+  box-sizing: border-box;
+}
+
+.memdir-profile--edit .memdir-pills {
+  max-width: var(--md-centered-width);
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: calc(var(--md-controls-width) + 16px);
+  box-sizing: border-box;
+}
+
+/* Center section grid: controls + form constrained and centered. */
+.memdir-section--edit {
+  max-width: var(--md-centered-width);
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   PILL SORTING — enabled pills left, disabled pills right
+   Message button stays at far right (order 2 + margin-left: auto).
+───────────────────────────────────────────────────────────── */
+
+.memdir-profile--edit .memdir-pill--disabled {
+  order: 1;
+}
+
+.memdir-pill--message {
+  order: 2;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -2238,6 +2286,17 @@ dialog.memdir-header-modal--media {
 
   .memdir-section {
     grid-template-columns: 1fr;
+  }
+
+  /* Reset edit-mode centering on mobile — controls stack above form */
+  .memdir-profile--edit .memdir-header-wrap,
+  .memdir-profile--edit .memdir-pills {
+    padding-left: 0;
+    max-width: none;
+  }
+
+  .memdir-section--edit {
+    max-width: none;
   }
 
   .memdir-header__banner {
