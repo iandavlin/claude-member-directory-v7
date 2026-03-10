@@ -526,65 +526,57 @@
 			} );
 		} );
 
-		// GLOBAL PMP buttons -- clicking a .memdir-panel__global-btn saves the
-		// profile-wide default visibility level via AJAX and toggles the active
-		// highlight to the clicked button. Also cascades to inherit-mode sections.
-		panel.querySelectorAll( '.memdir-panel__global-btn' ).forEach( function ( btn ) {
-			btn.addEventListener( 'click', function () {
-				var pmp    = btn.dataset.pmp || '';
-				var nav    = document.querySelector( '.memdir-pills' );
-				var postId = nav ? ( nav.dataset.postId || '' ) : '';
-
-				if ( ! pmp || ! postId ) {
-					return;
-				}
-
-				// Optimistic UI: apply the active class immediately and blur the button
-				// so BuddyBoss's :focus/:active styles don't override the new background.
-				var prevPmp = '';
-				panel.querySelectorAll( '.memdir-panel__global-btn' ).forEach( function ( b ) {
-					if ( b.classList.contains( 'memdir-panel__global-btn--active' ) ) { prevPmp = b.dataset.pmp || ''; }
-					b.classList.toggle( 'memdir-panel__global-btn--active', b.dataset.pmp === pmp );
+		// GLOBAL PMP dropdown — clicking an option saves the profile-wide
+		// default visibility level via AJAX. Cascades to inherit-mode sections.
+		var globalDropdown = panel.querySelector( '.memdir-pmp-dropdown[data-context="global"]' );
+		if ( globalDropdown ) {
+			var globalTrigger = globalDropdown.querySelector( '.memdir-pmp-dropdown__trigger' );
+			if ( globalTrigger ) {
+				globalTrigger.addEventListener( 'click', function ( e ) {
+					e.stopPropagation();
+					togglePmpDropdown( globalDropdown );
 				} );
-				btn.blur();
+			}
 
-				// Cascade to inherit-mode sections immediately.
-				cascadeGlobalPmpToSections( pmp );
+			globalDropdown.querySelectorAll( '.memdir-pmp-dropdown__option' ).forEach( function ( opt ) {
+				opt.addEventListener( 'click', function () {
+					var pmp    = opt.dataset.pmp || '';
+					var nav    = document.querySelector( '.memdir-pills' );
+					var postId = nav ? ( nav.dataset.postId || '' ) : '';
 
-				var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
-					? window.mdAjax.ajaxurl
-					: '/wp-admin/admin-ajax.php';
-				var nonce = ( window.mdAjax && window.mdAjax.nonce )
-					? window.mdAjax.nonce
-					: '';
+					if ( ! pmp || ! postId ) { return; }
 
-				var formData = new FormData();
-				formData.set( 'action',  'memdir_ajax_save_global_pmp' );
-				formData.set( 'nonce',   nonce );
-				formData.set( 'post_id', postId );
-				formData.set( 'pmp',     pmp );
+					var prevPmp = globalDropdown.dataset.pmp || 'public';
+					updatePmpDropdown( globalDropdown, pmp );
+					togglePmpDropdown( globalDropdown, false );
+					cascadeGlobalPmpToSections( pmp );
 
-				fetch( ajaxUrl, {
-					method:      'POST',
-					credentials: 'same-origin',
-					body:        formData,
-				} )
-					.then( function ( response ) { return response.json(); } )
-					.then( function ( data ) {
-						if ( ! data.success ) {
-							console.error( 'MemberDirectory: global PMP AJAX returned error', data );
-							// Revert optimistic change.
-							panel.querySelectorAll( '.memdir-panel__global-btn' ).forEach( function ( b ) {
-								b.classList.toggle( 'memdir-panel__global-btn--active', b.dataset.pmp === prevPmp );
-							} );
-							cascadeGlobalPmpToSections( prevPmp );
-						}
-					} )
-					.catch( function ( err ) {
-						console.error( 'MemberDirectory: global PMP AJAX failed', err );
-					} );
+					var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
+						? window.mdAjax.ajaxurl : '/wp-admin/admin-ajax.php';
+					var nonce = ( window.mdAjax && window.mdAjax.nonce )
+						? window.mdAjax.nonce : '';
+
+					var formData = new FormData();
+					formData.set( 'action',  'memdir_ajax_save_global_pmp' );
+					formData.set( 'nonce',   nonce );
+					formData.set( 'post_id', postId );
+					formData.set( 'pmp',     pmp );
+
+					fetch( ajaxUrl, { method: 'POST', credentials: 'same-origin', body: formData } )
+						.then( function ( r ) { return r.json(); } )
+						.then( function ( data ) {
+							if ( ! data.success ) {
+								console.error( 'MemberDirectory: global PMP AJAX error', data );
+								updatePmpDropdown( globalDropdown, prevPmp );
+								cascadeGlobalPmpToSections( prevPmp );
+							}
+						} )
+						.catch( function ( err ) {
+							console.error( 'MemberDirectory: global PMP AJAX failed', err );
+						} );
+				} );
 			} );
-		} );
+		}
 	}
 
 	// -----------------------------------------------------------------------
@@ -844,17 +836,162 @@
 	// -----------------------------------------------------------------------
 	// 8. Section PMP
 	//
-	// Each .memdir-section--edit has a .memdir-section-controls__pmp block with
-	// four buttons: inherit (link), public (globe), member (people), private (lock).
+	// Each .memdir-section--edit has a .memdir-pmp-dropdown in its controls panel
+	// with options: inherit, public, member, private.
 	//
-	// Clicking a button:
-	//   - Moves is-active to the clicked button (optimistic).
+	// Clicking an option:
+	//   - Updates the dropdown trigger (optimistic).
 	//   - Updates the eyebrow text (.memdir-section-controls__pmp-status).
 	//   - POSTs to memdir_ajax_save_section_pmp.
-	//   - On error: reverts button and eyebrow.
+	//   - On error: reverts dropdown and eyebrow.
 	//
 	// When global PMP changes, all inherit-mode sections update their eyebrow.
 	// -----------------------------------------------------------------------
+
+	// -----------------------------------------------------------------------
+	// PMP Dropdown — shared utilities
+	//
+	// togglePmpDropdown()  — open/close a .memdir-pmp-dropdown with aria.
+	// updatePmpDropdown()  — set trigger label/icon/class + option state.
+	// buildPmpDropdown()   — DOM builder for JS-created dropdowns (field PMP).
+	// Global listeners     — click-outside close + keyboard navigation.
+	// -----------------------------------------------------------------------
+
+	var PMP_TRIGGER_LABELS = {
+		'inherit': 'Inherit',
+		'public':  'Public',
+		'member':  'Members',
+		'private': 'Private',
+	};
+
+	function togglePmpDropdown( dropdown, open ) {
+		var isOpen = dropdown.classList.contains( 'memdir-pmp-dropdown--open' );
+		var next   = ( typeof open === 'boolean' ) ? open : ! isOpen;
+		var trigger = dropdown.querySelector( '.memdir-pmp-dropdown__trigger' );
+
+		// Close all other open dropdowns first.
+		if ( next ) {
+			document.querySelectorAll( '.memdir-pmp-dropdown--open' ).forEach( function ( dd ) {
+				if ( dd !== dropdown ) {
+					dd.classList.remove( 'memdir-pmp-dropdown--open' );
+					var t = dd.querySelector( '.memdir-pmp-dropdown__trigger' );
+					if ( t ) { t.setAttribute( 'aria-expanded', 'false' ); }
+				}
+			} );
+		}
+
+		dropdown.classList.toggle( 'memdir-pmp-dropdown--open', next );
+		if ( trigger ) {
+			trigger.setAttribute( 'aria-expanded', next ? 'true' : 'false' );
+		}
+	}
+
+	function updatePmpDropdown( dropdown, pmp ) {
+		dropdown.dataset.pmp = pmp;
+		var trigger = dropdown.querySelector( '.memdir-pmp-dropdown__trigger' );
+		if ( trigger ) {
+			trigger.className = trigger.className.replace(
+				/memdir-pmp-dropdown__trigger--\w+/,
+				'memdir-pmp-dropdown__trigger--' + pmp
+			);
+			var labelEl = trigger.querySelector( '.memdir-pmp-dropdown__label' );
+			if ( labelEl ) { labelEl.textContent = PMP_TRIGGER_LABELS[ pmp ] || pmp; }
+		}
+		dropdown.querySelectorAll( '.memdir-pmp-dropdown__option' ).forEach( function ( opt ) {
+			opt.setAttribute( 'aria-selected', opt.dataset.pmp === pmp ? 'true' : 'false' );
+		} );
+	}
+
+	function buildPmpDropdown( currentPmp, options ) {
+		var dd = document.createElement( 'div' );
+		dd.className  = 'memdir-pmp-dropdown';
+		dd.dataset.pmp = currentPmp;
+
+		var trigger = document.createElement( 'button' );
+		trigger.type = 'button';
+		trigger.className = 'memdir-pmp-dropdown__trigger memdir-pmp-dropdown__trigger--' + currentPmp;
+		trigger.setAttribute( 'aria-haspopup', 'listbox' );
+		trigger.setAttribute( 'aria-expanded', 'false' );
+
+		var iconSpan = document.createElement( 'span' );
+		iconSpan.className = 'memdir-pmp-dropdown__icon';
+		iconSpan.setAttribute( 'aria-hidden', 'true' );
+		trigger.appendChild( iconSpan );
+
+		var labelSpan = document.createElement( 'span' );
+		labelSpan.className   = 'memdir-pmp-dropdown__label';
+		labelSpan.textContent = PMP_TRIGGER_LABELS[ currentPmp ] || currentPmp;
+		trigger.appendChild( labelSpan );
+
+		var caret = document.createElement( 'span' );
+		caret.className = 'memdir-pmp-dropdown__caret';
+		caret.setAttribute( 'aria-hidden', 'true' );
+		trigger.appendChild( caret );
+
+		dd.appendChild( trigger );
+
+		var menu = document.createElement( 'ul' );
+		menu.className = 'memdir-pmp-dropdown__menu';
+		menu.setAttribute( 'role', 'listbox' );
+		menu.setAttribute( 'tabindex', '-1' );
+
+		options.forEach( function ( pmpVal ) {
+			var li = document.createElement( 'li' );
+			li.className = 'memdir-pmp-dropdown__option memdir-pmp-dropdown__option--' + pmpVal;
+			li.setAttribute( 'role', 'option' );
+			li.dataset.pmp = pmpVal;
+			li.setAttribute( 'aria-selected', currentPmp === pmpVal ? 'true' : 'false' );
+			li.setAttribute( 'tabindex', '-1' );
+
+			var optIcon = document.createElement( 'span' );
+			optIcon.className = 'memdir-pmp-dropdown__option-icon';
+			optIcon.setAttribute( 'aria-hidden', 'true' );
+			li.appendChild( optIcon );
+			li.appendChild( document.createTextNode( ' ' + ( PMP_TRIGGER_LABELS[ pmpVal ] || pmpVal ) ) );
+			menu.appendChild( li );
+		} );
+
+		dd.appendChild( menu );
+		return dd;
+	}
+
+	// Global click-outside handler — close all open PMP dropdowns.
+	document.addEventListener( 'click', function () {
+		document.querySelectorAll( '.memdir-pmp-dropdown--open' ).forEach( function ( dd ) {
+			togglePmpDropdown( dd, false );
+		} );
+	} );
+
+	// Keyboard: Escape closes, ArrowUp/Down navigates, Enter/Space selects.
+	document.addEventListener( 'keydown', function ( e ) {
+		var openDd = document.querySelector( '.memdir-pmp-dropdown--open' );
+		if ( ! openDd ) { return; }
+
+		if ( e.key === 'Escape' ) {
+			togglePmpDropdown( openDd, false );
+			var trigger = openDd.querySelector( '.memdir-pmp-dropdown__trigger' );
+			if ( trigger ) { trigger.focus(); }
+			e.preventDefault();
+			return;
+		}
+
+		var options = Array.from( openDd.querySelectorAll( '.memdir-pmp-dropdown__option' ) );
+		var focused = document.activeElement;
+		var idx     = options.indexOf( focused );
+
+		if ( e.key === 'ArrowDown' ) {
+			e.preventDefault();
+			options[ ( idx + 1 ) % options.length ].focus();
+		} else if ( e.key === 'ArrowUp' ) {
+			e.preventDefault();
+			options[ ( idx - 1 + options.length ) % options.length ].focus();
+		} else if ( e.key === 'Enter' || e.key === ' ' ) {
+			if ( focused && focused.classList.contains( 'memdir-pmp-dropdown__option' ) ) {
+				e.preventDefault();
+				focused.click();
+			}
+		}
+	} );
 
 	/** Human-readable labels matching the PHP $pmp_labels array. */
 	var PMP_LABELS = {
@@ -869,49 +1006,42 @@
 	function initSectionPmp() {
 		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
 			var controls = section.querySelector( '.memdir-section-controls' );
-			if ( ! controls ) {
-				return;
+			if ( ! controls ) { return; }
+
+			var dropdown = controls.querySelector( '.memdir-pmp-dropdown' );
+			var status   = controls.querySelector( '.memdir-section-controls__pmp-status' );
+			if ( ! dropdown ) { return; }
+
+			// Toggle dropdown open/close on trigger click.
+			var trigger = dropdown.querySelector( '.memdir-pmp-dropdown__trigger' );
+			if ( trigger ) {
+				trigger.addEventListener( 'click', function ( e ) {
+					e.stopPropagation();
+					togglePmpDropdown( dropdown );
+				} );
 			}
 
-			var btns   = controls.querySelectorAll( '.memdir-section-controls__pmp-btn' );
-			var status = controls.querySelector( '.memdir-section-controls__pmp-status' );
-
-			btns.forEach( function ( btn ) {
-				btn.addEventListener( 'click', function () {
-					var pmp        = btn.dataset.pmp || '';
+			// Wire option clicks.
+			dropdown.querySelectorAll( '.memdir-pmp-dropdown__option' ).forEach( function ( opt ) {
+				opt.addEventListener( 'click', function () {
+					var pmp        = opt.dataset.pmp || '';
 					var postId     = section.dataset.postId || '';
 					var sectionKey = section.dataset.section || '';
 
-					if ( ! pmp || ! postId || ! sectionKey ) {
-						return;
-					}
+					if ( ! pmp || ! postId || ! sectionKey ) { return; }
 
-					// Optimistic: move is-active to clicked button.
-					var prevPmp = '';
-					btns.forEach( function ( b ) {
-						if ( b.classList.contains( 'is-active' ) ) {
-							prevPmp = b.dataset.pmp || '';
-						}
-						b.classList.toggle( 'is-active', b === btn );
-					} );
+					var prevPmp = dropdown.dataset.pmp || 'inherit';
+					updatePmpDropdown( dropdown, pmp );
+					togglePmpDropdown( dropdown, false );
 
-					// Update section eyebrow text immediately.
-					if ( status ) {
-						updateSectionPmpStatus( status, pmp );
-					}
-
-					// Cascade new section PMP to all per-field PMP eyebrows
-					// in this section (fields in inherit mode now show the new
-					// section value as their winning state).
+					if ( status ) { updateSectionPmpStatus( status, pmp ); }
 					refreshSectionFieldPmpEyebrows( section );
 
 					// AJAX save.
 					var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
-						? window.mdAjax.ajaxurl
-						: '/wp-admin/admin-ajax.php';
+						? window.mdAjax.ajaxurl : '/wp-admin/admin-ajax.php';
 					var nonce = ( window.mdAjax && window.mdAjax.nonce )
-						? window.mdAjax.nonce
-						: '';
+						? window.mdAjax.nonce : '';
 
 					var formData = new FormData();
 					formData.set( 'action',      'memdir_ajax_save_section_pmp' );
@@ -920,22 +1050,13 @@
 					formData.set( 'section_key', sectionKey );
 					formData.set( 'pmp',         pmp );
 
-					fetch( ajaxUrl, {
-						method:      'POST',
-						credentials: 'same-origin',
-						body:        formData,
-					} )
-						.then( function ( response ) { return response.json(); } )
+					fetch( ajaxUrl, { method: 'POST', credentials: 'same-origin', body: formData } )
+						.then( function ( r ) { return r.json(); } )
 						.then( function ( data ) {
 							if ( ! data.success ) {
-								console.error( 'MemberDirectory: section PMP AJAX returned error', data );
-								// Revert optimistic change.
-								btns.forEach( function ( b ) {
-									b.classList.toggle( 'is-active', b.dataset.pmp === prevPmp );
-								} );
-								if ( status ) {
-									updateSectionPmpStatus( status, prevPmp );
-								}
+								console.error( 'MemberDirectory: section PMP AJAX error', data );
+								updatePmpDropdown( dropdown, prevPmp );
+								if ( status ) { updateSectionPmpStatus( status, prevPmp ); }
 								refreshSectionFieldPmpEyebrows( section );
 							}
 						} )
@@ -971,8 +1092,8 @@
 	 * @returns {string}  'public', 'member', or 'private'.
 	 */
 	function getGlobalPmp() {
-		var activeBtn = document.querySelector( '.memdir-panel__global-btn--active' );
-		return activeBtn ? ( activeBtn.dataset.pmp || 'public' ) : 'public';
+		var dd = document.querySelector( '.memdir-right-panel .memdir-pmp-dropdown' );
+		return dd ? ( dd.dataset.pmp || 'public' ) : 'public';
 	}
 
 	/**
@@ -1052,10 +1173,10 @@
 
 		// Inherit from section -- read the currently active section PMP button.
 		var section          = fieldPmpEl.closest( '.memdir-section--edit' );
-		var activeSectionBtn = section
-			? section.querySelector( '.memdir-section-controls__pmp-btn.is-active' )
+		var sectionDropdown = section
+			? section.querySelector( '.memdir-section-controls .memdir-pmp-dropdown' )
 			: null;
-		var sectionPmp = activeSectionBtn ? ( activeSectionBtn.dataset.pmp || 'inherit' ) : 'inherit';
+		var sectionPmp = sectionDropdown ? ( sectionDropdown.dataset.pmp || 'inherit' ) : 'inherit';
 
 		if ( sectionPmp !== 'inherit' ) {
 			return ( fieldLabel ? fieldLabel + ' · ' : '' ) + 'Section: ' + ( PMP_LABELS[ sectionPmp ] || sectionPmp );
@@ -1100,22 +1221,17 @@
 	function initFieldPmp() {
 		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
 			var fieldPmpData = {};
-			try {
-				fieldPmpData = JSON.parse( section.dataset.fieldPmp || '{}' );
-			} catch ( e ) {
-				fieldPmpData = {};
-			}
+			try { fieldPmpData = JSON.parse( section.dataset.fieldPmp || '{}' ); }
+			catch ( e ) { fieldPmpData = {}; }
 
 			Object.keys( fieldPmpData ).forEach( function ( fieldKey ) {
-				var data         = fieldPmpData[ fieldKey ];
-				var storedPmp    = data.storedPmp    || 'inherit';
+				var data          = fieldPmpData[ fieldKey ];
+				var storedPmp     = data.storedPmp    || 'inherit';
 				var companionKey  = data.companionKey  || '';
 				var companionName = data.companionName || '';
 
 				var fieldEl = section.querySelector( '.acf-field[data-key="' + fieldKey + '"]' );
-				if ( ! fieldEl ) {
-					return;
-				}
+				if ( ! fieldEl ) { return; }
 
 				// Build the control wrapper.
 				var wrap = document.createElement( 'div' );
@@ -1124,85 +1240,62 @@
 				wrap.dataset.companionKey = companionKey;
 				wrap.dataset.storedPmp    = storedPmp;
 
-				var labelEl = fieldEl.querySelector( ".acf-label label" );
-				wrap.dataset.fieldLabel = labelEl ? labelEl.textContent.trim().replace( /\s*\*$/, "" ) : "";
+				var labelEl = fieldEl.querySelector( '.acf-label label' );
+				wrap.dataset.fieldLabel = labelEl ? labelEl.textContent.trim().replace( /\s*\*$/, '' ) : '';
 
-				var row = document.createElement( 'div' );
-				row.className = 'memdir-field-pmp__row';
+				// Build dropdown.
+				var dropdown = buildPmpDropdown( storedPmp, [ 'inherit', 'public', 'member', 'private' ] );
+				wrap.appendChild( dropdown );
 
-				var pmpValues = [ 'inherit', 'public', 'member', 'private' ];
-
-				pmpValues.forEach( function ( pmpVal ) {
-					var btn = document.createElement( 'button' );
-					btn.type        = 'button';
-					btn.className   = 'memdir-field-pmp__btn memdir-field-pmp__btn--' + pmpVal +
-					                  ( storedPmp === pmpVal ? ' is-active' : '' );
-					btn.dataset.pmp = pmpVal;
-					btn.setAttribute( 'aria-label', {
-						inherit: 'Inherit section setting',
-						public:  'Public',
-						member:  'Members only',
-						private: 'Private',
-					}[ pmpVal ] || pmpVal );
-					row.appendChild( btn );
-				} );
-
-				var statusSpan = document.createElement( 'span' );
-				statusSpan.className   = 'memdir-field-pmp__status';
+				// Status eyebrow.
+				var statusSpan       = document.createElement( 'span' );
+				statusSpan.className = 'memdir-field-pmp__status';
 				statusSpan.textContent = computeFieldPmpStatus( wrap );
-				row.appendChild( statusSpan );
+				wrap.appendChild( statusSpan );
 
-				wrap.appendChild( row );
-				var labelEl = fieldEl.querySelector( ".acf-label" );
-				( labelEl || fieldEl ).appendChild( wrap );
+				var acfLabel = fieldEl.querySelector( '.acf-label' );
+				( acfLabel || fieldEl ).appendChild( wrap );
 
-				// Wire click handlers on the 4 icon buttons.
-				row.querySelectorAll( '.memdir-field-pmp__btn' ).forEach( function ( btn ) {
-					btn.addEventListener( 'click', function () {
-						var pmp    = btn.dataset.pmp || '';
+				// Wire trigger click.
+				var trigger = dropdown.querySelector( '.memdir-pmp-dropdown__trigger' );
+				if ( trigger ) {
+					trigger.addEventListener( 'click', function ( e ) {
+						e.stopPropagation();
+						togglePmpDropdown( dropdown );
+					} );
+				}
+
+				// Wire option clicks.
+				dropdown.querySelectorAll( '.memdir-pmp-dropdown__option' ).forEach( function ( opt ) {
+					opt.addEventListener( 'click', function () {
+						var pmp    = opt.dataset.pmp || '';
 						var postId = section.dataset.postId || '';
 
-						if ( ! pmp || ! postId || ! companionName ) {
-							if ( ! companionName ) {
-								console.warn( 'MemberDirectory: field PMP missing companionName for', fieldKey );
-							}
-							return;
-						}
+						if ( ! pmp || ! postId || ! companionName ) { return; }
 
-						// Optimistic: update stored PMP and button active state.
 						var prevPmp = wrap.dataset.storedPmp || 'inherit';
 						wrap.dataset.storedPmp = pmp;
-
-						row.querySelectorAll( '.memdir-field-pmp__btn' ).forEach( function ( b ) {
-							b.classList.toggle( 'is-active', b === btn );
-						} );
-
+						updatePmpDropdown( dropdown, pmp );
+						togglePmpDropdown( dropdown, false );
 						statusSpan.textContent = computeFieldPmpStatus( wrap );
 
 						// AJAX save.
 						var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
-							? window.mdAjax.ajaxurl
-							: '/wp-admin/admin-ajax.php';
+							? window.mdAjax.ajaxurl : '/wp-admin/admin-ajax.php';
 						var nonce = ( window.mdAjax && window.mdAjax.nonce )
-							? window.mdAjax.nonce
-							: '';
+							? window.mdAjax.nonce : '';
 
 						var formData = new FormData();
-						formData.set( 'action',        'memdir_ajax_save_field_pmp' );
-						formData.set( 'nonce',         nonce );
-						formData.set( 'post_id',       postId );
+						formData.set( 'action',         'memdir_ajax_save_field_pmp' );
+						formData.set( 'nonce',          nonce );
+						formData.set( 'post_id',        postId );
 						formData.set( 'companion_name', companionName );
-						formData.set( 'pmp',           pmp );
+						formData.set( 'pmp',            pmp );
 
-						fetch( ajaxUrl, {
-							method:      'POST',
-							credentials: 'same-origin',
-							body:        formData,
-						} )
-							.then( function ( response ) { return response.json(); } )
+						fetch( ajaxUrl, { method: 'POST', credentials: 'same-origin', body: formData } )
+							.then( function ( r ) { return r.json(); } )
 							.then( function ( data ) {
 								if ( data.success ) {
-									// Brief visual confirmation — flash the status text.
 									var savedText = statusSpan.textContent;
 									statusSpan.textContent = '✓ Saved';
 									statusSpan.classList.add( 'memdir-field-pmp__status--saved' );
@@ -1212,21 +1305,15 @@
 									}, 1200 );
 								} else {
 									console.error( 'MemberDirectory: field PMP AJAX error', data );
-									// Revert optimistic change.
 									wrap.dataset.storedPmp = prevPmp;
-									row.querySelectorAll( '.memdir-field-pmp__btn' ).forEach( function ( b ) {
-										b.classList.toggle( 'is-active', b.dataset.pmp === prevPmp );
-									} );
+									updatePmpDropdown( dropdown, prevPmp );
 									statusSpan.textContent = computeFieldPmpStatus( wrap );
 								}
 							} )
 							.catch( function ( err ) {
 								console.error( 'MemberDirectory: field PMP AJAX failed', err );
-								// Revert optimistic change on network failure.
 								wrap.dataset.storedPmp = prevPmp;
-								row.querySelectorAll( '.memdir-field-pmp__btn' ).forEach( function ( b ) {
-									b.classList.toggle( 'is-active', b.dataset.pmp === prevPmp );
-								} );
+								updatePmpDropdown( dropdown, prevPmp );
 								statusSpan.textContent = computeFieldPmpStatus( wrap );
 							} );
 					} );

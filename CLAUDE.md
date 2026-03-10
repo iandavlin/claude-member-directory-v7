@@ -30,13 +30,13 @@ WordPress plugin: section-based member profile and directory system powered by A
   - Name modal (inline text editing)
   - Categories modal (custom taxonomy search replacing select2, AJAX-backed)
   - Social Links modal (inline URL editing + import from other primary sections)
-- Section PMP controls — 4-state button group in edit mode left panel (inherit/public/member/private)
-- Field PMP controls — per-field visibility buttons injected into edit mode
-- Global PMP controls — right panel buttons wired with AJAX save
+- Section PMP controls — dropdown in edit mode left panel (inherit/public/member/private)
+- Field PMP controls — per-field dropdown injected into edit mode
+- Global PMP controls — right panel dropdown wired with AJAX save
 - Custom taxonomy search — replaces ACF's select2 with debounced AJAX search UI for all taxonomy fields in edit mode. Supports both single-select (one badge) and multi-select (badge pills with × remove). Applied globally via `initTaxonomySearch()` boot function; header modal taxonomy fields initialized separately by `initHeaderEditing()`. `getHeaderFieldKeys()` guard prevents double-init. Multi-select fields include a "Browse all" link that opens a checkbox modal with the full alphabetical term list (up to 200 terms via `browse_all` AJAX flag).
 - Social link import — cross-section import for primary-capable sections (matched by URL field suffix)
 - `TrustNetwork` — first non-ACF, code-driven section. Custom DB table `{prefix}memdir_trust_network` for trusted repair partner relationships. Builder→luthier request/accept/decline flow. Enabled state via post meta `_memdir_trust_enabled`. Batch profile resolution via `resolve_profiles()` / `resolve_post_profiles()`. Hard-coded Trust pill in pill-nav + Trust toggle in right panel (distinguished by `data-trust-toggle="1"` attribute). Ghost logic: section hidden in view mode when disabled. JS `initTrustNetwork()` handles action buttons + toggle.
-- `Onboarding` — `[memdir_onboarding]` shortcode for self-service member creation. Redirect funnel: existing members → profile, new members → form (primary section radio + URL slug text input). Post-create: sets primary, enables always_on + primary sections, disables rest, redirects to profile in edit mode with primary pill active. Logged-out users handled by BuddyBoss login redirect. Inline CSS scoped to `.memdir-onboarding`.
+- `Onboarding` — `[memdir_onboarding]` shortcode for self-service member creation. Redirect funnel: existing members → profile, new members → form (primary section radio + URL slug text input). Post-create: sets primary, enables always_on + primary sections, disables rest, sets global PMP to 'member', redirects to profile in edit mode with primary pill active. Logged-out users handled by BuddyBoss login redirect. Inline CSS scoped to `.memdir-onboarding`.
 - `Messaging` — BuddyBoss messaging integration. "Message" button in pill nav row (view mode, logged-in, not own profile, pushed far right). Opens `<dialog>` modal with Subject + Message fields. AJAX POST to `memdir_ajax_send_message` → calls BuddyBoss `messages_new_message()`. Graceful degradation: button hidden when BuddyBoss messaging inactive. JS `initMessaging()` in boot sequence.
 - AJAX handlers wired:
   - `md_save_section` → `AcfFormHelper::handle_ajax_save`
@@ -209,7 +209,7 @@ templates/
                               trusted-by cards, request button (state-dependent), outbound
                               network. Edit mode: pending requests with accept/decline, accepted
                               relationships with remove, outbound list. Ghost logic when disabled.
-    section-edit.php          Edit partial. Left controls (section PMP buttons, tab list, save button) + ACF form.
+    section-edit.php          Edit partial. Left controls (section PMP dropdown, tab list, save button) + ACF form.
                               Tab list derived from acf_get_fields( $section['acf_group_key'] ).
     section-view.php          View partial. Resolves PMP waterfall per field, calls FieldRenderer.
                               Field list derived from acf_get_fields( $section['acf_group_key'] ).
@@ -331,6 +331,9 @@ $field_pmp = get_field( 'member_directory_field_pmp_' . $field_name_suffix, $pos
 ```
 
 ## PMP System
+
+### PMP Dropdown UI (Edit Mode)
+All three PMP levels use a shared `.memdir-pmp-dropdown` component — a single trigger button (icon + label) that opens a dropdown menu on click. Section PMP and field PMP have 4 options (inherit/public/member/private). Global PMP has 3 (public/member/private). JS utilities: `togglePmpDropdown()`, `updatePmpDropdown()`, `buildPmpDropdown()` (field PMP DOM builder). Global click-outside and keyboard (Escape/Arrow/Enter) listeners.
 
 ### 4-State Section PMP
 Each section has a single `privacy_mode` ACF field (type: `button_group`) with four values:
@@ -514,7 +517,8 @@ Self-service member creation form + redirect funnel. Place on any page.
 5. `wp_insert_post()`: type=member-directory, status=publish, author, title=display_name, post_name=slug
 6. `update_field( 'field_md_primary_section', $primary_key, $post_id )`
 7. Loop all sections: enable (`1`) if `always_on` or primary, disable (`0`) otherwise
-8. `wp_safe_redirect( permalink + '?active_section=' . $primary_key )` + exit
+8. Set global PMP to `member` (Members only) via `update_field( 'field_md_global_pmp', 'member', $post_id )`
+9. `wp_safe_redirect( permalink + '?active_section=' . $primary_key )` + exit
 
 ### Styling
 Inline `<style>` scoped to `.memdir-onboarding`. Uses brand palette CSS vars. No external CSS/JS dependency.

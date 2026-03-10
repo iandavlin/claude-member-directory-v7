@@ -76,15 +76,34 @@ if ( $is_edit ) {
 
 		<p class="memdir-panel__label">GLOBAL DEFAULT VISIBILITY</p>
 
-		<button class="memdir-panel__global-btn<?php echo $global_pmp === 'public'  ? ' memdir-panel__global-btn--active' : ''; ?>" data-pmp="public">
-			<span class="memdir-panel__global-icon">🌐</span> Public
-		</button>
-		<button class="memdir-panel__global-btn<?php echo $global_pmp === 'member'  ? ' memdir-panel__global-btn--active' : ''; ?>" data-pmp="member">
-			<span class="memdir-panel__global-icon">👥</span> Members
-		</button>
-		<button class="memdir-panel__global-btn<?php echo $global_pmp === 'private' ? ' memdir-panel__global-btn--active' : ''; ?>" data-pmp="private">
-			<span class="memdir-panel__global-icon">🔒</span> Private
-		</button>
+		<?php
+		$global_pmp_options = [
+			'public'  => 'Public',
+			'member'  => 'Members',
+			'private' => 'Private',
+		];
+		$global_current_label = $global_pmp_options[ $global_pmp ] ?? 'Members';
+		?>
+		<div class="memdir-pmp-dropdown" data-pmp="<?php echo esc_attr( $global_pmp ); ?>" data-context="global">
+			<button type="button"
+				class="memdir-pmp-dropdown__trigger memdir-pmp-dropdown__trigger--<?php echo esc_attr( $global_pmp ); ?>"
+				aria-haspopup="listbox" aria-expanded="false">
+				<span class="memdir-pmp-dropdown__icon" aria-hidden="true"></span>
+				<span class="memdir-pmp-dropdown__label"><?php echo esc_html( $global_current_label ); ?></span>
+				<span class="memdir-pmp-dropdown__caret" aria-hidden="true"></span>
+			</button>
+			<ul class="memdir-pmp-dropdown__menu" role="listbox" tabindex="-1">
+				<?php foreach ( $global_pmp_options as $val => $label ) : ?>
+				<li class="memdir-pmp-dropdown__option memdir-pmp-dropdown__option--<?php echo esc_attr( $val ); ?>"
+					role="option" data-pmp="<?php echo esc_attr( $val ); ?>"
+					aria-selected="<?php echo $val === $global_pmp ? 'true' : 'false'; ?>"
+					tabindex="-1">
+					<span class="memdir-pmp-dropdown__option-icon" aria-hidden="true"></span>
+					<?php echo esc_html( $label ); ?>
+				</li>
+				<?php endforeach; ?>
+			</ul>
+		</div>
 
 		<?php if ( $primary_capable ) : ?>
 		<p class="memdir-panel__label">PRIMARY SECTION</p>

@@ -702,52 +702,159 @@ a.memdir-header__taxo-badge:hover {
   margin: 16px 0 6px;
 }
 
-.memdir-section-controls__pmp {
-  display: flex;
-  flex-direction: row;
-  gap: 4px;
+/* ── PMP Dropdown — shared component ──────────────────────── */
+
+.memdir-pmp-dropdown {
+  position: relative;
+  display: inline-flex;
   margin-bottom: 6px;
-  align-items: center;
 }
 
-.memdir-section-controls__pmp-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: var(--md-radius);
+.memdir-pmp-dropdown__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
   border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
   background: var(--md-white);
+  color: var(--md-text);
   cursor: pointer;
+  font-family: var(--md-font);
+  font-size: 13px;
+  line-height: 1;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.memdir-pmp-dropdown__trigger:hover {
+  border-color: var(--md-green-sage);
+  background: rgba(151, 169, 124, 0.08);
+}
+
+/* BuddyBoss :focus/:active overrides */
+.memdir-pmp-dropdown__trigger:focus,
+.memdir-pmp-dropdown__trigger:active {
+  outline: none;
+  background: var(--md-white);
+  color: var(--md-text);
+  border-color: var(--md-border);
+}
+
+.memdir-pmp-dropdown__icon { font-size: 14px; line-height: 1; pointer-events: none; }
+.memdir-pmp-dropdown__label { pointer-events: none; }
+.memdir-pmp-dropdown__caret {
+  font-size: 9px;
+  opacity: 0.5;
+  pointer-events: none;
+  margin-left: 2px;
+}
+.memdir-pmp-dropdown__caret::after { content: '▾'; }
+
+/* Icons via modifier on trigger */
+.memdir-pmp-dropdown__trigger--inherit .memdir-pmp-dropdown__icon::before { content: '🔗'; }
+.memdir-pmp-dropdown__trigger--public  .memdir-pmp-dropdown__icon::before { content: '🌐'; }
+.memdir-pmp-dropdown__trigger--member  .memdir-pmp-dropdown__icon::before { content: '👥'; }
+.memdir-pmp-dropdown__trigger--private .memdir-pmp-dropdown__icon::before { content: '🔒'; }
+
+/* Menu */
+.memdir-pmp-dropdown__menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 200;
+  min-width: 150px;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  background: var(--md-white);
+  border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.memdir-pmp-dropdown--open .memdir-pmp-dropdown__menu {
+  display: block;
+}
+
+/* Options */
+.memdir-pmp-dropdown__option {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  transition: background 0.15s, border-color 0.15s;
+  gap: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  font-family: var(--md-font);
+  font-size: 13px;
+  color: var(--md-text);
+  transition: background 0.1s;
+  white-space: nowrap;
 }
 
-.memdir-section-controls__pmp-btn:hover {
-  border-color: var(--md-green-sage);
+.memdir-pmp-dropdown__option:hover,
+.memdir-pmp-dropdown__option:focus {
   background: rgba(151, 169, 124, 0.1);
+  outline: none;
 }
 
-.memdir-section-controls__pmp-btn--active,
-.memdir-section-controls__pmp-btn.is-active {
-  background: var(--md-green-sage);
-  border-color: var(--md-green-dark);
-  color: var(--md-white);
+.memdir-pmp-dropdown__option[aria-selected="true"] {
+  font-weight: 600;
+  color: var(--md-green-dark);
 }
 
-/* Icons via CSS ::before — immune to third-party JS clearing button innerHTML */
-.memdir-section-controls .memdir-section-controls__pmp-btn::before {
-  font-style: normal;
-  font-size: 15px;
-  line-height: 1;
-  display: block;
-  pointer-events: none;
+.memdir-pmp-dropdown__option-icon { font-size: 14px; line-height: 1; pointer-events: none; }
+
+/* Option icons via modifier */
+.memdir-pmp-dropdown__option--inherit .memdir-pmp-dropdown__option-icon::before { content: '🔗'; }
+.memdir-pmp-dropdown__option--public  .memdir-pmp-dropdown__option-icon::before { content: '🌐'; }
+.memdir-pmp-dropdown__option--member  .memdir-pmp-dropdown__option-icon::before { content: '👥'; }
+.memdir-pmp-dropdown__option--private .memdir-pmp-dropdown__option-icon::before { content: '🔒'; }
+
+/* ── Context: Section PMP (left controls panel) ─────────── */
+.memdir-section-controls .memdir-pmp-dropdown__trigger {
+  height: 32px;
 }
-.memdir-section-controls .memdir-section-controls__pmp-btn--inherit::before { content: '🔗'; }
-.memdir-section-controls .memdir-section-controls__pmp-btn--public::before  { content: '🌐'; }
-.memdir-section-controls .memdir-section-controls__pmp-btn--member::before  { content: '👥'; }
-.memdir-section-controls .memdir-section-controls__pmp-btn--private::before { content: '🔒'; }
+
+/* ── Context: Field PMP (per-field, compact) ─────────────── */
+.memdir-field-pmp .memdir-pmp-dropdown {
+  margin-bottom: 0;
+}
+.memdir-field-pmp .memdir-pmp-dropdown__trigger {
+  height: 24px;
+  padding: 2px 7px;
+  font-size: 11px;
+  gap: 4px;
+}
+.memdir-field-pmp .memdir-pmp-dropdown__icon { font-size: 11px; }
+.memdir-field-pmp .memdir-pmp-dropdown__caret { font-size: 8px; }
+.memdir-field-pmp .memdir-pmp-dropdown__menu {
+  right: 0;
+  left: auto;
+  min-width: 140px;
+}
+.memdir-field-pmp .memdir-pmp-dropdown__option {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+/* ── Context: Global PMP (right panel, full-width) ───────── */
+.memdir-right-panel .memdir-pmp-dropdown {
+  width: 100%;
+  margin-bottom: 8px;
+}
+.memdir-right-panel .memdir-pmp-dropdown__trigger {
+  width: 100%;
+  height: auto;
+  padding: 10px 12px;
+  justify-content: flex-start;
+}
+.memdir-right-panel .memdir-pmp-dropdown__caret {
+  margin-left: auto;
+}
+.memdir-right-panel .memdir-pmp-dropdown__menu {
+  width: 100%;
+}
 
 .memdir-section-controls__pmp-status {
   font-family: var(--md-font);
@@ -1093,48 +1200,7 @@ a.memdir-field-value:hover {
   font-weight: 600;
 }
 
-/* Global Default buttons */
-.memdir-panel__global-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 10px 12px;
-  margin-bottom: 4px;
-  border: 1px solid var(--md-border);
-  border-radius: var(--md-radius);
-  background: var(--md-white);
-  color: var(--md-text);
-  text-align: left;
-  cursor: pointer;
-  font-family: var(--md-font);
-  font-size: 13px;
-  box-sizing: border-box;
-  transition: background 0.15s, border-color 0.15s;
-}
-
-.memdir-panel__global-btn:hover {
-  border-color: var(--md-green-sage);
-  background: rgba(151, 169, 124, 0.08);
-}
-
-/* Explicitly override BuddyBoss :focus/:active button styles */
-.memdir-panel__global-btn:focus,
-.memdir-panel__global-btn:active {
-  outline: none;
-  background: var(--md-white);
-  color: var(--md-text);
-  border-color: var(--md-border);
-}
-
-.memdir-panel__global-btn--active,
-.memdir-panel__global-btn--active:focus,
-.memdir-panel__global-btn--active:active {
-  background: var(--md-green-pale);
-  border-color: var(--md-green-mid);
-  color: var(--md-text);
-  font-weight: 600;
-}
+/* (Old global PMP button styles removed — now uses .memdir-pmp-dropdown) */
 
 /* Primary Section buttons */
 .memdir-panel__primary-btn {
@@ -1335,50 +1401,7 @@ a.memdir-field-value:hover {
   align-items: center;
 }
 
-.memdir-field-pmp__row {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 4px;
-}
-
-.memdir-field-pmp__btn {
-  width: 26px;
-  height: 26px;
-  border-radius: 6px;
-  border: 1px solid var(--md-border);
-  background: var(--md-white);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s, border-color 0.15s;
-  flex-shrink: 0;
-  padding: 0;
-}
-
-.memdir-field-pmp__btn:hover {
-  border-color: var(--md-green-sage);
-  background: rgba(151, 169, 124, 0.1);
-}
-
-.memdir-field-pmp__btn.is-active {
-  background: var(--md-green-sage);
-  border-color: var(--md-green-dark);
-}
-
-/* Icons via CSS ::before — match section PMP button style */
-.memdir-field-pmp__btn::before {
-  font-style: normal;
-  font-size: 12px;
-  line-height: 1;
-  display: block;
-  pointer-events: none;
-}
-.memdir-field-pmp__btn--inherit::before { content: '🔗'; }
-.memdir-field-pmp__btn--public::before  { content: '🌐'; }
-.memdir-field-pmp__btn--member::before  { content: '👥'; }
-.memdir-field-pmp__btn--private::before { content: '🔒'; }
+/* (Old field PMP button styles removed — now uses .memdir-pmp-dropdown) */
 
 .memdir-field-pmp__status {
   font-family: var(--md-font);
@@ -1398,34 +1421,13 @@ a.memdir-field-value:hover {
   font-style: normal;
 }
 
-/* Collapsed: only active-state emoji visible; status always shown */
-.memdir-field-pmp__btn:not(.is-active) {
-  display: none;
-}
-
-.memdir-field-pmp:not(:hover) .memdir-field-pmp__btn.is-active {
-  width: 30px;
-  height: 30px;
-  background: rgba(151, 169, 124, 0.1);
-  border-color: var(--md-border);
-}
-
-.memdir-field-pmp:not(:hover) .memdir-field-pmp__btn.is-active::before {
-  font-size: 14px;
-}
-
-/* Status always visible, to the left of the button */
+/* Status always visible, to the left of the dropdown */
 .memdir-field-pmp__status {
   order: -1;
   width: auto;
   margin-right: 6px;
   margin-top: 0;
   white-space: nowrap;
-}
-
-/* Expanded on hover: all buttons visible */
-.memdir-field-pmp:hover .memdir-field-pmp__btn:not(.is-active) {
-  display: flex;
 }
 
 /* ─────────────────────────────────────────────────────────────

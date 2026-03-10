@@ -378,7 +378,10 @@ class Onboarding {
 			);
 		}
 
-		// 10. Redirect to profile in edit mode with primary pill active.
+		// 10. Set global PMP default to 'member' (Members only).
+		update_field( 'field_md_global_pmp', 'member', $post_id );
+
+		// 11. Redirect to profile in edit mode with primary pill active.
 		$redirect_url = get_permalink( $post_id );
 		if ( $redirect_url ) {
 			$redirect_url = add_query_arg( 'active_section', $primary_key, $redirect_url );
