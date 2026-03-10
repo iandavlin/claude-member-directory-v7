@@ -176,10 +176,10 @@ body.single-member-directory .select2-dropdown--above {
   box-shadow: 0 2px 12px rgba(0,0,0,0.18);
 }
 
-/* ── Banner badges — glass pills in the clear zone, bottom-right ── */
+/* ── Banner badges — glass pills in the clear zone, top-right ── */
 .memdir-header__banner-taxo {
   position: absolute;
-  bottom: 12px;
+  top: 12px;
   right: 16px;
   z-index: 2;
 }
@@ -192,15 +192,17 @@ body.single-member-directory .select2-dropdown--above {
   background: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  border-color: rgba(255, 255, 255, 0.5);
+  border: 1.5px solid var(--md-gold);
   color: var(--md-text);
+  font-size: 14px;
+  padding: 5px 14px;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
 }
 
 .memdir-header__banner-taxo a.memdir-header__taxo-badge:hover {
   background: rgba(255, 255, 255, 0.95);
-  border-color: var(--md-accent);
-  color: var(--md-accent);
+  border-color: var(--md-gold-light);
+  color: var(--md-text);
 }
 
 .memdir-header__banner-taxo .memdir-header__placeholder {
@@ -435,12 +437,13 @@ a.memdir-header__taxo-badge:hover {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  border: 1px solid var(--md-border);
+  border: 1.5px solid var(--md-gold);
   background: var(--md-white);
   color: var(--md-text-muted);
   text-decoration: none;
-  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s, box-shadow 0.15s;
   flex-shrink: 0;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
 }
 
 .memdir-social-link svg {
@@ -2196,13 +2199,13 @@ dialog.memdir-header-modal--media {
   }
 
   .memdir-header__banner-taxo {
-    bottom: 8px;
+    top: 8px;
     right: 10px;
   }
 
   .memdir-header__banner-taxo .memdir-header__taxo-badge {
-    font-size: 11px;
-    padding: 3px 8px;
+    font-size: 12px;
+    padding: 4px 10px;
   }
 
   .memdir-header__body {

@@ -198,7 +198,7 @@ class Plugin {
 			'member-directory',
 			$this->plugin_url . 'assets/css/memdir.css',
 			[ 'glightbox' ],
-			'0.1.2'
+			'0.1.3'
 		);
 
 		wp_enqueue_script(
