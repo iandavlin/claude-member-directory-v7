@@ -119,27 +119,12 @@ body.single-member-directory .select2-dropdown--above {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   EDIT-MODE CENTERED LAYOUT
-   Header and form content are constrained and left-aligned in
-   the main column. Section controls overhang to the left.
-   The right panel hugs the right edge, creating natural space.
+   EDIT-MODE LAYOUT
+   Sections fill the full main column (controls 260px + form 1fr).
+   The wider profile container (1500px) creates natural space
+   between the form content and the right panel.
+   Header and pills also stretch full main-column width.
 ───────────────────────────────────────────────────────────── */
-
-/* Constrain header content, offset left for controls alignment.
-   padding-left = controls-width + gap so visible header aligns
-   with the form content area inside the section grid. */
-.memdir-profile--edit .memdir-header-wrap {
-  max-width: var(--md-centered-width);
-  padding-left: calc(var(--md-controls-width) + 16px);
-  box-sizing: border-box;
-}
-
-/* Pills span full main-column width — no padding offset, no max-width. */
-
-/* Constrain section grid: controls + form left-aligned. */
-.memdir-section--edit {
-  max-width: var(--md-centered-width);
-}
 
 /* ─────────────────────────────────────────────────────────────
    PILL SORTING — enabled pills left, disabled pills right
@@ -2276,16 +2261,6 @@ dialog.memdir-header-modal--media {
 
   .memdir-section {
     grid-template-columns: 1fr;
-  }
-
-  /* Reset edit-mode centering on mobile — controls stack above form */
-  .memdir-profile--edit .memdir-header-wrap {
-    padding-left: 0;
-    max-width: none;
-  }
-
-  .memdir-section--edit {
-    max-width: none;
   }
 
   .memdir-header__banner {

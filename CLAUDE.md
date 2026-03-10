@@ -235,10 +235,8 @@ assets/
                               Trust network styles: .memdir-trust-* (block, list, card, btn, badge).
                               Messaging styles: .memdir-pill--message (pill-row button),
                               dialog.memdir-msg-modal (compose form), .memdir-msg-sent (toast).
-                              Edit-mode centered layout: header + form fields centered on page
-                              (--md-content-width: 820px), section controls overhang left.
-                              Pill sorting: enabled left, disabled right (CSS order).
-                              Responsive: centering resets at ≤768px.
+                              Edit-mode layout: wider container (1500px), sections fill
+                              main column, pill sorting (enabled left, disabled right).
   css/memdir-directory.css    Directory listing styles. Scoped to .memdir-directory.
                               Two-column layout (CSS Grid: main + 280px sidebar).
                               Map container, Leaflet popup overrides, sidebar filter panel,
@@ -585,19 +583,9 @@ Both reuse `md_save_nonce`:
 - `profileAuthorId` — int, profile author's user ID (0 on non-profile pages)
 - `avatarLink` — string, avatar link URL from `_memdir_avatar_link` post meta (empty string on non-profile pages)
 
-## Edit-Mode Centered Layout
+## Edit-Mode Layout
 
-In edit mode, the header and form fields are centered on the page. Section controls overhang to the left. The right panel stays in its own outer grid track.
-
-### CSS variables
-- `--md-content-width: 820px` — max width of the form content / visible header area
-- `--md-centered-width: calc(--md-controls-width + 16px + --md-content-width)` — total centered block (controls + gap + content = 1096px)
-
-### How it works
-1. `.memdir-profile--has-panel` widened to `max-width: 1500px` (from 1400px) for breathing room
-2. `.memdir-section--edit` gets `max-width: var(--md-centered-width); margin: 0 auto` — centers the controls+form grid
-3. `.memdir-header-wrap` and `.memdir-pills` (edit mode) get the same `max-width` + `padding-left: calc(controls + gap)` — offsets their content to align with the form area
-4. At ≤768px, all centering and left padding reset to `none`/`0` for mobile stacking
+In edit mode, the profile container is widened to `max-width: 1500px` (from the default 1100px) to give the form area and right panel breathing room. Sections fill the full main column using the existing `260px controls + 1fr form` grid. Header and pills also stretch the full main-column width. No centering or max-width constraints on the inner content — the outer profile grid + wider container handle the spacing naturally.
 
 ### Pill sorting
 In edit mode, enabled pills sort left (`order: 0`), disabled pills sort right (`order: 1`), message button stays far-right (`order: 2` + `margin-left: auto`). View mode unaffected (disabled pills hidden).
