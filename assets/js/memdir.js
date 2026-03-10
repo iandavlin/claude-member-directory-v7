@@ -2232,8 +2232,8 @@
 
 				var bnPreview = document.createElement( 'img' );
 				bnPreview.className = 'memdir-header-modal__banner-preview';
-				bnPreview.src = bnHasImage && bannerDiv.style.backgroundImage
-					? bannerDiv.style.backgroundImage.replace( /^url\(["']?/, '' ).replace( /["']?\)$/, '' )
+				bnPreview.src = bnHasImage && headerEl.style.backgroundImage
+					? headerEl.style.backgroundImage.replace( /^url\(["']?/, '' ).replace( /["']?\)$/, '' )
 					: '';
 				bnPreview.alt = 'Current banner';
 				if ( ! bnHasImage ) { bnPreview.style.display = 'none'; }
@@ -2283,7 +2283,7 @@
 							if ( res.success ) {
 								bnPreview.src = '';
 								bnPreview.style.display = 'none';
-								bannerDiv.style.backgroundImage = '';
+								headerEl.style.backgroundImage = '';
 								bannerDiv.classList.add( 'memdir-header__banner--empty' );
 								bnStatus.textContent = 'Banner removed.';
 								bnDeleteBtn.style.display = 'none';
@@ -2329,7 +2329,7 @@
 							if ( res.success && res.data && res.data.url ) {
 								bnPreview.src = res.data.url;
 								bnPreview.style.display = '';
-								bannerDiv.style.backgroundImage = 'url(' + res.data.url + ')';
+								headerEl.style.backgroundImage = 'url(' + res.data.url + ')';
 								bannerDiv.classList.remove( 'memdir-header__banner--empty' );
 								bnStatus.textContent = 'Banner updated.';
 								bnDeleteBtn.style.display = '';
