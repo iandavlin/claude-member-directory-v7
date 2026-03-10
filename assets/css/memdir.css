@@ -135,46 +135,66 @@ body.single-member-directory .select2-dropdown--above {
   position: relative;
 }
 
-/* When a banner is present, remove top padding — the banner covers it. */
+/* When a banner is present, the header itself carries the background image.
+   The banner div becomes a transparent spacer for the clear zone, and the
+   body area below uses backdrop-filter for a frosted-glass blur effect. */
 .memdir-header--has-banner {
   padding-top: 0;
-}
-
-/* ── Banner image ──────────────────────────────────────────── */
-.memdir-header__banner {
-  width: 100%;
-  height: 140px;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  border-radius: var(--md-radius) var(--md-radius) 0 0;
+  overflow: hidden;
+}
+
+/* ── Banner spacer — clear zone (image shows through unblurred) ── */
+.memdir-header__banner {
+  width: 100%;
+  height: 200px;
   background-color: var(--md-green-pale);
   border-radius: var(--md-radius) var(--md-radius) 0 0;
+  position: relative;
 }
 
-/* Avatar pinned inside the banner, vertically centered */
+/* When header carries the bg image, banner div is transparent */
+.memdir-header--has-banner .memdir-header__banner:not(.memdir-header__banner--empty) {
+  background: transparent !important;
+  border-radius: 0;
+}
+
+/* Avatar pinned inside the banner spacer, toward bottom edge */
 .memdir-header--has-banner .memdir-header__avatar-wrap {
   position: absolute;
-  top: 50%;
-  left: 12px;
-  transform: translateY(-50%);
-  z-index: 2;
-  width: 96px;
-  height: 96px;
+  bottom: -20px;
+  left: 16px;
+  top: auto;
+  transform: none;
+  z-index: 3;
+  width: 100px;
+  height: 100px;
   border: 4px solid var(--md-white);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.18);
 }
 
-/* Info row sits right below the banner bottom edge */
+/* ── Frosted glass body — blurred banner continuation ────── */
 .memdir-header__body--with-banner {
-  padding: 3px 12px 0;
+  position: relative;
+  z-index: 1;
+  padding: 10px 16px 8px;
+  backdrop-filter: blur(20px) saturate(1.2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.2);
+  background: rgba(255, 255, 255, 0.72);
+  border-top: 1px solid rgba(255, 255, 255, 0.4);
 }
 
-/* Info row: name+badges left, socials right — single tight row */
+/* Info row: name+badges left, socials right — single tight row.
+   Left padding clears the avatar that overlaps into the frosted zone. */
 .memdir-header__info-row {
   display: flex;
   align-items: flex-start;
   width: 100%;
   gap: 16px;
+  padding-left: 128px;
 }
 
 /* Text fills available space, socials push right */
@@ -204,10 +224,6 @@ body.single-member-directory .select2-dropdown--above {
 }
 
 /* ── Banner edit overlay — camera icon on hover ──────────── */
-.memdir-header__banner {
-  position: relative;
-}
-
 .memdir-header__banner-edit {
   position: absolute;
   inset: 0;
@@ -2136,14 +2152,15 @@ dialog.memdir-header-modal--media {
   }
 
   .memdir-header__banner {
-    height: 100px;
+    height: 140px;
     border-radius: 0;
   }
 
   .memdir-header--has-banner .memdir-header__avatar-wrap {
-    width: 72px;
-    height: 72px;
-    left: 8px;
+    width: 76px;
+    height: 76px;
+    left: 10px;
+    bottom: -16px;
   }
 
   .memdir-header__body {
@@ -2157,6 +2174,7 @@ dialog.memdir-header-modal--media {
 
   .memdir-header__info-row {
     flex-wrap: wrap;
+    padding-left: 100px;
   }
 
   .memdir-header__info-row .memdir-header__meta {

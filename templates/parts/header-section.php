@@ -283,11 +283,11 @@ if ( $is_edit_mode ) {
 $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 
 ?>
-<header class="memdir-header memdir-header--<?php echo esc_attr( $section_key ); ?><?php echo $show_banner ? ' memdir-header--has-banner' : ''; ?>">
+<header class="memdir-header memdir-header--<?php echo esc_attr( $section_key ); ?><?php echo $show_banner ? ' memdir-header--has-banner' : ''; ?>"
+	<?php if ( $has_banner ) : ?> style="background-image: url(<?php echo esc_url( $banner_url ); ?>);"<?php endif; ?>>
 
 	<?php if ( $show_banner ) : ?>
 	<div class="memdir-header__banner<?php echo ! $has_banner ? ' memdir-header__banner--empty' : ''; ?>"
-		<?php if ( $has_banner ) : ?> style="background-image: url(<?php echo esc_url( $banner_url ); ?>);"<?php endif; ?>
 		role="img"
 		aria-label="<?php echo esc_attr( $title_value ); ?> banner"
 		<?php if ( $is_edit_mode && $banner_field_key ) : ?> data-banner-field-key="<?php echo esc_attr( $banner_field_key ); ?>"<?php endif; ?>
