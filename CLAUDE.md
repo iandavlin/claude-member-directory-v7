@@ -59,6 +59,7 @@ WordPress plugin: section-based member profile and directory system powered by A
   - `memdir_ajax_trust_toggle` → `TrustNetwork::handle_toggle`
   - `memdir_ajax_send_message` → `Messaging::handle_send_message`
   - `memdir_ajax_save_messaging_access` → `Messaging::handle_save_access`
+  - `memdir_ajax_save_avatar_link` → `AcfFormHelper::handle_save_avatar_link`
   - `memdir_directory_filter` → `Directory::handle_filter` (also nopriv)
 - `Directory` — `[memdir_directory]` shortcode for searchable, filterable member card grid with interactive Leaflet map. Two-column layout: wide main area (map + card grid) left, filter sidebar right. Admin-configurable taxonomy filters via AdminSync dashboard. Admin-configurable directory page selector for taxonomy link targets. AJAX live filtering, search debounce, pagination, URL state. Card data extraction mirrors header-section.php suffix patterns. PMP-aware: ghosted profiles/fields hidden. Config stored in `member_directory_directory_config` DB option. Leaflet 1.9.4 from unpkg CDN with OpenStreetMap tiles. Map markers use sage green circle markers with popups (avatar + name + location + profile link). Unified "filter stack" in main column (between map and cards) consolidates all active filter pills with Clear All. Filter groups in sidebar use inline multi-select search fields (type-to-search dropdown, selected term badge pills, "Browse all" dialog) matching the profile form taxonomy search pattern. Admin-configurable map pin style: circle marker (default), standard pin, or avatar photo pins with Leaflet.markercluster clustering. Taxonomy terms on member profiles link to directory page with filters pre-applied. Brand sage green palette throughout.
 
@@ -103,7 +104,7 @@ includes/
   Plugin.php                  Bootstrap. Registers CPT + hooks. Calls each class init().
                               enqueue_assets() passes mdAjax to JS (ajaxurl, nonce,
                               search_nonce, socialSources, currentUserId,
-                              messagingEnabled, profileAuthorId). Dequeues
+                              messagingEnabled, profileAuthorId, avatarLink). Dequeues
                               conflicting scripts (elementor, buddypress).
   SectionRegistry.php         Section metadata store. sync() = sections/*.json → merge with DB option.
                               JSON files are immutable (acf_group_key only); mutable metadata
@@ -188,6 +189,9 @@ templates/
                               avatar overlaps bottom edge with white ring.
                               Fallback avatar from section default_avatar;
                               fallback banner from section default_banner.
+                              Avatar link: post meta `_memdir_avatar_link` wraps
+                              avatar in `<a>` in view mode; edit mode has URL input
+                              in the avatar modal (saved via memdir_ajax_save_avatar_link).
                               Inline SVG icons for 9 social platforms
                               (website, linkedin, instagram, twitter, facebook, youtube,
                               tiktok, vimeo, linktree). Location section special-case:
@@ -571,6 +575,7 @@ Both reuse `md_save_nonce`:
 - `messagingEnabled` — bool from `Messaging::is_available()`
 - `messagingAccess` — string from `Messaging::get_access()` (current profile's setting)
 - `profileAuthorId` — int, profile author's user ID (0 on non-profile pages)
+- `avatarLink` — string, avatar link URL from `_memdir_avatar_link` post meta (empty string on non-profile pages)
 
 ## Directory Shortcode (`[memdir_directory]`)
 
