@@ -13,7 +13,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 - `TemplateLoader` — routes `member-directory` single/archive to plugin templates
 - `AdminSync` — admin page that triggers `SectionRegistry::sync()`; section editor UI (rename, reorder, toggle primary, toggle always_on, default avatar, default banner, delete); Add Section form; collapsible Plugin Guide panel with instructions for all major features
 - `PmpResolver` — PMP waterfall resolution + viewer context + view-as spoofing
-- `FieldRenderer` — field-to-HTML rendering for view mode (text, textarea, url, wysiwyg, image, gallery, file, google_map, true_false, checkbox, radio, taxonomy, select). Images/galleries render with GLightbox links + `<figcaption>` captions.
+- `FieldRenderer` — field-to-HTML rendering for view mode (text, textarea, url, wysiwyg, image, gallery, file, google_map, true_false, checkbox, radio, taxonomy, select). Images/galleries render with GLightbox links + `<figcaption>` captions. Image fields use intermediate sizes (medium_large/medium) with matching width/height attributes + CSS `max-width: 100%`.
 - `GlobalFields` — ACF group for global PMP + primary section controls (**⚠ debug code present — see Known Issues**)
 - `AcfFormHelper` — `acf_form_head()` guard + edit-mode detection + `acf_form()` rendering + AJAX handlers (section save, enabled toggle, section PMP, field PMP, avatar upload, image upload/delete, gallery upload/remove, caption update, taxonomy search, social import)
 - `templates/single-member-directory.php` — full edit/view mode branching
@@ -175,6 +175,9 @@ templates/
                               $global_pmp for perf and passes to child partials.
                               View mode uses ob_start() + $section_field_count to ghost
                               sections where all fields are hidden by PMP.
+                              CSS class modifiers: --edit (edit-mode UI), --has-panel
+                              (two-column grid with right panel; only for privileged viewers).
+                              Without --has-panel, profile is single-column centered (1100px).
   archive-member-directory.php Scaffold only — no real implementation.
   parts/
     header-section.php        Generic sticky header. Scans ACF fields for a tab with "header"
