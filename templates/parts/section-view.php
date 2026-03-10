@@ -133,6 +133,7 @@ if ( ! isset( $global_pmp ) ) {
 $effective_pmp = ( $section_pmp !== 'inherit' ) ? $section_pmp : $global_pmp;
 
 ?>
+<!-- sv:2 -->
 <div class="memdir-section" data-section="<?php echo esc_attr( $section_key ); ?>" data-color="<?php echo esc_attr( (string) ( $section_color ?? 0 ) ); ?>">
 
 	<div class="memdir-field-content">
