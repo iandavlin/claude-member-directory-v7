@@ -99,12 +99,17 @@ body.single-member-directory .select2-dropdown--above {
 
 .memdir-profile {
   display: grid;
-  grid-template-columns: 1fr var(--md-panel-width);
+  grid-template-columns: 1fr;
   gap: 24px;
   align-items: start;
   padding: 0 16px;
-  max-width: 1400px;
+  max-width: 1100px;
   margin: 0 auto;
+}
+
+.memdir-profile--has-panel {
+  grid-template-columns: 1fr var(--md-panel-width);
+  max-width: 1400px;
 }
 
 .memdir-profile__main {
@@ -2165,6 +2170,8 @@ dialog.memdir-header-modal--media {
   cursor: zoom-in;
   border-radius: var(--md-radius);
   transition: opacity 0.15s;
+  max-width: 100%;
+  height: auto;
 }
 
 .memdir-figure .memdir-field-value:hover {

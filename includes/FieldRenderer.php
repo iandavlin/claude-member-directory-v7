@@ -247,6 +247,22 @@ class FieldRenderer {
 
 		$caption = $value['caption'] ?? '';
 		$alt     = $value['alt']     ?? '';
+		$sizes   = $value['sizes']   ?? [];
+
+		// Pick the best available intermediate size and its real dimensions.
+		// ACF stores per-size dimensions as {size}-width and {size}-height.
+		$src    = $value['url'];
+		$width  = $value['width']  ?? '';
+		$height = $value['height'] ?? '';
+
+		foreach ( [ 'medium_large', 'medium' ] as $preferred ) {
+			if ( ! empty( $sizes[ $preferred ] ) ) {
+				$src    = $sizes[ $preferred ];
+				$width  = $sizes[ "{$preferred}-width" ]  ?? $width;
+				$height = $sizes[ "{$preferred}-height" ] ?? $height;
+				break;
+			}
+		}
 
 		self::open_wrapper( 'image', $label );
 		echo '<figure class="memdir-figure">';
@@ -254,10 +270,10 @@ class FieldRenderer {
 			'<a href="%s" class="glightbox" data-description="%s"><img class="memdir-field-value" src="%s" alt="%s" width="%s" height="%s" loading="lazy"></a>',
 			esc_url( $value['url'] ),
 			esc_attr( $caption ),
-			esc_url( $value['sizes']['medium_large'] ?? $value['sizes']['medium'] ?? $value['url'] ),
+			esc_url( $src ),
 			esc_attr( $alt ),
-			esc_attr( (string) ( $value['width']  ?? '' ) ),
-			esc_attr( (string) ( $value['height'] ?? '' ) )
+			esc_attr( (string) $width ),
+			esc_attr( (string) $height )
 		);
 		if ( $caption !== '' ) {
 			printf( '<figcaption class="memdir-figure__caption">%s</figcaption>', esc_html( $caption ) );
