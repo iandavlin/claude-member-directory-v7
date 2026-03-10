@@ -730,9 +730,9 @@ class Directory {
 			$found_banner   = false;
 		}
 
-		// If no candidate produced content, use the last tried section for defaults.
-		if ( ! $used_section && ! empty( $candidates ) ) {
-			$used_section = $section ?? $candidates[0];
+		// Ghost: no candidate section produced visible content for this viewer.
+		if ( ! $used_section ) {
+			return null;
 		}
 
 		// Fallback avatar from section default.
