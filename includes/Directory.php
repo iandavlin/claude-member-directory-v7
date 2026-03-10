@@ -491,6 +491,10 @@ class Directory {
 	 * Mirrors header-section.php: scans the primary section's header tab,
 	 * maps fields by type + suffix. Returns null if entire profile is PMP-hidden.
 	 *
+	 * Section fallback: if the primary section is PMP-blocked or has no visible
+	 * content for the viewer, iterates remaining sections (in registry order)
+	 * until one with a header tab produces renderable content.
+	 *
 	 * @param int   $post_id    Member directory post ID.
 	 * @param array $viewer     Viewer context from PmpResolver.
 	 * @param array $config     Directory config.
@@ -511,45 +515,32 @@ class Directory {
 			return null;
 		}
 
-		// Determine primary section.
-		$primary_key = get_field( 'member_directory_primary_section', $post_id ) ?: '';
-		$section     = $primary_key ? SectionRegistry::get_section( $primary_key ) : null;
+		// Build ordered candidate sections: primary first, then remaining.
+		// If the primary section is PMP-blocked for the viewer, fall back to the
+		// first visible section that has a header tab with renderable content.
+		$primary_key  = get_field( 'member_directory_primary_section', $post_id ) ?: 'profile';
+		$all_sections = SectionRegistry::get_sections();
+		$candidates   = [];
 
-		// Fall back to the first section if no primary is set.
-		if ( ! $section ) {
-			$all_sections = SectionRegistry::get_sections();
-			$section      = $all_sections[0] ?? null;
+		// Primary section first.
+		$primary_sec = SectionRegistry::get_section( $primary_key );
+		if ( $primary_sec ) {
+			$candidates[] = $primary_sec;
 		}
 
-		if ( ! $section ) {
-			return null;
-		}
-
-		$acf_group_key = $section['acf_group_key'] ?? '';
-		if ( empty( $acf_group_key ) || ! function_exists( 'acf_get_fields' ) ) {
-			return null;
-		}
-
-		$fields = acf_get_fields( $acf_group_key );
-		if ( empty( $fields ) || ! is_array( $fields ) ) {
-			return null;
-		}
-
-		// Find header tab fields.
-		$in_header_tab = false;
-		$header_fields = [];
-
-		foreach ( $fields as $f ) {
-			if ( ( $f['type'] ?? '' ) === 'tab' ) {
-				$in_header_tab = ( stripos( $f['label'] ?? '', 'header' ) !== false );
-				continue;
-			}
-			if ( $in_header_tab ) {
-				$header_fields[] = $f;
+		// Remaining sections in registry order.
+		foreach ( $all_sections as $_sec ) {
+			if ( ( $_sec['key'] ?? '' ) !== $primary_key ) {
+				$candidates[] = $_sec;
 			}
 		}
+		unset( $_sec );
 
-		// Extract card slots.
+		if ( empty( $candidates ) || ! function_exists( 'acf_get_fields' ) ) {
+			return null;
+		}
+
+		// Initialize card with defaults.
 		$card = [
 			'post_id'   => $post_id,
 			'permalink' => get_permalink( $post_id ),
@@ -561,125 +552,197 @@ class Directory {
 			'social'    => [],
 		];
 
-		$section_pmp = get_field( 'member_directory_' . $section['key'] . '_privacy_mode', $post_id ) ?: 'inherit';
+		$card_display  = $config['card'] ?? [];
+		$found_title   = false;
+		$found_avatar  = false;
+		$found_banner  = false;
+		$used_section  = null;
 
-		$found_title  = false;
-		$found_avatar = false;
-		$found_banner = false;
-		$card_display = $config['card'] ?? [];
+		// Try each candidate section until one produces visible card content.
+		foreach ( $candidates as $section ) {
+			$section_key = $section['key'] ?? '';
 
-		foreach ( $header_fields as $f ) {
-			$ftype = $f['type'] ?? '';
-			$fname = $f['name'] ?? '';
-			$fkey  = $f['key']  ?? '';
-
-			if ( SectionRegistry::is_system_field( $f ) || str_contains( $fkey, '_pmp_' ) ) {
+			// Skip disabled sections (unless always_on or primary).
+			$section_enabled = get_field( 'member_directory_' . $section_key . '_enabled', $post_id );
+			$is_always_on    = ! empty( $section['always_on'] );
+			if ( $section_enabled === false && $section_key !== $primary_key && ! $is_always_on ) {
 				continue;
 			}
 
-			// Per-field PMP check.
-			$field_name_suffix = preg_replace( '/^member_directory_/', '', $fname );
-			$field_pmp         = get_field( 'member_directory_field_pmp_' . $field_name_suffix, $post_id ) ?: 'inherit';
-
-			$visible = PmpResolver::can_view( [
-				'field_pmp'   => $field_pmp,
+			// Check section-level PMP visibility for this viewer.
+			$section_pmp     = get_field( 'member_directory_' . $section_key . '_privacy_mode', $post_id ) ?: 'inherit';
+			$section_visible = PmpResolver::can_view( [
+				'field_pmp'   => 'inherit',
 				'section_pmp' => $section_pmp,
 				'global_pmp'  => $global_pmp,
 			], $viewer );
 
-			if ( ! $visible ) {
+			if ( ! $section_visible ) {
 				continue;
 			}
 
-			$value = get_field( $fname, $post_id );
-
-			switch ( $ftype ) {
-				case 'text':
-					if ( ! $found_title && ! empty( $value ) ) {
-						$card['title'] = (string) $value;
-						$found_title   = true;
-					}
-					break;
-
-				case 'image':
-					if ( ! empty( $value ) ) {
-						$matched = false;
-
-						if ( ! $found_banner && ! empty( $card_display['show_banner'] ) ) {
-							foreach ( self::BANNER_SUFFIXES as $sfx ) {
-								if ( str_ends_with( $fname, $sfx ) ) {
-									$card['banner'] = self::resolve_image_url( $value, 'medium' );
-									$found_banner   = true;
-									$matched        = true;
-									break;
-								}
-							}
-						}
-
-						if ( ! $matched && ! $found_avatar && ! empty( $card_display['show_avatar'] ) ) {
-							foreach ( self::AVATAR_SUFFIXES as $sfx ) {
-								if ( str_ends_with( $fname, $sfx ) ) {
-									$card['avatar'] = self::resolve_image_url( $value, 'thumbnail' );
-									$found_avatar   = true;
-									$matched        = true;
-									break;
-								}
-							}
-						}
-
-						// Fallback: first unmatched image → avatar.
-						if ( ! $matched && ! $found_avatar && ! empty( $card_display['show_avatar'] ) ) {
-							$card['avatar'] = self::resolve_image_url( $value, 'thumbnail' );
-							$found_avatar   = true;
-						}
-					}
-					break;
-
-				case 'taxonomy':
-					if ( ! empty( $card_display['show_badges'] ) && ! empty( $value ) ) {
-						$terms = is_array( $value ) ? $value : [ $value ];
-						foreach ( $terms as $term ) {
-							if ( $term instanceof \WP_Term ) {
-								$card['badges'][] = $term->name;
-							} elseif ( is_array( $term ) && isset( $term['name'] ) ) {
-								$card['badges'][] = $term['name'];
-							} elseif ( is_int( $term ) ) {
-								$t = get_term( $term );
-								if ( $t instanceof \WP_Term ) {
-									$card['badges'][] = $t->name;
-								}
-							} elseif ( is_string( $term ) && ! empty( $term ) ) {
-								$card['badges'][] = $term;
-							}
-						}
-					}
-					break;
-
-				case 'url':
-					if ( ! empty( $card_display['show_social'] ) && ! empty( $value ) ) {
-						foreach ( self::SOCIAL_PLATFORMS as $platform ) {
-							if ( str_ends_with( $fname, '_' . $platform ) ) {
-								$card['social'][] = [
-									'url'      => $value,
-									'platform' => $platform,
-									'svg'      => self::SOCIAL_SVGS[ $platform ] ?? '',
-								];
-								break;
-							}
-						}
-					}
-					break;
+			// Get ACF fields and scan for header tab.
+			$acf_group_key = $section['acf_group_key'] ?? '';
+			if ( empty( $acf_group_key ) ) {
+				continue;
 			}
+
+			$fields = acf_get_fields( $acf_group_key );
+			if ( empty( $fields ) || ! is_array( $fields ) ) {
+				continue;
+			}
+
+			$in_header_tab = false;
+			$header_fields = [];
+			foreach ( $fields as $f ) {
+				if ( ( $f['type'] ?? '' ) === 'tab' ) {
+					$in_header_tab = ( stripos( $f['label'] ?? '', 'header' ) !== false );
+					continue;
+				}
+				if ( $in_header_tab ) {
+					$header_fields[] = $f;
+				}
+			}
+
+			if ( empty( $header_fields ) ) {
+				continue; // No header tab in this section.
+			}
+
+			// Process header fields — extract visible card content.
+			foreach ( $header_fields as $f ) {
+				$ftype = $f['type'] ?? '';
+				$fname = $f['name'] ?? '';
+				$fkey  = $f['key']  ?? '';
+
+				if ( SectionRegistry::is_system_field( $f ) || str_contains( $fkey, '_pmp_' ) ) {
+					continue;
+				}
+
+				// Per-field PMP check.
+				$field_name_suffix = preg_replace( '/^member_directory_/', '', $fname );
+				$field_pmp         = get_field( 'member_directory_field_pmp_' . $field_name_suffix, $post_id ) ?: 'inherit';
+
+				$visible = PmpResolver::can_view( [
+					'field_pmp'   => $field_pmp,
+					'section_pmp' => $section_pmp,
+					'global_pmp'  => $global_pmp,
+				], $viewer );
+
+				if ( ! $visible ) {
+					continue;
+				}
+
+				$value = get_field( $fname, $post_id );
+
+				switch ( $ftype ) {
+					case 'text':
+						if ( ! $found_title && ! empty( $value ) ) {
+							$card['title'] = (string) $value;
+							$found_title   = true;
+						}
+						break;
+
+					case 'image':
+						if ( ! empty( $value ) ) {
+							$matched = false;
+
+							if ( ! $found_banner && ! empty( $card_display['show_banner'] ) ) {
+								foreach ( self::BANNER_SUFFIXES as $sfx ) {
+									if ( str_ends_with( $fname, $sfx ) ) {
+										$card['banner'] = self::resolve_image_url( $value, 'medium' );
+										$found_banner   = true;
+										$matched        = true;
+										break;
+									}
+								}
+							}
+
+							if ( ! $matched && ! $found_avatar && ! empty( $card_display['show_avatar'] ) ) {
+								foreach ( self::AVATAR_SUFFIXES as $sfx ) {
+									if ( str_ends_with( $fname, $sfx ) ) {
+										$card['avatar'] = self::resolve_image_url( $value, 'thumbnail' );
+										$found_avatar   = true;
+										$matched        = true;
+										break;
+									}
+								}
+							}
+
+							// Fallback: first unmatched image → avatar.
+							if ( ! $matched && ! $found_avatar && ! empty( $card_display['show_avatar'] ) ) {
+								$card['avatar'] = self::resolve_image_url( $value, 'thumbnail' );
+								$found_avatar   = true;
+							}
+						}
+						break;
+
+					case 'taxonomy':
+						if ( ! empty( $card_display['show_badges'] ) && ! empty( $value ) ) {
+							$terms = is_array( $value ) ? $value : [ $value ];
+							foreach ( $terms as $term ) {
+								if ( $term instanceof \WP_Term ) {
+									$card['badges'][] = $term->name;
+								} elseif ( is_array( $term ) && isset( $term['name'] ) ) {
+									$card['badges'][] = $term['name'];
+								} elseif ( is_int( $term ) ) {
+									$t = get_term( $term );
+									if ( $t instanceof \WP_Term ) {
+										$card['badges'][] = $t->name;
+									}
+								} elseif ( is_string( $term ) && ! empty( $term ) ) {
+									$card['badges'][] = $term;
+								}
+							}
+						}
+						break;
+
+					case 'url':
+						if ( ! empty( $card_display['show_social'] ) && ! empty( $value ) ) {
+							foreach ( self::SOCIAL_PLATFORMS as $platform ) {
+								if ( str_ends_with( $fname, '_' . $platform ) ) {
+									$card['social'][] = [
+										'url'      => $value,
+										'platform' => $platform,
+										'svg'      => self::SOCIAL_SVGS[ $platform ] ?? '',
+									];
+									break;
+								}
+							}
+						}
+						break;
+				}
+			}
+
+			// If this section produced any visible content, use it.
+			if ( $found_title || $found_avatar || ! empty( $card['badges'] ) ) {
+				$used_section = $section;
+				break;
+			}
+
+			// No visible content — reset card slots and try the next candidate.
+			$card['title']  = get_the_title( $post_id );
+			$card['avatar'] = '';
+			$card['banner'] = '';
+			$card['badges'] = [];
+			$card['social'] = [];
+			$found_title    = false;
+			$found_avatar   = false;
+			$found_banner   = false;
+		}
+
+		// If no candidate produced content, use the last tried section for defaults.
+		if ( ! $used_section && ! empty( $candidates ) ) {
+			$used_section = $section ?? $candidates[0];
 		}
 
 		// Fallback avatar from section default.
-		if ( ! $found_avatar && ! empty( $card_display['show_avatar'] ) && ! empty( $section['default_avatar'] ) ) {
-			$card['avatar'] = (string) wp_get_attachment_image_url( (int) $section['default_avatar'], 'thumbnail' );
+		if ( ! $found_avatar && ! empty( $card_display['show_avatar'] ) && ! empty( $used_section['default_avatar'] ) ) {
+			$card['avatar'] = (string) wp_get_attachment_image_url( (int) $used_section['default_avatar'], 'thumbnail' );
 		}
 
 		// Fallback banner from section default.
-		if ( ! $found_banner && ! empty( $card_display['show_banner'] ) && ! empty( $section['default_banner'] ) ) {
-			$card['banner'] = (string) wp_get_attachment_image_url( (int) $section['default_banner'], 'medium' );
+		if ( ! $found_banner && ! empty( $card_display['show_banner'] ) && ! empty( $used_section['default_banner'] ) ) {
+			$card['banner'] = (string) wp_get_attachment_image_url( (int) $used_section['default_banner'], 'medium' );
 		}
 
 		// Location (from location section, if show_location enabled).
