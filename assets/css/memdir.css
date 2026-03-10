@@ -123,8 +123,28 @@ body.single-member-directory .select2-dropdown--above {
    Sections fill the full main column (controls 260px + form 1fr).
    The wider profile container (1500px) creates natural space
    between the form content and the right panel.
-   Header and pills also stretch full main-column width.
+   Header and pills use a spacer matching the controls width so
+   their content aligns with the form content area below.
 ───────────────────────────────────────────────────────────── */
+
+/* Header: grid with empty first column as a dummy spacer,
+   matching the section controls width. Header content goes
+   in the second column, aligned with the form area below. */
+.memdir-profile--edit .memdir-header-wrap {
+  display: grid;
+  grid-template-columns: var(--md-controls-width) 1fr;
+  gap: 16px;
+}
+
+.memdir-profile--edit .memdir-header-wrap > header {
+  grid-column: 2;
+}
+
+/* Pills: left padding matches controls + gap, aligning pill
+   content with the form area. */
+.memdir-profile--edit .memdir-pills {
+  padding-left: calc(var(--md-controls-width) + 16px);
+}
 
 /* ─────────────────────────────────────────────────────────────
    PILL SORTING — enabled pills left, disabled pills right
@@ -2261,6 +2281,15 @@ dialog.memdir-header-modal--media {
 
   .memdir-section {
     grid-template-columns: 1fr;
+  }
+
+  /* Reset edit-mode spacers on mobile — controls stack above form */
+  .memdir-profile--edit .memdir-header-wrap {
+    display: block;
+  }
+
+  .memdir-profile--edit .memdir-pills {
+    padding-left: 0;
   }
 
   .memdir-header__banner {
