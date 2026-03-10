@@ -118,8 +118,13 @@ if ( $is_edit ) {
 				$s_key        = $s['key']   ?? '';
 				$s_label      = $s['label'] ?? '';
 				$is_primary   = ( $s_key === $primary_section );
-				
+				$is_always_on = ! empty( $s['always_on'] );
 				$is_on        = $section_enabled_map[ $s_key ] ?? true;
+
+				// Skip always_on sections — they can't be toggled.
+				if ( $is_always_on && ! $is_primary ) {
+					continue;
+				}
 			?>
 			<div class="memdir-panel__section-row">
 				<span class="memdir-panel__section-name"><?php echo esc_html( $s_label ); ?></span>
