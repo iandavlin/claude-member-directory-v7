@@ -129,11 +129,14 @@ body.single-member-directory .select2-dropdown--above {
 
 /* Header: grid with empty first column as a dummy spacer,
    matching the section controls width. Header content goes
-   in the second column, aligned with the form area below. */
+   in the second column, aligned with the form area below.
+   Container itself is transparent — only the header element
+   inside gets the --md-bg background. */
 .memdir-profile--edit .memdir-header-wrap {
   display: grid;
   grid-template-columns: var(--md-controls-width) 1fr;
   gap: 16px;
+  background: transparent;
 }
 
 .memdir-profile--edit .memdir-header-wrap > header {
@@ -173,13 +176,13 @@ body.single-member-directory .select2-dropdown--above {
 }
 
 /* Edit mode: background, border and shadow only cover the content
-   area (after the spacer). Left side = page white (occludes scrolling
-   content), right side = --md-bg tint + border + shadow. */
+   area (after the spacer). Left side = transparent (page bg shows
+   through), right side = --md-bg tint + border + shadow. */
 .memdir-profile--edit .memdir-sticky {
   position: sticky;
   background: linear-gradient(
     to right,
-    var(--md-white) calc(var(--md-controls-width) + 16px),
+    transparent calc(var(--md-controls-width) + 16px),
     var(--md-bg) calc(var(--md-controls-width) + 16px)
   );
   border-bottom: none;
