@@ -70,6 +70,7 @@ class AcfFormHelper {
 		add_action( 'wp_ajax_memdir_ajax_update_caption',         [ self::class, 'handle_update_caption' ] );
 		add_action( 'wp_ajax_memdir_search_taxonomy_terms',       [ self::class, 'handle_search_taxonomy_terms' ] );
 		add_action( 'wp_ajax_memdir_ajax_import_social',          [ self::class, 'handle_import_social' ] );
+		add_action( 'wp_ajax_memdir_ajax_save_avatar_link',       [ self::class, 'handle_save_avatar_link' ] );
 	}
 
 	// -----------------------------------------------------------------------
@@ -974,5 +975,45 @@ class AcfFormHelper {
 			'imported' => $imported,
 			'message'  => $imported . ' social link' . ( $imported === 1 ? '' : 's' ) . ' imported.',
 		] );
+	}
+
+	// -----------------------------------------------------------------------
+	// Avatar link — save a clickable URL for the header avatar image
+	// -----------------------------------------------------------------------
+
+	/**
+	 * AJAX handler: save or clear the avatar link URL.
+	 *
+	 * Stores the URL in post meta `_memdir_avatar_link`. When set, the
+	 * avatar image in view mode is wrapped in an <a> tag linking to this URL.
+	 *
+	 * POST params:
+	 *   post_id (int)  — member-directory post ID
+	 *   url     (string) — URL to link to, or empty string to clear
+	 *   nonce   (string) — md_save_nonce
+	 */
+	public static function handle_save_avatar_link(): void {
+		if ( ! check_ajax_referer( 'md_save_nonce', 'nonce', false ) ) {
+			wp_send_json_error( [ 'message' => 'Security check failed.' ], 403 );
+		}
+
+		$post_id = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+		$url     = isset( $_POST['url'] )     ? esc_url_raw( wp_unslash( $_POST['url'] ) ) : '';
+
+		if ( ! $post_id || get_post_type( $post_id ) !== 'member-directory' ) {
+			wp_send_json_error( [ 'message' => 'Invalid post.' ], 400 );
+		}
+
+		if ( ! current_user_can( 'edit_post', $post_id ) ) {
+			wp_send_json_error( [ 'message' => 'Permission denied.' ], 403 );
+		}
+
+		if ( $url !== '' ) {
+			update_post_meta( $post_id, '_memdir_avatar_link', $url );
+		} else {
+			delete_post_meta( $post_id, '_memdir_avatar_link' );
+		}
+
+		wp_send_json_success( [ 'url' => $url ] );
 	}
 }

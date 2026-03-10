@@ -165,15 +165,15 @@ body.single-member-directory .select2-dropdown--above {
 /* Avatar pinned inside the banner spacer, toward bottom edge */
 .memdir-header--has-banner .memdir-header__avatar-wrap {
   position: absolute;
-  bottom: -20px;
+  bottom: -22px;
   left: 16px;
   top: auto;
   transform: none;
   z-index: 3;
-  width: 100px;
-  height: 100px;
+  width: 113px;
+  height: 113px;
   border: 4px solid var(--md-white);
-  box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.22), 0 1px 4px rgba(0,0,0,0.12);
 }
 
 /* ── Banner badges — glass pills in the clear zone, top-right ── */
@@ -228,7 +228,7 @@ body.single-member-directory .select2-dropdown--above {
   align-items: flex-start;
   width: 100%;
   gap: 16px;
-  padding-left: 128px;
+  padding-left: 141px;
 }
 
 /* Text fills available space, socials push right */
@@ -319,6 +319,13 @@ body.single-member-directory .select2-dropdown--above {
   border: 2px solid var(--md-green-pale);
   background: var(--md-bg);
   box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+
+.memdir-header__avatar-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+  line-height: 0;
 }
 
 .memdir-header__avatar {
@@ -1622,6 +1629,46 @@ dialog.memdir-header-modal::backdrop {
   color: #fff;
 }
 
+/* ── Avatar link URL field ────────────────────────────────────── */
+.memdir-header-modal__avatar-link-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--md-text);
+  margin: 16px 0 6px;
+  padding-top: 14px;
+  border-top: 1px solid var(--md-border);
+}
+
+.memdir-header-modal__avatar-link-input {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  border: 1px solid var(--md-border);
+  border-radius: 6px;
+  background: var(--md-white);
+  color: var(--md-text);
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.memdir-header-modal__avatar-link-input:focus {
+  outline: none;
+  border-color: var(--md-green-sage);
+  box-shadow: 0 0 0 2px rgba(151,169,124,0.15);
+}
+
+.memdir-header-modal__avatar-btn--link {
+  margin-top: 8px;
+  background: var(--md-gold);
+  color: #fff;
+}
+
+.memdir-header-modal__avatar-btn--link:hover {
+  background: var(--md-gold-light);
+}
+
 /* Select2 is destroyed inside taxonomy modals — no select2 styles needed */
 
 /* Custom taxonomy search box (replaces select2) */
@@ -2192,10 +2239,10 @@ dialog.memdir-header-modal--media {
   }
 
   .memdir-header--has-banner .memdir-header__avatar-wrap {
-    width: 76px;
-    height: 76px;
+    width: 86px;
+    height: 86px;
     left: 10px;
-    bottom: -16px;
+    bottom: -18px;
   }
 
   .memdir-header__banner-taxo {
@@ -2219,7 +2266,7 @@ dialog.memdir-header-modal--media {
 
   .memdir-header__info-row {
     flex-wrap: wrap;
-    padding-left: 100px;
+    padding-left: 110px;
   }
 
   .memdir-header__info-row .memdir-header__meta {

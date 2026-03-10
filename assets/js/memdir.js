@@ -2107,6 +2107,59 @@
 						} );
 				} );
 
+				
+				// ── Avatar link URL ──
+				var avLinkLabel = document.createElement( "label" );
+				avLinkLabel.className = "memdir-header-modal__avatar-link-label";
+				avLinkLabel.textContent = "Avatar Link URL";
+				avFragment.appendChild( avLinkLabel );
+
+				var avLinkInput = document.createElement( "input" );
+				avLinkInput.type = "url";
+				avLinkInput.className = "memdir-header-modal__avatar-link-input";
+				avLinkInput.placeholder = "https://example.com";
+				avLinkInput.value = window.mdAjax.avatarLink || "";
+				avFragment.appendChild( avLinkInput );
+
+				var avLinkStatus = document.createElement( "p" );
+				avLinkStatus.className = "memdir-header-modal__avatar-status";
+				avLinkStatus.textContent = "";
+				avFragment.appendChild( avLinkStatus );
+
+				var avLinkSaveBtn = document.createElement( "button" );
+				avLinkSaveBtn.type = "button";
+				avLinkSaveBtn.className = "memdir-header-modal__avatar-btn memdir-header-modal__avatar-btn--link";
+				avLinkSaveBtn.textContent = "Save Link";
+				avFragment.appendChild( avLinkSaveBtn );
+
+				avLinkSaveBtn.addEventListener( "click", function () {
+					var url = avLinkInput.value.trim();
+					avLinkStatus.textContent = "Saving…";
+					avLinkSaveBtn.disabled = true;
+
+					var fd = new FormData();
+					fd.append( "action",  "memdir_ajax_save_avatar_link" );
+					fd.append( "nonce",   window.mdAjax.nonce );
+					fd.append( "post_id", postId );
+					fd.append( "url",     url );
+
+					fetch( window.mdAjax.ajaxurl, { method: "POST", body: fd } )
+						.then( function ( r ) { return r.json(); } )
+						.then( function ( res ) {
+							if ( res.success ) {
+								avLinkStatus.textContent = url ? "Link saved." : "Link removed.";
+								window.mdAjax.avatarLink = url;
+							} else {
+								avLinkStatus.textContent = "Error: " + ( res.data && res.data.message ? res.data.message : "Save failed." );
+							}
+							avLinkSaveBtn.disabled = false;
+						} )
+						.catch( function () {
+							avLinkStatus.textContent = "Network error.";
+							avLinkSaveBtn.disabled = false;
+						} );
+				} );
+
 				var avDialog = createMiniModal( 'Update Photo', [], {
 					customContent: avFragment,
 					modifier: 'avatar',

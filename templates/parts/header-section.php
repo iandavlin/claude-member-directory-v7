@@ -282,6 +282,9 @@ if ( $is_edit_mode ) {
 // Show banner in edit mode even when empty (so JS can render the upload overlay).
 $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 
+// Avatar link — clickable URL for the avatar image in view mode.
+$avatar_link = ! $is_edit_mode ? get_post_meta( $post_id, '_memdir_avatar_link', true ) : '';
+
 ?>
 <header class="memdir-header memdir-header--<?php echo esc_attr( $section_key ); ?><?php echo $show_banner ? ' memdir-header--has-banner' : ''; ?>"
 	<?php if ( $has_banner ) : ?> style="background-image: url(<?php echo esc_url( $banner_url ); ?>);"<?php endif; ?>>
@@ -295,6 +298,7 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 		<?php // Avatar sits inside the banner, pinned to bottom-left ?>
 		<?php if ( $avatar_value ) : ?>
 		<div class="memdir-header__avatar-wrap">
+			<?php if ( ! empty( $avatar_link ) ) : ?><a href="<?php echo esc_url( $avatar_link ); ?>" target="_blank" rel="noopener noreferrer" class="memdir-header__avatar-link"><?php endif; ?>
 			<?php if ( is_array( $avatar_value ) ) : ?>
 				<img
 					class="memdir-header__avatar"
@@ -311,6 +315,7 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 				>
 				<?php endif; ?>
 			<?php endif; ?>
+			<?php if ( ! empty( $avatar_link ) ) : ?></a><?php endif; ?>
 		</div>
 		<?php endif; ?>
 
@@ -390,6 +395,7 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 			<div class="memdir-header__avatar-col">
 				<?php if ( $avatar_value ) : ?>
 				<div class="memdir-header__avatar-wrap">
+					<?php if ( ! empty( $avatar_link ) ) : ?><a href="<?php echo esc_url( $avatar_link ); ?>" target="_blank" rel="noopener noreferrer" class="memdir-header__avatar-link"><?php endif; ?>
 					<?php if ( is_array( $avatar_value ) ) : ?>
 						<img
 							class="memdir-header__avatar"
@@ -406,6 +412,7 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 						>
 						<?php endif; ?>
 					<?php endif; ?>
+					<?php if ( ! empty( $avatar_link ) ) : ?></a><?php endif; ?>
 				</div>
 				<?php endif; ?>
 			</div>

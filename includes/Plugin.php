@@ -198,7 +198,7 @@ class Plugin {
 			'member-directory',
 			$this->plugin_url . 'assets/css/memdir.css',
 			[ 'glightbox' ],
-			'0.1.3'
+			'0.1.4'
 		);
 
 		wp_enqueue_script(
@@ -244,6 +244,9 @@ class Plugin {
 				'profileAuthorId'  => is_singular( 'member-directory' )
 					? (int) get_post_field( 'post_author', get_queried_object_id() )
 					: 0,
+				'avatarLink'       => is_singular( 'member-directory' )
+					? (string) get_post_meta( get_queried_object_id(), '_memdir_avatar_link', true )
+					: '',
 			]
 		);
 	}
