@@ -313,6 +313,30 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 			<?php endif; ?>
 		</div>
 		<?php endif; ?>
+
+		<?php // Taxonomy badges — positioned in the clear banner zone, bottom-right ?>
+		<?php if ( ! empty( $badges ) || $is_edit_mode ) : ?>
+		<div class="memdir-header__banner-taxo">
+			<?php if ( ! empty( $badges ) ) : ?>
+			<div class="memdir-header__taxo">
+				<?php foreach ( $badges as $badge ) :
+					$badge_url = ( ! $is_edit_mode ) ? \MemberDirectory\Directory::get_term_filter_url( $badge['taxonomy'], $badge['slug'] ) : '';
+				?>
+					<?php if ( ! empty( $badge_url ) ) : ?>
+						<a href="<?php echo esc_url( $badge_url ); ?>" class="memdir-header__taxo-badge"><?php echo esc_html( $badge['name'] ); ?></a>
+					<?php else : ?>
+						<span class="memdir-header__taxo-badge"><?php echo esc_html( $badge['name'] ); ?></span>
+					<?php endif; ?>
+				<?php endforeach; ?>
+			</div>
+			<?php elseif ( $is_edit_mode ) : ?>
+			<div class="memdir-header__taxo">
+				<span class="memdir-header__placeholder">Edit Quick Focus</span>
+			</div>
+			<?php endif; ?>
+		</div>
+		<?php endif; ?>
+
 	</div>
 	<?php endif; ?>
 
@@ -323,27 +347,7 @@ $show_banner = $has_banner || ( $is_edit_mode && ! empty( $banner_field_key ) );
 
 		<div class="memdir-header__info-row">
 			<div class="memdir-header__text">
-				<div class="memdir-header__name-row">
-					<h1 class="memdir-header__title"><?php echo esc_html( $title_value ); ?></h1>
-
-					<?php if ( ! empty( $badges ) ) : ?>
-					<div class="memdir-header__taxo">
-						<?php foreach ( $badges as $badge ) :
-							$badge_url = ( ! $is_edit_mode ) ? \MemberDirectory\Directory::get_term_filter_url( $badge['taxonomy'], $badge['slug'] ) : '';
-						?>
-							<?php if ( ! empty( $badge_url ) ) : ?>
-								<a href="<?php echo esc_url( $badge_url ); ?>" class="memdir-header__taxo-badge"><?php echo esc_html( $badge['name'] ); ?></a>
-							<?php else : ?>
-								<span class="memdir-header__taxo-badge"><?php echo esc_html( $badge['name'] ); ?></span>
-							<?php endif; ?>
-						<?php endforeach; ?>
-					</div>
-					<?php elseif ( $is_edit_mode ) : ?>
-					<div class="memdir-header__taxo">
-						<span class="memdir-header__placeholder">Edit Quick Focus</span>
-					</div>
-					<?php endif; ?>
-				</div>
+				<h1 class="memdir-header__title"><?php echo esc_html( $title_value ); ?></h1>
 				<?php
 				$loc_value     = get_field( 'member_directory_location_location', $post_id );
 				$loc_precision = get_field( 'member_directory_location_display_precision', $post_id ) ?: 'city';

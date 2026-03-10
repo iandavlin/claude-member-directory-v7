@@ -176,6 +176,38 @@ body.single-member-directory .select2-dropdown--above {
   box-shadow: 0 2px 12px rgba(0,0,0,0.18);
 }
 
+/* ── Banner badges — glass pills in the clear zone, bottom-right ── */
+.memdir-header__banner-taxo {
+  position: absolute;
+  bottom: 12px;
+  right: 16px;
+  z-index: 2;
+}
+
+.memdir-header__banner-taxo .memdir-header__taxo {
+  justify-content: flex-end;
+}
+
+.memdir-header__banner-taxo .memdir-header__taxo-badge {
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-color: rgba(255, 255, 255, 0.5);
+  color: var(--md-text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.memdir-header__banner-taxo a.memdir-header__taxo-badge:hover {
+  background: rgba(255, 255, 255, 0.95);
+  border-color: var(--md-accent);
+  color: var(--md-accent);
+}
+
+.memdir-header__banner-taxo .memdir-header__placeholder {
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
 /* ── Frosted glass body — blurred banner continuation ────── */
 .memdir-header__body--with-banner {
   position: relative;
@@ -187,7 +219,7 @@ body.single-member-directory .select2-dropdown--above {
   border-top: 1px solid rgba(255, 255, 255, 0.4);
 }
 
-/* Info row: name+badges left, socials right — single tight row.
+/* Info row: name+location left, socials right — single tight row.
    Left padding clears the avatar that overlaps into the frosted zone. */
 .memdir-header__info-row {
   display: flex;
@@ -2161,6 +2193,16 @@ dialog.memdir-header-modal--media {
     height: 76px;
     left: 10px;
     bottom: -16px;
+  }
+
+  .memdir-header__banner-taxo {
+    bottom: 8px;
+    right: 10px;
+  }
+
+  .memdir-header__banner-taxo .memdir-header__taxo-badge {
+    font-size: 11px;
+    padding: 3px 8px;
   }
 
   .memdir-header__body {
