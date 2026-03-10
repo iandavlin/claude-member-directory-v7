@@ -112,7 +112,7 @@ body.single-member-directory .select2-dropdown--above {
 
 .memdir-profile--has-panel {
   grid-template-columns: 1fr var(--md-panel-width);
-  max-width: 1500px;
+  max-width: 1800px;
 }
 
 .memdir-profile__main {
@@ -191,8 +191,9 @@ body.single-member-directory .select2-dropdown--above {
   box-shadow: none;
 }
 
-/* Pseudo-element carries the border + shadow, offset to start after
-   the spacer column so the left (page-white) zone stays clean. */
+/* Pseudo-element carries the border, offset to start after the
+   spacer column so the left (page-bg) zone stays clean.
+   No box-shadow — blur would bleed leftward past the spacer edge. */
 .memdir-profile--edit .memdir-sticky::after {
   content: "";
   position: absolute;
@@ -201,7 +202,6 @@ body.single-member-directory .select2-dropdown--above {
   bottom: 0;
   height: 0;
   border-bottom: 1px solid var(--md-border);
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
   pointer-events: none;
 }
 
