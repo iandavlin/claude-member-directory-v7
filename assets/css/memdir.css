@@ -92,7 +92,7 @@ body.single-member-directory .select2-dropdown--above {
   --md-controls-width: 260px;
   --md-content-width: 820px;
   --md-centered-width: calc(var(--md-controls-width) + 16px + var(--md-content-width));
-  --md-page-bg:     #efede8; /* BuddyBoss page background — tune to match theme */
+  --md-page-bg:     #FCFCFC; /* BuddyBoss page background — tune to match theme */
   --md-font:        'Jost', sans-serif;
 }
 
