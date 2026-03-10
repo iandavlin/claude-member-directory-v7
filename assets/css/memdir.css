@@ -172,6 +172,17 @@ body.single-member-directory .select2-dropdown--above {
   box-shadow: 0 2px 6px rgba(0,0,0,0.06);
 }
 
+/* Edit mode: background only covers the content area (after the
+   spacer). Left side = page white (occludes scrolling content),
+   right side = --md-bg tint over header + pills. */
+.memdir-profile--edit .memdir-sticky {
+  background: linear-gradient(
+    to right,
+    var(--md-white) calc(var(--md-controls-width) + 16px),
+    var(--md-bg) calc(var(--md-controls-width) + 16px)
+  );
+}
+
 /* ─────────────────────────────────────────────────────────────
    HEADER — modern spread layout
    Optional banner image across full width, then identity
@@ -2290,6 +2301,10 @@ dialog.memdir-header-modal--media {
 
   .memdir-profile--edit .memdir-pills {
     padding-left: 0;
+  }
+
+  .memdir-profile--edit .memdir-sticky {
+    background: var(--md-bg);
   }
 
   .memdir-header__banner {
