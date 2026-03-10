@@ -26,6 +26,7 @@
 
 use MemberDirectory\FieldRenderer;
 use MemberDirectory\PmpResolver;
+use MemberDirectory\SectionRegistry;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -97,11 +98,8 @@ foreach ( $raw_fields as $_f ) {
 unset( $_cond_active, $_cm, $_f );
 
 $all_fields = array_values( array_filter( $raw_fields, static function ( array $f ) use ( $header_field_keys, $conditional_excluded_keys ): bool {
-	$type = $f['type'] ?? '';
 	$key  = $f['key']  ?? '';
-	if ( $type === 'tab' )          return false; // Structural divider — no value.
-	if ( $type === 'button_group' ) return false; // PMP companions and system selectors.
-	if ( preg_match( '/_(enabled|privacy_mode|privacy_level)$/', $key ) ) return false;
+	if ( SectionRegistry::is_system_field( $f ) )   return false; // Tabs, PMP companions, display_precision, etc.
 	if ( in_array( $key, $header_field_keys, true ) ) return false; // Already in sticky header.
 	if ( in_array( $key, $conditional_excluded_keys, true ) ) return false; // Disabled conditional tab.
 	return true;
