@@ -172,15 +172,32 @@ body.single-member-directory .select2-dropdown--above {
   box-shadow: 0 2px 6px rgba(0,0,0,0.06);
 }
 
-/* Edit mode: background only covers the content area (after the
-   spacer). Left side = page white (occludes scrolling content),
-   right side = --md-bg tint over header + pills. */
+/* Edit mode: background, border and shadow only cover the content
+   area (after the spacer). Left side = page white (occludes scrolling
+   content), right side = --md-bg tint + border + shadow. */
 .memdir-profile--edit .memdir-sticky {
+  position: sticky;
   background: linear-gradient(
     to right,
     var(--md-white) calc(var(--md-controls-width) + 16px),
     var(--md-bg) calc(var(--md-controls-width) + 16px)
   );
+  border-bottom: none;
+  box-shadow: none;
+}
+
+/* Pseudo-element carries the border + shadow, offset to start after
+   the spacer column so the left (page-white) zone stays clean. */
+.memdir-profile--edit .memdir-sticky::after {
+  content: "";
+  position: absolute;
+  left: calc(var(--md-controls-width) + 16px);
+  right: 0;
+  bottom: 0;
+  height: 0;
+  border-bottom: 1px solid var(--md-border);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  pointer-events: none;
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -2305,6 +2322,12 @@ dialog.memdir-header-modal--media {
 
   .memdir-profile--edit .memdir-sticky {
     background: var(--md-bg);
+    border-bottom: 1px solid var(--md-border);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  }
+
+  .memdir-profile--edit .memdir-sticky::after {
+    display: none;
   }
 
   .memdir-header__banner {
