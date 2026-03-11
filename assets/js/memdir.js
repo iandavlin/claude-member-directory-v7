@@ -20,6 +20,65 @@
 	'use strict';
 
 	// -----------------------------------------------------------------------
+	// Image upload constraints (client-side pre-validation)
+	// -----------------------------------------------------------------------
+	var IMAGE_MAX_SIZE   = 5 * 1024 * 1024; // 5 MB
+	var IMAGE_MAX_DIM    = 4000;             // px
+	var IMAGE_MIN_DIM    = 200;              // px
+	var IMAGE_ALLOWED    = [ 'image/jpeg', 'image/png', 'image/webp' ];
+	var IMAGE_LIMITS_TEXT = 'JPG, PNG, or WebP \u2022 Max 5 MB \u2022 200\u20134000 px';
+
+	/**
+	 * Validate an image File object against upload constraints.
+	 * Returns a promise that resolves to an error string ('' = valid).
+	 */
+	function validateImageFile( file ) {
+		return new Promise( function ( resolve ) {
+			if ( ! file ) { resolve( 'No file selected.' ); return; }
+
+			if ( IMAGE_ALLOWED.indexOf( file.type ) === -1 ) {
+				resolve( 'Invalid file type. Allowed: JPG, PNG, WebP.' );
+				return;
+			}
+
+			if ( file.size > IMAGE_MAX_SIZE ) {
+				var mb = ( file.size / ( 1024 * 1024 ) ).toFixed( 1 );
+				resolve( 'File too large (' + mb + ' MB). Maximum is 5 MB.' );
+				return;
+			}
+
+			var url = URL.createObjectURL( file );
+			var img = new Image();
+			img.onload = function () {
+				URL.revokeObjectURL( url );
+				var w = img.naturalWidth;
+				var h = img.naturalHeight;
+				if ( w > IMAGE_MAX_DIM || h > IMAGE_MAX_DIM ) {
+					resolve( 'Image too large (' + w + '\u00d7' + h + 'px). Max ' + IMAGE_MAX_DIM + 'px per side.' );
+				} else if ( w < IMAGE_MIN_DIM || h < IMAGE_MIN_DIM ) {
+					resolve( 'Image too small (' + w + '\u00d7' + h + 'px). Min ' + IMAGE_MIN_DIM + 'px per side.' );
+				} else {
+					resolve( '' );
+				}
+			};
+			img.onerror = function () {
+				URL.revokeObjectURL( url );
+				resolve( 'Could not read image file.' );
+			};
+			img.src = url;
+		} );
+	}
+
+	/** Create a small hint paragraph for upload areas. */
+	function createUploadHint() {
+		var p = document.createElement( 'p' );
+		p.className = 'memdir-upload-hint';
+		p.textContent = IMAGE_LIMITS_TEXT;
+		return p;
+	}
+
+
+	// -----------------------------------------------------------------------
 	// 1. Tab navigation
 	//
 	// Each .memdir-section--edit has a left-column tab list
@@ -2370,7 +2429,7 @@
 
 				var fileInput = document.createElement( 'input' );
 				fileInput.type = 'file';
-				fileInput.accept = 'image/*';
+				fileInput.accept = 'image/jpeg,image/png,image/webp';
 				fileInput.style.display = 'none';
 				avFragment.appendChild( fileInput );
 
@@ -2379,6 +2438,8 @@
 				uploadBtn.className = 'memdir-header-modal__avatar-btn';
 				uploadBtn.textContent = 'Choose New Photo';
 				avFragment.appendChild( uploadBtn );
+
+				avFragment.appendChild( createUploadHint() );
 
 				var deleteBtn = document.createElement( 'button' );
 				deleteBtn.type = 'button';
@@ -2424,6 +2485,7 @@
 							deleteBtn.disabled = false;
 							uploadBtn.disabled = false;
 						} );
+						} ); // end validateImageFile .then()
 				} );
 
 				
@@ -2490,7 +2552,10 @@
 					var file = fileInput.files[ 0 ];
 					if ( ! file ) { return; }
 
-					avStatus.textContent = 'Uploading\u2026';
+					validateImageFile( file ).then( function ( err ) {
+						if ( err ) { avStatus.textContent = err; fileInput.value = ''; return; }
+
+						avStatus.textContent = 'Uploading\u2026';
 					uploadBtn.disabled = true;
 
 					var fd = new FormData();
@@ -2565,7 +2630,7 @@
 
 				var bnFileInput = document.createElement( 'input' );
 				bnFileInput.type = 'file';
-				bnFileInput.accept = 'image/*';
+				bnFileInput.accept = 'image/jpeg,image/png,image/webp';
 				bnFileInput.style.display = 'none';
 				bnFragment.appendChild( bnFileInput );
 
@@ -2574,6 +2639,8 @@
 				bnUploadBtn.className = 'memdir-header-modal__avatar-btn';
 				bnUploadBtn.textContent = 'Choose Banner Image';
 				bnFragment.appendChild( bnUploadBtn );
+
+				bnFragment.appendChild( createUploadHint() );
 
 				var bnDeleteBtn = document.createElement( 'button' );
 				bnDeleteBtn.type = 'button';
@@ -2619,6 +2686,7 @@
 							bnDeleteBtn.disabled = false;
 							bnUploadBtn.disabled = false;
 						} );
+						} ); // end validateImageFile .then()
 				} );
 
 				var bnDialog = createMiniModal( 'Update Banner', [], {
@@ -2632,7 +2700,10 @@
 					var file = bnFileInput.files[ 0 ];
 					if ( ! file ) { return; }
 
-					bnStatus.textContent = 'Uploading\u2026';
+					validateImageFile( file ).then( function ( err ) {
+						if ( err ) { bnStatus.textContent = err; bnFileInput.value = ''; return; }
+
+						bnStatus.textContent = 'Uploading\u2026';
 					bnUploadBtn.disabled = true;
 
 					var fd = new FormData();
@@ -2984,7 +3055,7 @@
 		// Hidden file input.
 		var fileInput = document.createElement( 'input' );
 		fileInput.type = 'file';
-		fileInput.accept = 'image/*';
+		fileInput.accept = 'image/jpeg,image/png,image/webp';
 		fileInput.style.display = 'none';
 		modal.body.appendChild( fileInput );
 
@@ -3007,6 +3078,8 @@
 
 		modal.body.appendChild( btnRow );
 
+		modal.body.appendChild( createUploadHint() );
+
 		// Append dialog to document.body (stays there; never collected by saveSection).
 		document.body.appendChild( modal.dialog );
 
@@ -3022,12 +3095,15 @@
 			var file = fileInput.files[ 0 ];
 			if ( ! file ) { return; }
 
-			status.textContent = 'Uploading\u2026';
-			uploadBtn.disabled = true;
-			deleteBtn.disabled = true;
+			validateImageFile( file ).then( function ( err ) {
+				if ( err ) { status.textContent = err; fileInput.value = ''; return; }
 
-			var fd = new FormData();
-			fd.append( 'action',    'memdir_ajax_upload_image' );
+				status.textContent = 'Uploading\u2026';
+				uploadBtn.disabled = true;
+				deleteBtn.disabled = true;
+
+				var fd = new FormData();
+				fd.append( 'action',    'memdir_ajax_upload_image' );
 			fd.append( 'nonce',     window.mdAjax.nonce );
 			fd.append( 'post_id',   postId );
 			fd.append( 'field_key', fieldKey );
@@ -3075,6 +3151,7 @@
 					deleteBtn.disabled = false;
 					fileInput.value = '';
 				} );
+			} ); // end validateImageFile .then()
 		} );
 
 		// --- Delete handler ---
@@ -3334,7 +3411,7 @@
 
 		var fileInput = document.createElement( 'input' );
 		fileInput.type   = 'file';
-		fileInput.accept = 'image/*';
+		fileInput.accept = 'image/jpeg,image/png,image/webp';
 		fileInput.multiple = true;
 		fileInput.style.display = 'none';
 		modal.body.appendChild( fileInput );
@@ -3344,6 +3421,8 @@
 		addBtn.className = 'memdir-media-btn';
 		addBtn.textContent = 'Add Images';
 		modal.body.appendChild( addBtn );
+
+		modal.body.appendChild( createUploadHint() );
 
 		// Append dialog to document.body.
 		document.body.appendChild( modal.dialog );
@@ -3394,7 +3473,17 @@
 				}
 
 				var idx = done + errors;
-				status.textContent = 'Uploading ' + ( idx + 1 ) + ' of ' + total + '\u2026';
+
+				// Validate before uploading.
+				validateImageFile( files[ idx ] ).then( function ( err ) {
+					if ( err ) {
+						status.textContent = 'Skipped file ' + ( idx + 1 ) + ': ' + err;
+						errors++;
+						uploadNext();
+						return;
+					}
+
+					status.textContent = 'Uploading ' + ( idx + 1 ) + ' of ' + total + '\u2026';
 
 				var fd = new FormData();
 				fd.append( 'action',    'memdir_ajax_gallery_upload' );
@@ -3420,6 +3509,7 @@
 						errors++;
 						uploadNext();
 					} );
+				} ); // end validateImageFile .then()
 			}
 
 			uploadNext();

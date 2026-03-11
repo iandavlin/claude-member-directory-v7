@@ -2069,6 +2069,14 @@ dialog.memdir-header-modal--media {
   min-height: 1.3em;
 }
 
+.memdir-upload-hint {
+  font-family: var(--md-font);
+  font-size: 11px;
+  color: var(--md-text-muted);
+  margin: 6px 0 0;
+  opacity: 0.75;
+}
+
 .memdir-media-caption {
   display: block;
   width: 100%;

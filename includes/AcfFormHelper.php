@@ -47,6 +47,70 @@ defined( 'ABSPATH' ) || exit;
 
 class AcfFormHelper {
 
+	/** Maximum upload file size in bytes (5 MB). */
+	private const MAX_UPLOAD_SIZE = 5 * 1024 * 1024;
+
+	/** Maximum image dimension (width or height) in pixels. */
+	private const MAX_DIMENSION = 4000;
+
+	/** Minimum image dimension (width or height) in pixels. */
+	private const MIN_DIMENSION = 200;
+
+	/** Allowed MIME types for image uploads. */
+	private const ALLOWED_TYPES = [ 'image/jpeg', 'image/png', 'image/webp' ];
+
+	/**
+	 * Validate an uploaded image file before processing.
+	 *
+	 * Checks file size, MIME type, and pixel dimensions against the
+	 * class constants above. Returns an error message string on failure,
+	 * or empty string on success.
+	 *
+	 * @param  array  $file  The $_FILES['image'] array.
+	 * @return string        Error message, or '' if valid.
+	 */
+	private static function validate_image_upload( array $file ): string {
+		// File size check.
+		$size = $file['size'] ?? 0;
+		if ( $size > self::MAX_UPLOAD_SIZE ) {
+			$mb = round( $size / ( 1024 * 1024 ), 1 );
+			return 'File too large (' . $mb . ' MB). Maximum is 5 MB.';
+		}
+
+		// MIME type check (use finfo for real type, not the user-supplied type).
+		$tmp = $file['tmp_name'] ?? '';
+		if ( $tmp && function_exists( 'finfo_open' ) ) {
+			$finfo    = finfo_open( FILEINFO_MIME_TYPE );
+			$real_type = finfo_file( $finfo, $tmp );
+			finfo_close( $finfo );
+		} else {
+			$real_type = $file['type'] ?? '';
+		}
+
+		if ( ! in_array( $real_type, self::ALLOWED_TYPES, true ) ) {
+			return 'Invalid file type. Allowed: JPG, PNG, WebP.';
+		}
+
+		// Dimension check.
+		if ( $tmp ) {
+			$info = @getimagesize( $tmp );
+			if ( is_array( $info ) ) {
+				$w = $info[0];
+				$h = $info[1];
+
+				if ( $w > self::MAX_DIMENSION || $h > self::MAX_DIMENSION ) {
+					return 'Image too large (' . $w . '×' . $h . 'px). Maximum is ' . self::MAX_DIMENSION . 'px on either side.';
+				}
+
+				if ( $w < self::MIN_DIMENSION || $h < self::MIN_DIMENSION ) {
+					return 'Image too small (' . $w . '×' . $h . 'px). Minimum is ' . self::MIN_DIMENSION . 'px on either side.';
+				}
+			}
+		}
+
+		return '';
+	}
+
 	/**
 	 * Initialise the helper.
 	 * Called once from Plugin::init() during plugins_loaded.
@@ -484,6 +548,12 @@ class AcfFormHelper {
 			wp_send_json_error( [ 'message' => 'No file uploaded.' ], 400 );
 		}
 
+		// Validate image constraints.
+		$error = self::validate_image_upload( $_FILES['image'] );
+		if ( $error !== '' ) {
+			wp_send_json_error( [ 'message' => $error ], 400 );
+		}
+
 		// Get old attachment ID before uploading.
 		$old_id = (int) ( get_field( $field_key, $post_id, false ) ?: 0 );
 
@@ -541,6 +611,12 @@ class AcfFormHelper {
 		}
 		if ( empty( $_FILES['image'] ) ) {
 			wp_send_json_error( [ 'message' => 'No file uploaded.' ], 400 );
+		}
+
+		// Validate image constraints.
+		$error = self::validate_image_upload( $_FILES['image'] );
+		if ( $error !== '' ) {
+			wp_send_json_error( [ 'message' => $error ], 400 );
 		}
 
 		$old_id = (int) ( get_field( $field_key, $post_id, false ) ?: 0 );
@@ -638,6 +714,12 @@ class AcfFormHelper {
 		}
 		if ( empty( $_FILES['image'] ) ) {
 			wp_send_json_error( [ 'message' => 'No file uploaded.' ], 400 );
+		}
+
+		// Validate image constraints.
+		$error = self::validate_image_upload( $_FILES['image'] );
+		if ( $error !== '' ) {
+			wp_send_json_error( [ 'message' => $error ], 400 );
 		}
 
 		require_once ABSPATH . 'wp-admin/includes/image.php';
