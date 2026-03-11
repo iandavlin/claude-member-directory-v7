@@ -115,6 +115,11 @@ body.single-member-directory .select2-dropdown--above {
   max-width: 1800px;
 }
 
+/* Scale edit mode to 75% — replicates browser 75% zoom at native 100% */
+.memdir-profile--edit {
+  zoom: 0.75;
+}
+
 .memdir-profile__main {
   min-width: 0;
 }
@@ -680,6 +685,7 @@ a.memdir-header__taxo-badge:hover {
   padding: 20px 16px;
   border-radius: 12px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+
 }
 
 .memdir-section-controls__title {
