@@ -1045,75 +1045,44 @@ a.memdir-field-value:hover {
 }
 
 /* ─────────────────────────────────────────────────────────────
-   UNSAVED BANNER
+   FIELD AUTOSAVE INDICATOR
+   Per-field status shown in the .acf-label row: spinner, checkmark, or error.
 ───────────────────────────────────────────────────────────── */
 
-.memdir-unsaved-banner {
-  background: var(--md-coral);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 10px 16px;
-  border-radius: var(--md-radius);
-  margin-bottom: 16px;
-  display: none;
+.memdir-field-status {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 12px;
+  vertical-align: middle;
+  min-width: 14px;
+  min-height: 14px;
+  transition: opacity 0.3s;
 }
 
-.memdir-unsaved-banner.is-visible {
-  display: block;
+.memdir-field-status--saving::after {
+  content: '';
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--md-green-sage);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: memdir-spin 0.6s linear infinite;
 }
 
-/* ─────────────────────────────────────────────────────────────
-   SECTION SAVE BUTTON
-───────────────────────────────────────────────────────────── */
+@keyframes memdir-spin {
+  to { transform: rotate(360deg); }
+}
 
-.memdir-section-save {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 20px;
-  padding: 8px 20px;
-  border-radius: var(--md-radius-pill);
-  background: var(--md-green-sage);
-  color: var(--md-white);
-  border: none;
-  font-family: var(--md-font);
-  font-size: 14px;
+.memdir-field-status--saved {
+  color: var(--md-green-sage);
+  font-weight: 600;
+}
+
+.memdir-field-status--error {
+  color: var(--md-coral);
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.15s;
-}
-
-.memdir-section-save:hover {
-  background: var(--md-green-dark);
-}
-
-.memdir-section-save--saving {
-  opacity: 0.7;
-  cursor: wait;
-}
-
-.memdir-section-save--saved {
-  background: var(--md-green-dark);
-}
-
-.memdir-section-save--error {
-  background: var(--md-coral);
-}
-
-/* Pulse when section has unsaved changes */
-.has-unsaved .memdir-section-save {
-  animation: memdir-pulse 2s ease-in-out infinite;
-}
-
-.has-unsaved .memdir-section-save:hover {
-  animation: none;
-  background: var(--md-green-dark);
-}
-
-@keyframes memdir-pulse {
-  0%, 100% { background: var(--md-green-sage); }
-  50%      { background: var(--md-gold); }
 }
 
 /* ─────────────────────────────────────────────────────────────

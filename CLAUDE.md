@@ -17,6 +17,7 @@ WordPress plugin: section-based member profile and directory system powered by A
 - `GlobalFields` — ACF group for global PMP + primary section controls (**⚠ debug code present — see Known Issues**)
 - `AcfFormHelper` — `acf_form_head()` guard + edit-mode detection + `acf_form()` rendering + AJAX handlers (section save, enabled toggle, section PMP, field PMP, avatar upload, image upload/delete, gallery upload/remove, caption update, taxonomy search, social import)
 - `templates/single-member-directory.php` — full edit/view mode branching
+- Per-field autosave — all ACF content fields save individually via AJAX on blur/change (text, textarea, wysiwyg, url, select, radio, checkbox, true_false, taxonomy, google_map). No save button, no page reload, no unsaved-changes banner. Per-field status indicator (spinner → checkmark → error) in each field's `.acf-label`. Reuses existing `md_save_section` endpoint (sends one `acf[field_key]=value` per save). Header modals use "Done" button (saves all modal fields then closes). Live DOM updates for name fields (header title). ACF's `beforeunload` warning suppressed. Image/gallery/file fields excluded (already have dedicated AJAX handlers). JS entry point: `initFieldAutosave()` in boot sequence.
 - `templates/parts/section-edit.php` — edit partial (left controls panel + ACF form)
 - `templates/parts/section-view.php` — view partial (PMP waterfall + FieldRenderer per field)
 - `templates/parts/right-panel.php` — author/admin panel: View As button group, Global Default block, Primary Section block, Section toggles (edit mode), Notes block
@@ -209,7 +210,8 @@ templates/
                               trusted-by cards, request button (state-dependent), outbound
                               network. Edit mode: pending requests with accept/decline, accepted
                               relationships with remove, outbound list. Ghost logic when disabled.
-    section-edit.php          Edit partial. Left controls (section PMP dropdown, tab list, save button) + ACF form.
+    section-edit.php          Edit partial. Left controls (section PMP dropdown, tab list) + ACF form.
+                              No save button — fields autosave individually via AJAX.
                               Tab list derived from acf_get_fields( $section['acf_group_key'] ).
     section-view.php          View partial. Resolves PMP waterfall per field, calls FieldRenderer.
                               Field list derived from acf_get_fields( $section['acf_group_key'] ).
@@ -247,9 +249,13 @@ assets/
                               Responsive: stacks vertically on mobile/tablet.
   js/memdir.js                All frontend JS. ⚠ CRLF line endings — use Write tool or Node.js
                               scripts for edits (Edit tool fails on this file).
-                              Boot sequence: initHeaderEditing() → initImageUploaders() →
-                              initTaxonomySearch() → initLightbox() → initTrustNetwork() →
-                              initMessaging().
+                              Boot sequence: initFieldAutosave() → initHeaderEditing() →
+                              initImageUploaders() → initTaxonomySearch() → initLightbox() →
+                              initTrustNetwork() → initMessaging().
+                              Per-field autosave: saveField(), initFieldAutosave(),
+                              extractFieldValue(), bindFieldAutosave(), onFieldSaved().
+                              No save button — fields save on blur/change with per-field
+                              status indicators (spinner/checkmark/error).
   js/memdir-directory.js      Directory listing JS (separate file, no CRLF issues).
                               IIFE boot: initSearch() → initFilterStack() →
                               initFilterGroups() → initPagination() → initMap().

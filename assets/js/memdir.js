@@ -7,7 +7,7 @@
  *   1. Tab navigation     -- show/hide ACF fields by tab group within a section
  *   2. Pill navigation    -- single-section / all-sections view switching
  *   3. Header swap        -- show correct header variant based on active pill
- *   4. Section save       -- AJAX save for all fields in a section without reload
+ *   4. Field autosave     -- per-field AJAX save on blur/change (no save button)
  *   5. Right panel        -- Primary Section AJAX save + pill DOM update
  *   6. Section toggles     -- right-panel toggle switches enable/disable sections
  *   7. State restore      -- sessionStorage + URL param restore on page load
@@ -253,210 +253,435 @@
 
 	
 	// -----------------------------------------------------------------------
-	// 4. Section save (AJAX)
+	// 4. Field Autosave (AJAX)
 	//
-	// Each .memdir-section--edit wraps:
-	//   .memdir-unsaved-banner  -- shown when any field in the section changes.
-	//   .memdir-section-save    -- button that collects the section's ACF form
-	//                             fields and POSTs them via fetch without a
-	//                             full page reload.
+	// Each .acf-field saves its value individually via AJAX on blur/change.
+	// Reuses the existing md_save_section endpoint (which calls update_field
+	// per key). No save button, no page reload, no unsaved-changes banner.
 	//
-	// Flow:
-	//   Any input/change inside .memdir-field-content
-	//     -> section.classList.add('has-unsaved')
-	//     -> banner.style.display = ''
-	//
-	//   Save button click  OR  Enter in any text input
-	//     -> collect FormData from the section's .acf-form
-	//     -> POST action=md_save_section, nonce, post_id, acf[...] fields
-	//     -> success: show 'Saved checkmark' on button; update .memdir-header__title
-	//               in place if field_md_profile_page_name was in the payload
-	//     -> error:   show error state on button for 3 s
+	// Per-field status indicator: spinner -> checkmark -> (auto-clear).
+	// Error state shows X and stays until the next successful save.
 	// -----------------------------------------------------------------------
 
-	function initSectionSave() {
-		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
-			var fieldContent = section.querySelector( '.memdir-field-content' );
-			var banner       = section.querySelector( '.memdir-unsaved-banner' );
-			var saveBtn      = section.querySelector( '.memdir-section-save' );
+	/**
+	 * Get or create a status indicator element inside an .acf-field's label.
+	 *
+	 * @param {Element} acfField  The .acf-field wrapper.
+	 * @returns {Element}
+	 */
+	function getOrCreateIndicator( acfField ) {
+		var existing = acfField.querySelector( '.memdir-field-status' );
+		if ( existing ) { return existing; }
 
-			if ( ! fieldContent || ! saveBtn ) {
-				return;
-			}
-
-			// Show unsaved banner on any field change.
-			fieldContent.addEventListener( 'input',  function () { markUnsaved( section, banner ); } );
-			fieldContent.addEventListener( 'change', function () { markUnsaved( section, banner ); } );
-
-			// Intercept Enter in text inputs -- treat it as a save rather than
-			// a native form submit. Textareas are excluded so Enter still adds
-			// new lines there.
-			fieldContent.addEventListener( 'keydown', function ( event ) {
-				if ( event.key !== 'Enter' ) {
-					return;
-				}
-				if ( event.target.tagName === 'TEXTAREA' ) {
-					return;
-				}
-				event.preventDefault();
-				saveSection( section, saveBtn, banner );
-			} );
-
-			// Wire save button.
-			saveBtn.addEventListener( 'click', function () {
-				saveSection( section, saveBtn, banner );
-			} );
-		} );
+		var el = document.createElement( 'span' );
+		el.className = 'memdir-field-status';
+		var label = acfField.querySelector( '.acf-label' );
+		if ( label ) { label.appendChild( el ); }
+		return el;
 	}
 
 	/**
-	 * Mark a section as having unsaved changes.
+	 * Set the visual state of a field status indicator.
 	 *
-	 * @param {Element}      section The .memdir-section--edit wrapper.
-	 * @param {Element|null} banner  The .memdir-unsaved-banner element, or null.
+	 * @param {Element} el     The .memdir-field-status element.
+	 * @param {string}  state  'saving' | 'saved' | 'error' | ''
 	 */
-	function markUnsaved( section, banner ) {
-		section.classList.add( 'has-unsaved' );
-		if ( banner ) {
-			banner.style.display = '';
+	function setIndicatorState( el, state ) {
+		el.className = 'memdir-field-status' + ( state ? ' memdir-field-status--' + state : '' );
+		if ( state === 'saving' ) {
+			el.textContent = '';
+		} else if ( state === 'saved' ) {
+			el.textContent = '\u2713';
+			clearTimeout( el._clearTimer );
+			el._clearTimer = setTimeout( function () {
+				el.className = 'memdir-field-status';
+				el.textContent = '';
+			}, 3000 );
+		} else if ( state === 'error' ) {
+			el.textContent = '\u2717';
+		} else {
+			el.textContent = '';
 		}
 	}
 
 	/**
-	 * Collect all field values from the section and POST via fetch.
+	 * Save a single ACF field value via AJAX (reuses md_save_section endpoint).
 	 *
-	 * Iterates through all .acf-field[data-key] elements regardless of
-	 * visibility (visible tabs vs hidden tabs), and collects input values
-	 * from input, textarea, select elements within each field.
-	 *
-	 * @param {Element}      section The .memdir-section--edit wrapper.
-	 * @param {Element}      saveBtn The .memdir-section-save button.
-	 * @param {Element|null} banner  The .memdir-unsaved-banner element, or null.
+	 * @param {string}       postId    Member directory post ID.
+	 * @param {string}       fieldKey  ACF field key (e.g. 'field_md_profile_name').
+	 * @param {*}            value     The value to save (string, array, or object).
+	 * @param {Element}      acfField  The .acf-field wrapper (for status indicator).
+	 * @returns {Promise}
 	 */
-	function saveSection( section, saveBtn, banner ) {
-		var fieldContent = section.querySelector( '.memdir-field-content' );
-		var postId = section.dataset.postId || '';
-
-		if ( ! fieldContent || ! postId ) {
-			return;
-		}
+	function saveField( postId, fieldKey, value, acfField ) {
+		var indicator = getOrCreateIndicator( acfField );
+		setIndicatorState( indicator, 'saving' );
 
 		var formData = new FormData();
-
 		formData.set( 'action',  'md_save_section' );
-		formData.set( 'nonce',   ( window.mdAjax && window.mdAjax.nonce )   ? window.mdAjax.nonce   : '' );
+		formData.set( 'nonce',   ( window.mdAjax && window.mdAjax.nonce ) ? window.mdAjax.nonce : '' );
 		formData.set( 'post_id', postId );
 
-		// Sync any WYSIWYG (TinyMCE) editors so their textareas hold current content.
-		if ( window.tinyMCE ) { window.tinyMCE.triggerSave(); }
-
-		// Collect all form controls inside fieldContent.
-		// Use each input's own name attribute — ACF sets correct names for all
-		// field types including repeaters (acf[rep_key][row-0][sub_key]).
-		var inputs = fieldContent.querySelectorAll( 'input, textarea, select' );
-		inputs.forEach( function ( input ) {
-			var name = input.name || '';
-
-			// Must start with acf[ to be an ACF-managed field.
-			if ( name.indexOf( 'acf[' ) !== 0 ) { return; }
-
-			// Skip file inputs — handled by AJAX uploaders, never submitted via saveSection.
-			if ( input.type === 'file' ) { return; }
-
-			// Skip unchecked checkboxes and radios.
-			if ( ( input.type === 'checkbox' || input.type === 'radio' ) && ! input.checked ) { return; }
-
-			// Skip custom-flagged inputs (taxonomy search text boxes, old ACF gallery inputs).
-			if ( input.dataset && input.dataset.memdirSkip ) { return; }
-
-			formData.append( name, input.value );
-		} );
+		// Append the value in the format the existing handler expects.
+		if ( Array.isArray( value ) ) {
+			if ( value.length === 0 ) {
+				// Empty array: send empty string so ACF clears the field.
+				formData.set( 'acf[' + fieldKey + ']', '' );
+			} else {
+				value.forEach( function ( v ) {
+					formData.append( 'acf[' + fieldKey + '][]', v );
+				} );
+			}
+		} else if ( typeof value === 'object' && value !== null ) {
+			Object.keys( value ).forEach( function ( k ) {
+				formData.append( 'acf[' + fieldKey + '][' + k + ']', value[ k ] );
+			} );
+		} else {
+			formData.set( 'acf[' + fieldKey + ']', value );
+		}
 
 		var ajaxUrl = ( window.mdAjax && window.mdAjax.ajaxurl )
 			? window.mdAjax.ajaxurl
 			: '/wp-admin/admin-ajax.php';
 
-		// Capture original label so we can restore it after the saved state.
-		var originalBtnText = saveBtn.textContent;
-
-		// Saving state.
-		saveBtn.classList.add( 'memdir-section-save--saving' );
-		saveBtn.disabled = true;
-
-		fetch( ajaxUrl, {
+		return fetch( ajaxUrl, {
 			method:      'POST',
 			credentials: 'same-origin',
 			body:        formData,
 		} )
-			.then( function ( response ) {
-				return response.json();
-			} )
+			.then( function ( r ) { return r.json(); } )
 			.then( function ( data ) {
-				saveBtn.classList.remove( 'memdir-section-save--saving' );
-				saveBtn.disabled = false;
-
 				if ( data.success ) {
-					// Clear unsaved state.
-					section.classList.remove( 'has-unsaved' );
-					if ( banner ) {
-						banner.style.display = 'none';
-					}
-
-					// Show 'Saved checkmark' then reload with section/tab params preserved.
-					saveBtn.textContent = 'Saved \u2713';
-					saveBtn.classList.add( 'memdir-section-save--saved' );
-					var reloadSectionKey = section.dataset.section || 'all';
-					var reloadTabBtn = section.querySelector( '.memdir-section-controls__tab-item.is-active' );
-					var reloadTabLabel = reloadTabBtn ? reloadTabBtn.textContent.trim() : '';
-					setTimeout( function () {
-						// Strip ACF's beforeunload warning before navigating.
-						window.onbeforeunload = null;
-						if ( typeof jQuery !== 'undefined' ) { jQuery( window ).off( 'beforeunload' ); }
-						var reloadUrl = new URL( window.location.href );
-						reloadUrl.searchParams.set( 'active_section', reloadSectionKey );
-						reloadUrl.searchParams.set( '_t', Date.now().toString() );
-						if ( reloadTabLabel ) {
-							reloadUrl.searchParams.set( 'active_tab', reloadTabLabel );
-						}
-						window.location.href = reloadUrl.toString();
-					}, 1500 );
-
-					// Update header title in place when a name field was in the saved payload.
-					// Each section targets its own header wrapper so both can live in the DOM.
-					var pageNameField = fieldContent.querySelector( '.acf-field[data-key="field_md_profile_page_name"]' );
-					if ( pageNameField ) {
-						var pageNameInput = pageNameField.querySelector( 'input' );
-						if ( pageNameInput ) {
-							var titleEl = document.querySelector( '.memdir-header-wrap[data-header="profile"] .memdir-header__title' );
-							if ( titleEl ) { titleEl.textContent = pageNameInput.value; }
-						}
-					}
-
-					var businessNameField = fieldContent.querySelector( '.acf-field[data-key="field_md_business_name"]' );
-					if ( businessNameField ) {
-						var businessNameInput = businessNameField.querySelector( 'input' );
-						if ( businessNameInput ) {
-							var businessTitleEl = document.querySelector( '.memdir-header-wrap[data-header="business"] .memdir-header__title' );
-							if ( businessTitleEl ) { businessTitleEl.textContent = businessNameInput.value; }
-						}
-					}
+					setIndicatorState( indicator, 'saved' );
 				} else {
-					// Error feedback (3 s).
-					saveBtn.classList.add( 'memdir-section-save--error' );
-					setTimeout( function () {
-						saveBtn.classList.remove( 'memdir-section-save--error' );
-					}, 3000 );
+					setIndicatorState( indicator, 'error' );
+					console.error( 'MemberDirectory: field save error', fieldKey, data );
 				}
+				return data;
 			} )
-			.catch( function () {
-				// Network / parse error.
-				saveBtn.classList.remove( 'memdir-section-save--saving' );
-				saveBtn.disabled = false;
-				saveBtn.classList.add( 'memdir-section-save--error' );
-				setTimeout( function () {
-					saveBtn.classList.remove( 'memdir-section-save--error' );
-				}, 3000 );
+			.catch( function ( err ) {
+				setIndicatorState( indicator, 'error' );
+				console.error( 'MemberDirectory: field save failed', fieldKey, err );
 			} );
+	}
+
+	/**
+	 * Wait for a TinyMCE editor instance to become available.
+	 *
+	 * @param {string}   editorId  The textarea ID that TinyMCE wraps.
+	 * @param {Function} callback  Called with the editor instance.
+	 */
+	function waitForTinyMCE( editorId, callback ) {
+		var attempts = 0;
+		var check = setInterval( function () {
+			attempts++;
+			if ( window.tinyMCE && tinyMCE.get( editorId ) ) {
+				clearInterval( check );
+				callback( tinyMCE.get( editorId ) );
+			}
+			if ( attempts > 50 ) { clearInterval( check ); }
+		}, 100 );
+	}
+
+	/**
+	 * Collect all sub-values from an ACF google_map field into an object.
+	 *
+	 * @param {Element} acfField  The .acf-field[data-type="google_map"] wrapper.
+	 * @returns {Object}  { address, lat, lng, ... }
+	 */
+	function collectGoogleMapValue( acfField ) {
+		var result = {};
+		acfField.querySelectorAll( 'input' ).forEach( function ( inp ) {
+			var name = inp.name || '';
+			var match = name.match( /acf\[[^\]]+\]\[([^\]]+)\]/ );
+			if ( match ) {
+				result[ match[1] ] = inp.value;
+			}
+		} );
+		return result;
+	}
+
+	/**
+	 * Extract the current value from an .acf-field based on its type.
+	 *
+	 * @param {Element} acfField  The .acf-field wrapper.
+	 * @returns {*}  The field value, or undefined if extraction fails.
+	 */
+	function extractFieldValue( acfField ) {
+		var fieldType = ( acfField.dataset.type || '' ).toLowerCase();
+
+		switch ( fieldType ) {
+			case 'text':
+			case 'email':
+			case 'number':
+			case 'url': {
+				var inp = acfField.querySelector( 'input[type="text"], input[type="email"], input[type="number"], input[type="url"]' );
+				return inp ? inp.value : undefined;
+			}
+
+			case 'textarea': {
+				var ta = acfField.querySelector( 'textarea' );
+				return ta ? ta.value : undefined;
+			}
+
+			case 'wysiwyg': {
+				var wysTA = acfField.querySelector( 'textarea' );
+				if ( ! wysTA ) { return undefined; }
+				var edId = wysTA.id || '';
+				if ( window.tinyMCE && edId && tinyMCE.get( edId ) ) {
+					return tinyMCE.get( edId ).getContent();
+				}
+				return wysTA.value;
+			}
+
+			case 'select': {
+				var sel = acfField.querySelector( 'select' );
+				if ( ! sel ) { return undefined; }
+				if ( sel.multiple ) {
+					return Array.from( sel.selectedOptions ).map( function ( o ) { return o.value; } ).filter( Boolean );
+				}
+				return sel.value;
+			}
+
+			case 'radio': {
+				var checked = acfField.querySelector( 'input[type="radio"]:checked' );
+				return checked ? checked.value : '';
+			}
+
+			case 'checkbox': {
+				var vals = [];
+				acfField.querySelectorAll( 'input[type="checkbox"]:checked' ).forEach( function ( cb ) {
+					if ( cb.value ) { vals.push( cb.value ); }
+				} );
+				return vals;
+			}
+
+			case 'true_false': {
+				var tf = acfField.querySelector( 'input[type="checkbox"]' );
+				return tf ? ( tf.checked ? '1' : '0' ) : undefined;
+			}
+
+			case 'taxonomy': {
+				var taxoSel = acfField.querySelector( 'select' );
+				if ( ! taxoSel ) { return undefined; }
+				if ( taxoSel.multiple ) {
+					return Array.from( taxoSel.selectedOptions ).map( function ( o ) { return o.value; } ).filter( Boolean );
+				}
+				return taxoSel.value;
+			}
+
+			case 'google_map': {
+				return collectGoogleMapValue( acfField );
+			}
+
+			default:
+				return undefined;
+		}
+	}
+
+	/**
+	 * Bind autosave events to a single .acf-field based on its type.
+	 *
+	 * @param {Element} acfField   The .acf-field wrapper.
+	 * @param {string}  postId     The member-directory post ID.
+	 * @param {string}  fieldKey   The ACF field key.
+	 * @param {string}  fieldType  The ACF field type (from data-type).
+	 */
+	function bindFieldAutosave( acfField, postId, fieldKey, fieldType ) {
+		var debounceTimer = null;
+
+		function debouncedSave( delay ) {
+			clearTimeout( debounceTimer );
+			debounceTimer = setTimeout( function () {
+				var value = extractFieldValue( acfField );
+				if ( value !== undefined ) {
+					saveField( postId, fieldKey, value, acfField );
+				}
+			}, delay );
+		}
+
+		function immediateSave() {
+			clearTimeout( debounceTimer );
+			var value = extractFieldValue( acfField );
+			if ( value !== undefined ) {
+				saveField( postId, fieldKey, value, acfField );
+			}
+		}
+
+		switch ( fieldType ) {
+			case 'text':
+			case 'email':
+			case 'number':
+			case 'url': {
+				var textInp = acfField.querySelector( 'input[type="text"], input[type="email"], input[type="number"], input[type="url"]' );
+				if ( ! textInp ) { return; }
+				textInp.addEventListener( 'blur', immediateSave );
+				// Also save on Enter key (prevent form submit).
+				textInp.addEventListener( 'keydown', function ( e ) {
+					if ( e.key === 'Enter' ) {
+						e.preventDefault();
+						immediateSave();
+					}
+				} );
+				break;
+			}
+
+			case 'textarea': {
+				var ta = acfField.querySelector( 'textarea' );
+				if ( ! ta ) { return; }
+				ta.addEventListener( 'blur', immediateSave );
+				break;
+			}
+
+			case 'wysiwyg': {
+				var wysTA = acfField.querySelector( 'textarea' );
+				if ( ! wysTA ) { return; }
+				var editorId = wysTA.id || '';
+				if ( ! editorId ) { return; }
+				waitForTinyMCE( editorId, function ( editor ) {
+					editor.on( 'blur', immediateSave );
+					var wysiTimer = null;
+					editor.on( 'input change keyup', function () {
+						clearTimeout( wysiTimer );
+						wysiTimer = setTimeout( immediateSave, 2000 );
+					} );
+				} );
+				break;
+			}
+
+			case 'select': {
+				var sel = acfField.querySelector( 'select' );
+				if ( ! sel ) { return; }
+				sel.addEventListener( 'change', immediateSave );
+				break;
+			}
+
+			case 'radio': {
+				acfField.querySelectorAll( 'input[type="radio"]' ).forEach( function ( radio ) {
+					radio.addEventListener( 'change', function () {
+						if ( radio.checked ) { immediateSave(); }
+					} );
+				} );
+				break;
+			}
+
+			case 'checkbox': {
+				acfField.addEventListener( 'change', function ( e ) {
+					if ( e.target.type === 'checkbox' ) { immediateSave(); }
+				} );
+				break;
+			}
+
+			case 'true_false': {
+				var tf = acfField.querySelector( 'input[type="checkbox"]' );
+				if ( ! tf ) { return; }
+				tf.addEventListener( 'change', immediateSave );
+				break;
+			}
+
+			case 'taxonomy': {
+				// The custom taxonomy search modifies the hidden <select> programmatically.
+				// Use MutationObserver to catch those changes.
+				var taxoSel = acfField.querySelector( 'select' );
+				if ( ! taxoSel ) { return; }
+				var taxoObserver = new MutationObserver( function () {
+					debouncedSave( 300 );
+				} );
+				taxoObserver.observe( taxoSel, { childList: true, attributes: true, subtree: true } );
+				// Also listen for direct change events (single-select).
+				taxoSel.addEventListener( 'change', function () { debouncedSave( 300 ); } );
+				break;
+			}
+
+			case 'google_map': {
+				// ACF stores map data in hidden inputs; changes are programmatic.
+				var mapInputs = acfField.querySelectorAll( 'input[type="hidden"], input[type="text"]' );
+				var mapObserver = new MutationObserver( function () {
+					debouncedSave( 1000 );
+				} );
+				mapInputs.forEach( function ( inp ) {
+					mapObserver.observe( inp, { attributes: true, attributeFilter: [ 'value' ] } );
+					inp.addEventListener( 'change', function () { debouncedSave( 1000 ); } );
+				} );
+				break;
+			}
+		}
+	}
+
+	/**
+	 * Live-update the header title in the DOM when a name field saves.
+	 *
+	 * @param {string} fieldKey  The ACF field key that just saved.
+	 * @param {*}      value     The saved value.
+	 */
+	function onFieldSaved( fieldKey, value ) {
+		if ( fieldKey === 'field_md_profile_page_name' ) {
+			var titleEl = document.querySelector( '.memdir-header-wrap[data-header="profile"] .memdir-header__title' );
+			if ( titleEl && typeof value === 'string' ) { titleEl.textContent = value; }
+		}
+		if ( fieldKey === 'field_md_business_name' ) {
+			var bTitleEl = document.querySelector( '.memdir-header-wrap[data-header="business"] .memdir-header__title' );
+			if ( bTitleEl && typeof value === 'string' ) { bTitleEl.textContent = value; }
+		}
+	}
+
+	/**
+	 * Initialize per-field AJAX autosave for all edit-mode sections.
+	 * Replaces the old bulk field autosave approach.
+	 */
+	function initFieldAutosave() {
+		document.querySelectorAll( '.memdir-section--edit' ).forEach( function ( section ) {
+			var postId = section.dataset.postId || '';
+			var fieldContent = section.querySelector( '.memdir-field-content' );
+			if ( ! fieldContent || ! postId ) { return; }
+
+			// Header fields are managed by initHeaderEditing() -- skip them.
+			var headerKeys = getHeaderFieldKeys( section );
+
+			fieldContent.querySelectorAll( '.acf-field[data-key]' ).forEach( function ( acfField ) {
+				// Skip fields inside dialogs (header modals manage their own save).
+				if ( acfField.closest( 'dialog' ) ) { return; }
+
+				// Skip sub-fields inside repeaters/groups -- only top-level fields autosave.
+				if ( acfField.parentElement && acfField.parentElement.closest( '.acf-field[data-type="repeater"], .acf-field[data-type="flexible_content"], .acf-field[data-type="group"]' ) ) { return; }
+
+				var fieldKey  = acfField.dataset.key  || '';
+				var fieldType = ( acfField.dataset.type || '' ).toLowerCase();
+
+				if ( ! fieldKey || ! fieldKey.indexOf( 'field_' ) === 0 ) { return; }
+
+				// Skip header-owned fields.
+				if ( headerKeys.indexOf( fieldKey ) !== -1 ) { return; }
+
+				// Skip PMP companion fields (button_group with _pmp_ in key).
+				if ( fieldKey.indexOf( '_pmp_' ) !== -1 ) { return; }
+
+				// Skip system fields (button_group type).
+				if ( fieldType === 'button_group' ) { return; }
+
+				// Skip image/gallery fields -- already have dedicated AJAX handlers.
+				if ( fieldType === 'image' || fieldType === 'gallery' || fieldType === 'file' ) { return; }
+				if ( acfField.querySelector( '.memdir-img-uploader, .memdir-gallery-wrap' ) ) { return; }
+
+				// Skip tab fields.
+				if ( fieldType === 'tab' || fieldType === 'message' || fieldType === 'accordion' ) { return; }
+
+				bindFieldAutosave( acfField, postId, fieldKey, fieldType );
+			} );
+
+			// Intercept Enter key in text inputs to prevent native form submit.
+			fieldContent.addEventListener( 'keydown', function ( event ) {
+				if ( event.key !== 'Enter' ) { return; }
+				if ( event.target.tagName === 'TEXTAREA' ) { return; }
+				if ( event.target.closest( '.acf-field' ) ) {
+					event.preventDefault();
+				}
+			} );
+		} );
+
+		// Suppress ACF's beforeunload warning -- all changes save in real time.
+		window.onbeforeunload = null;
+		if ( typeof jQuery !== 'undefined' ) { jQuery( window ).off( 'beforeunload' ); }
 	}
 
 	// -----------------------------------------------------------------------
@@ -1877,7 +2102,7 @@
 			// a hidden section when viewing a different pill (e.g. editing
 			// Business header fields while viewing the Workspace section).
 			// The dialog's 'close' event (added in createMiniModal) moves it
-			// back to fieldContent so saveSection() can still find its fields.
+			// back to fieldContent so autosave can still find its fields.
 			function showDialogSafe( dlg ) {
 				document.body.appendChild( dlg );
 				dlg.showModal();
@@ -2058,30 +2283,37 @@
 				}
 
 				if ( ! opts.noSave ) {
-					var saveBtn = document.createElement( 'button' );
-					saveBtn.type = 'button';
-					saveBtn.className = 'memdir-modal-save';
-					saveBtn.textContent = 'Save';
-					dialog.appendChild( saveBtn );
+					var doneBtn = document.createElement( 'button' );
+					doneBtn.type = 'button';
+					doneBtn.className = 'memdir-modal-save';
+					doneBtn.textContent = 'Done';
+					dialog.appendChild( doneBtn );
 
-					saveBtn.addEventListener( 'click', function () {
-						// Move dialog back before saving so saveSection() finds fields
+					doneBtn.addEventListener( 'click', function () {
+						// Move dialog back so autosave can find fields on subsequent edits.
 						if ( dialog.parentElement !== fieldContent ) {
 							fieldContent.appendChild( dialog );
 						}
-						var sBtn = section.querySelector( '.memdir-section-save' );
-						var ban  = section.querySelector( '.memdir-unsaved-banner' );
-						if ( sBtn ) { saveSection( section, sBtn, ban ); }
+						// Save all fields in the modal via per-field autosave.
+						var postId = section.dataset.postId || '';
+						dialog.querySelectorAll( '.acf-field[data-key]' ).forEach( function ( af ) {
+							var fk  = af.dataset.key  || '';
+							var val = extractFieldValue( af );
+							if ( fk && val !== undefined && postId ) {
+								saveField( postId, fk, val, af );
+								onFieldSaved( fk, val );
+							}
+						} );
 						dialog.close();
 						if ( opts.onSave ) { opts.onSave(); }
 					} );
 				}
 
-				// Append inside fieldContent so saveSection() finds all ACF fields
+				// Append inside fieldContent so autosave finds all ACF fields
 				fieldContent.appendChild( dialog );
 
 				// When the dialog closes (X, backdrop, Escape, or Save),
-				// move it back to fieldContent so saveSection() finds its fields.
+				// move it back to fieldContent so autosave finds its fields.
 				// showDialogSafe() moves it to document.body before opening.
 				dialog.addEventListener( 'close', function () {
 					if ( dialog.parentElement !== fieldContent ) {
@@ -2177,7 +2409,7 @@
 								if ( avatarImg ) { avatarImg.src = ''; avatarImg.style.display = 'none'; }
 								avStatus.textContent = 'Photo removed.';
 								deleteBtn.style.display = 'none';
-								// Sync ACF hidden input so saveSection() sends empty.
+								// Sync ACF hidden input so autosave sends empty.
 								if ( acfHiddenInput ) {
 									acfHiddenInput.value = '';
 								}
@@ -2277,7 +2509,7 @@
 								if ( avatarImg ) { avatarImg.src = res.data.url; avatarImg.style.display = ''; }
 								avStatus.textContent = 'Photo updated.';
 								deleteBtn.style.display = '';
-								// Sync ACF hidden input so saveSection() uses the new ID.
+								// Sync ACF hidden input so autosave uses the new ID.
 								if ( acfHiddenInput && res.data.id ) {
 									acfHiddenInput.value = res.data.id;
 								}
@@ -2996,7 +3228,7 @@
 	}
 
 	/**
-	 * Rebuild hidden inputs inside the .acf-field wrapper so saveSection()
+	 * Rebuild hidden inputs inside the .acf-field wrapper so field autosave
 	 * collects the correct gallery array.
 	 */
 	function syncGalleryHiddenInputs( field, fieldKey, grid ) {
@@ -3052,7 +3284,7 @@
 			}
 		} );
 
-		// Mark ACF’s original inputs so saveSection() skips them.
+		// Mark ACF’s original inputs so autosave skips them.
 		acfGallery.querySelectorAll( 'input' ).forEach( function ( inp ) {
 			inp.dataset.memdirSkip = '1';
 		} );
@@ -3636,7 +3868,7 @@
 	document.addEventListener( 'DOMContentLoaded', function () {
 		initTabNav();
 		initPillNav();
-		initSectionSave();
+		initFieldAutosave();
 		initRightPanel();
 		initSectionToggles();
 		initSectionPmp();

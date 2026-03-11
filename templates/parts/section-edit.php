@@ -196,10 +196,6 @@ $pmp_mode_attr = ( $section_pmp === 'inherit' ) ? 'inherit' : 'override';
 
 		<p class="memdir-section-controls__title"><?php echo esc_html( $section_label ); ?></p>
 
-		<div class="memdir-unsaved-banner" style="display:none">
-			You have unsaved changes in this section.
-		</div>
-
 		<div class="memdir-section-controls__tabs">
 			<?php foreach ( $field_groups as $group ) : ?>
 			<button
@@ -212,10 +208,6 @@ $pmp_mode_attr = ( $section_pmp === 'inherit' ) ? 'inherit' : 'override';
 			</button>
 			<?php endforeach; ?>
 		</div>
-
-		<button type="button" class="memdir-section-save" data-section="<?php echo esc_attr( $section_key ); ?>">
-			Save <?php echo esc_html( $section_label ); ?>
-		</button>
 
 		<p class="memdir-section-controls__pmp-heading">Section Default Visibility</p>
 
